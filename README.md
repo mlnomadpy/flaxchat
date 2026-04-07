@@ -232,37 +232,36 @@ flaxchat/
 
 ## Verified Results
 
-### GPT-2 Base on FineWeb-Edu (Kaggle TPU v5e-8)
+### Full Pipeline: Pretrain -> SFT -> RL (Kaggle TPU v5e-8)
+
+End-to-end training pipeline completed on a single Kaggle TPU v5e-8 session:
+
+| Stage | Dataset | Steps | Loss | Throughput | Time |
+|-------|---------|-------|------|------------|------|
+| **Pretrain** | FineWeb-Edu (2B tokens) | 15,258 | 10.4 -> **2.94** | 379K tok/s | ~1.5h |
+| **SFT** | SmolTalk (50K conversations) | 2,000 | 2.94 -> **1.82** | — | ~7 min |
+| **GRPO** | GSM8K (math + calculator) | 500 | RL training | — | running |
+
+- **Model**: 12L/768d/6h (GQA: 3kv) = 203.7M params
+- **Hardware**: Kaggle TPU v5e-8 (8 chips, bf16)
+- **W&B**: [irf-sic/flaxchat](https://wandb.ai/irf-sic/flaxchat)
+
+### Bigger Model: GPT-2 Medium (TRC TPU v6e-8)
 
 | Metric | Value |
 |--------|-------|
-| Model | 12L/768d/6h (GQA: 3kv) = 203.7M params |
-| Training data | FineWeb-Edu 10BT (2B tokens used) |
-| Hardware | Kaggle TPU v5e-8 (8 chips, bf16) |
-| Throughput | **379,000 tok/s** |
-| Final loss | **2.94** |
-| Training time | ~1.5h |
-| W&B | [irf-sic/flaxchat](https://wandb.ai/irf-sic/flaxchat) |
+| Model | 16L/1024d/8h (GQA: 4kv, **tied embeddings**) = 352.3M params |
+| Training data | FineWeb-Edu (10B tokens) |
+| Hardware | TRC TPU v6e-8 (8 chips, bf16) |
+| Checkpoints | `gs://orbax/flaxchat/gpt2-16L-tied` |
+| Status | Training in progress |
 
-### TinyStories (Kaggle 2xT4 GPU)
+### TinyStories Baselines
 
-| Metric | Value |
-|--------|-------|
-| Model | 8L/256d/8h = 18.9M params |
-| Training data | 500K stories, 106M tokens |
-| Throughput | 55,000 tok/s (data-parallel) |
-| Best val loss | 2.20 |
-| Pretrain time | 50 min |
-
-### TinyStories (Kaggle TPU v5e-8)
-
-| Metric | Value |
-|--------|-------|
-| Model | 8L/512d/8h = 90.2M params |
-| Training data | TinyStories (50K stories) |
-| Throughput | **149,000 tok/s** |
-| Final loss | 2.79 |
-| Training time | 109s (500 steps) |
+| Hardware | Model | Throughput | Loss | Time |
+|----------|-------|------------|------|------|
+| Kaggle 2xT4 GPU | 8L/256d (18.9M) | 55K tok/s | 2.20 | 50 min |
+| Kaggle TPU v5e-8 | 8L/512d (90.2M) | 149K tok/s | 2.79 | 109s |
 
 **148 tests passing** on CPU (local), GPU (Kaggle 2xT4), and TPU (v5e-8).
 
