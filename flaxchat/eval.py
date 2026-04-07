@@ -303,7 +303,7 @@ def evaluate_bpb(model, val_loader, eval_steps, token_bytes=None, tokenizer=None
 
         # Get per-position loss (not reduced)
         logits = model(inputs)  # (B, T, V)
-        B, T, V = logits.shape
+        B, T, V = int(logits.shape[0]), int(logits.shape[1]), int(logits.shape[2])
         log_probs = jax.nn.log_softmax(logits, axis=-1)
         one_hot = jax.nn.one_hot(targets, V)
         per_token_loss = -jnp.sum(one_hot * log_probs, axis=-1)  # (B, T)

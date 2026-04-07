@@ -95,7 +95,7 @@ def _single_step_forward(model, token_id, pos, k_cache, v_cache, prev_emb):
 
         # Value embeddings
         ve_key = str(i)
-        if ve_key in model.value_embeds:
+        if hasattr(model.value_embeds, ve_key):
             ve = model.value_embeds[ve_key](token_id).astype(x.dtype)
         else:
             ve = None

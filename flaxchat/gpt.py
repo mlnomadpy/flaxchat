@@ -328,7 +328,7 @@ class GPT(nnx.Module):
         for i, block in enumerate(self.blocks):
             x = self.resid_lambdas[...][i] * x + self.x0_lambdas[...][i] * x0
             ve_key = str(i)
-            ve = self.value_embeds[ve_key](idx).astype(x.dtype) if ve_key in self.value_embeds else None
+            ve = self.value_embeds[ve_key](idx).astype(x.dtype) if hasattr(self.value_embeds, ve_key) else None
             x = block(x, ve, cos, sin, self.window_sizes[i])
             if i == backout_layer:
                 x_backout = x
