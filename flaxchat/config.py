@@ -23,6 +23,7 @@ class GPTConfig:
     n_kv_head: int = 6
     n_embd: int = 768
     window_pattern: str = "SSSL"
+    tie_embeddings: bool = False
 
 
 # Register GPTConfig as a JAX pytree with all-static fields

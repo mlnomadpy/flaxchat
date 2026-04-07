@@ -56,6 +56,7 @@ parser.add_argument("--dataset", type=str, default="HuggingFaceFW/fineweb-edu")
 parser.add_argument("--dataset-subset", type=str, default="sample-10BT")
 parser.add_argument("--run-name", type=str, default="gpt2-base")
 parser.add_argument("--ckpt-dir", type=str, default="gs://orbax/flaxchat/checkpoints")
+parser.add_argument("--tie-embeddings", action="store_true", default=False)
 args = parser.parse_args()
 
 # ── Distributed init ──
@@ -87,6 +88,7 @@ config = GPTConfig(
     n_kv_head=n_kv_heads,
     n_embd=model_dim,
     window_pattern="SSSL",
+    tie_embeddings=args.tie_embeddings,
 )
 
 print0(f"Model: {config.n_layer}L/{config.n_embd}d/{config.n_head}h (GQA: {config.n_kv_head}kv)")

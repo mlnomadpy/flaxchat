@@ -201,15 +201,19 @@ class GPT(nnx.Module):
             print0(f"Padding vocab_size from {config.vocab_size} to {padded_vocab_size}")
         self.padded_vocab_size: int = nnx.data(padded_vocab_size)
 
-        # Token embedding (untied from lm_head)
+        # Token embedding
         self.wte = nnx.Embed(padded_vocab_size, config.n_embd, rngs=rngs)
 
         # Transformer blocks
         self.blocks = _NNX_LIST([Block(config, i, rngs=rngs, use_remat=use_remat)
                                  for i in range(config.n_layer)])
 
-        # Language model head (untied)
-        self.lm_head = nnx.Linear(config.n_embd, padded_vocab_size, use_bias=False, rngs=rngs)
+        # Language model head (tied or untied)
+        self._tie_embeddings = config.tie_embeddings
+        if not config.tie_embeddings:
+            self.lm_head = nnx.Linear(config.n_embd, padded_vocab_size, use_bias=False, rngs=rngs)
+        else:
+            self.lm_head = None  # use wte.embedding.T
 
         # Per-layer learnable scalars
         self.resid_lambdas = nnx.Param(jnp.ones(config.n_layer))
@@ -250,10 +254,11 @@ class GPT(nnx.Module):
         ) * 0.8
         self.wte.embedding[...] = self.wte.embedding[...].astype(COMPUTE_DTYPE)
 
-        # lm_head: normal(0, 0.001)
-        self.lm_head.kernel[...] = jax.random.normal(
-            jax.random.key(1), self.lm_head.kernel[...].shape
-        ) * 0.001
+        # lm_head: normal(0, 0.001) — skip if tied
+        if self.lm_head is not None:
+            self.lm_head.kernel[...] = jax.random.normal(
+                jax.random.key(1), self.lm_head.kernel[...].shape
+            ) * 0.001
 
         # Transformer blocks: uniform init
         s = 3**0.5 * n_embd**-0.5
@@ -337,7 +342,10 @@ class GPT(nnx.Module):
         x = rms_norm(x)
 
         softcap = 15.0
-        logits = self.lm_head(x)
+        if self._tie_embeddings:
+            logits = x @ self.wte.embedding[...].T
+        else:
+            logits = self.lm_head(x)
         logits = logits[..., :config.vocab_size]
         logits = logits.astype(jnp.float32)
         logits = softcap * jnp.tanh(logits / softcap)
