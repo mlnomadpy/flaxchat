@@ -161,7 +161,8 @@ class Block(nnx.Module):
                  use_remat: bool = False):
         self.attn = CausalSelfAttention(config, layer_idx, rngs=rngs)
         self.mlp = MLP(config, rngs=rngs)
-        self._use_remat: bool = nnx.data(use_remat)
+        # Store as plain Python bool — NOT nnx.data — to avoid JIT tracing issues
+        self._use_remat = use_remat
 
     def _forward(self, x, ve, cos, sin, window_size):
         x = x + self.attn(rms_norm(x), ve, cos, sin, window_size)
@@ -170,8 +171,6 @@ class Block(nnx.Module):
 
     def __call__(self, x, ve, cos, sin, window_size):
         if self._use_remat:
-            # Gradient checkpointing: recompute activations during backward
-            # dots_saveable policy: save matmul outputs, remat everything else
             return nnx.remat(
                 self._forward,
                 policy=jax.checkpoint_policies.dots_saveable,
