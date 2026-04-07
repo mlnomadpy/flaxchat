@@ -1,0 +1,27 @@
+title: flaxchat
+description: Training LLMs from scratch on TPUs with JAX/Flax NNX
+url: ""
+baseurl: ""
+theme: minima
+markdown: kramdown
+permalink: /blog/:title/
+
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+
+header_pages:
+  - index.md
+  - architecture.md
+  - config.md
+  - deployment.md
+  - optimizer.md
+  - blog.md
+  - contributing.md
+
+defaults:
+  - scope:
+      path: "blog"
+      type: "posts"
+    values:
+      layout: "post"

@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+.pixi/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Exports & model artifacts
+exports/
+*.tflite
+*.stablehlo
+*.pkl
+*.npz
+
+# Data & caches
+data/
+.cache/
+tests/.cache/
+
+# Logs & experiment tracking
+wandb/
+*.log
+*.prof
+tensorboard/
+
+# Pixi lock (platform-specific)
+pixi.lock
+
+# Jekyll build
+docs/_site/
+docs/.jekyll-cache/
+docs/.sass-cache/
+docs/Gemfile.lock
