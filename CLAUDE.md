@@ -93,7 +93,24 @@ python -m scripts.rl --model=d12                # RL/GRPO on GSM8K
 python -m scripts.eval --model=d12 --tasks=all  # Evaluate
 python -m scripts.chat_web --model=d12          # Web chat
 python -m scripts.run_tinystories --depth=4     # Full pipeline locally
+python scripts/train_gpt2.py --depth=16 --tie-embeddings --tokens=10B  # GPT-2 medium
 ```
+
+## Tied Embeddings
+
+```python
+config = GPTConfig(n_layer=16, n_embd=1024, tie_embeddings=True)
+# lm_head shares weights with wte (saves ~33M params for vocab=32K)
+```
+
+## Verified Results
+
+| Run | Loss | Throughput | Hardware |
+|-----|------|-----------|----------|
+| Pretrain 12L/768d 2B tok | **2.94** | 379K tok/s | Kaggle TPU v5e-8 |
+| SFT SmolTalk | **1.82** | — | Kaggle TPU v5e-8 |
+| GRPO GSM8K | running | — | Kaggle TPU v5e-8 |
+| Pretrain 16L/1024d 10B tok (tied) | training | — | TRC v6e-8 |
 
 ## Tests
 

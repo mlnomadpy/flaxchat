@@ -132,22 +132,46 @@ tpu.run("python -m scripts.pretrain --depth=12", sync=".")
 
 ---
 
-## Verified Results (TinyStories, Kaggle 2xT4)
+## Verified Results
+
+### Full Pipeline: Pretrain -> SFT -> RL (Kaggle TPU v5e-8)
+
+| Stage | Dataset | Steps | Loss | Throughput | Time |
+|-------|---------|-------|------|------------|------|
+| **Pretrain** | FineWeb-Edu (2B tokens) | 15,258 | 10.4 -> **2.94** | 379K tok/s | ~1.5h |
+| **SFT** | SmolTalk (50K conversations) | 2,000 | 2.94 -> **1.82** | — | ~7 min |
+| **GRPO** | GSM8K (math + calculator) | 500 | RL training | — | — |
+
+Model: 12L/768d/6h (GQA: 3kv) = 203.7M params
+
+### Bigger Model (TRC TPU v6e-8)
 
 | Metric | Value |
 |--------|-------|
-| Model | 8L/256d/8h = 18.9M params |
-| Throughput | 55,000 tok/s |
-| Val loss | 2.20 |
-| Time | 50 min |
+| Model | 16L/1024d/8h (GQA: 4kv, tied embeddings) = 352.3M params |
+| Data | FineWeb-Edu (10B tokens) |
+| Checkpoints | GCS: `gs://orbax/flaxchat/gpt2-16L-tied` |
+
+### Baselines
+
+| Hardware | Model | Throughput | Loss | Time |
+|----------|-------|------------|------|------|
+| Kaggle 2xT4 | 8L/256d (18.9M) | 55K tok/s | 2.20 | 50 min |
+| Kaggle TPU v5e-8 | 8L/512d (90.2M) | 149K tok/s | 2.79 | 109s |
+
+W&B: [irf-sic/flaxchat](https://wandb.ai/irf-sic/flaxchat)
 
 ---
 
 ## Acknowledgments
 
-Cloud TPU resources provided by Google's [TPU Research Cloud (TRC)](https://sites.research.google/trc/about/) program.
+This project is part of the **2026 Q1 TPU Sprint**, supported by the [Google AI Developer Programs](https://developers.google.com/programs) team.
 
-Built on [nanochat](https://github.com/karpathy/nanochat), [JAX](https://github.com/jax-ml/jax), [Flax](https://github.com/google/flax), [Optax](https://github.com/google-deepmind/optax), [Orbax](https://github.com/google/orbax).
+- **[Google AI Developer Programs](https://developers.google.com/programs)** for issuing GCP credits
+- **[TPU Research Cloud (TRC)](https://sites.research.google/trc/about/)** for providing free access to Cloud TPU v4, v5e, and v6e
+- **Kaggle** for free TPU v5e access for prototyping
+
+Built on [nanochat](https://github.com/karpathy/nanochat), [JAX](https://github.com/jax-ml/jax), [Flax](https://github.com/google/flax), [Optax](https://github.com/google-deepmind/optax), [Orbax](https://github.com/google/orbax), [tpuz](https://github.com/mlnomadpy/tpuz), [kgz](https://github.com/mlnomadpy/kgz).
 
 [View on GitHub](https://github.com/mlnomadpy/flaxchat)
 
