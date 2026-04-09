@@ -166,7 +166,10 @@ def _single_step_forward(model, token_id, pos, k_cache, v_cache, prev_emb):
     x = x - model.backout_lambda[...].astype(x.dtype) * x_backout
     x = rms_norm(x)
 
-    logits = model.lm_head(x)
+    if model._tie_embeddings:
+        logits = x @ model.wte.embedding[...].T
+    else:
+        logits = model.lm_head(x)
     logits = logits[..., :config.vocab_size].astype(jnp.float32)
     logits = 15.0 * jnp.tanh(logits / 15.0)
     logits = logits[:, 0, :]  # (1, vocab_size)

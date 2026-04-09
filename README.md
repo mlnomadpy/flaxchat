@@ -246,15 +246,20 @@ End-to-end training pipeline completed on a single Kaggle TPU v5e-8 session:
 - **Hardware**: Kaggle TPU v5e-8 (8 chips, bf16)
 - **W&B**: [irf-sic/flaxchat](https://wandb.ai/irf-sic/flaxchat)
 
-### Bigger Model: GPT-2 Medium (TRC TPU v6e-8)
+### Chinchilla Scaling Law (TRC TPU v6e-8)
 
-| Metric | Value |
-|--------|-------|
-| Model | 16L/1024d/8h (GQA: 4kv, **tied embeddings**) = 352.3M params |
-| Training data | FineWeb-Edu (10B tokens) |
-| Hardware | TRC TPU v6e-8 (8 chips, bf16) |
-| Checkpoints | `gs://orbax/flaxchat/gpt2-16L-tied` |
-| Status | Training in progress |
+Nanochat architecture (ReLU², value embeddings, sliding window, tied embeddings) trained at Chinchilla-optimal token budgets (20x params) on C4 with AdamW:
+
+| Depth | Params | Tokens | Final Loss | Throughput |
+|-------|--------|--------|-----------|------------|
+| 2 | 9M | 0.18B | 7.28 | 1.4M tok/s |
+| 4 | 28M | 0.56B | 5.79 | 1.1M tok/s |
+| 6 | 61M | 1.22B | 4.24 | 800K tok/s |
+| 8 | 109M | 2.18B | 3.95 | 600K tok/s |
+| 12 | 261M | 5.22B | **3.42** | 500K tok/s |
+| 16 | 503M | 10.06B | **3.39** | 290K tok/s |
+
+![Scaling Law](docs/scaling_law.png)
 
 ### TinyStories Baselines
 
