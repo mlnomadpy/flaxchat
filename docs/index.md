@@ -144,13 +144,20 @@ tpu.run("python -m scripts.pretrain --depth=12", sync=".")
 
 Model: 12L/768d/6h (GQA: 3kv) = 203.7M params
 
-### Bigger Model (TRC TPU v6e-8)
+### Chinchilla Scaling Law (TRC TPU v6e-8)
 
-| Metric | Value |
-|--------|-------|
-| Model | 16L/1024d/8h (GQA: 4kv, tied embeddings) = 352.3M params |
-| Data | FineWeb-Edu (10B tokens) |
-| Checkpoints | GCS: `gs://orbax/flaxchat/gpt2-16L-tied` |
+Nanochat architecture trained at Chinchilla-optimal budgets (20x params) on C4:
+
+| Depth | Params | Tokens | Final Loss | Throughput |
+|-------|--------|--------|-----------|------------|
+| 2 | 9M | 0.18B | 7.28 | 1.4M tok/s |
+| 4 | 28M | 0.56B | 5.79 | 1.1M tok/s |
+| 6 | 61M | 1.22B | 4.24 | 800K tok/s |
+| 8 | 109M | 2.18B | 3.95 | 600K tok/s |
+| 12 | 261M | 5.22B | **3.42** | 500K tok/s |
+| 16 | 503M | 10.06B | **3.39** | 290K tok/s |
+
+![Scaling Law](scaling_law.png)
 
 ### Baselines
 
@@ -173,7 +180,7 @@ This project is part of the **2026 Q1 TPU Sprint**, supported by the [Google AI 
 
 Built on [nanochat](https://github.com/karpathy/nanochat), [JAX](https://github.com/jax-ml/jax), [Flax](https://github.com/google/flax), [Optax](https://github.com/google-deepmind/optax), [Orbax](https://github.com/google/orbax), [tpuz](https://github.com/mlnomadpy/tpuz), [kgz](https://github.com/mlnomadpy/kgz).
 
-[View on GitHub](https://github.com/mlnomadpy/flaxchat)
+[View on GitHub](https://github.com/mlnomadpy/flaxchat) | [Documentation](https://www.tahabouhsine.com/flaxchat/)
 
 ---
 

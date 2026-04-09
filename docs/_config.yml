@@ -1,7 +1,7 @@
 title: flaxchat
 description: Training LLMs from scratch on TPUs with JAX/Flax NNX
-url: ""
-baseurl: ""
+url: "https://www.tahabouhsine.com"
+baseurl: "/flaxchat"
 theme: minima
 markdown: kramdown
 permalink: /blog/:title/
