@@ -32,6 +32,7 @@ import optax
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flaxchat.gpt import GPT, GPTConfig
 from flaxchat.common import compute_init, print0, COMPUTE_DTYPE
+from flaxchat.prefetch import BackgroundPrefetcher
 
 
 def parse_tokens(s):
@@ -111,6 +112,13 @@ actual_tokens = num_steps * tok_per_step
 print0(f"Batch: {args.batch_per_device}/dev × {n_devices} = {global_batch} global")
 print0(f"Tokens/step: {tok_per_step:,} ({tok_per_step/1e6:.1f}M)")
 print0(f"Steps: {num_steps:,} ({actual_tokens/1e9:.1f}B tokens)")
+
+# ── MFU computation (cached — only computed once) ──
+from flaxchat.common import get_peak_flops
+flops_per_token = model.estimate_flops()
+peak_flops = get_peak_flops() * n_devices  # total peak across all devices
+print0(f"FLOPs/token: {flops_per_token:.2e}")
+print0(f"Peak FLOPS: {peak_flops:.2e} ({peak_flops/1e12:.0f} TFLOPS)")
 
 # ── Optimizer (AdamW with cosine schedule) ──
 warmup_steps = args.warmup_steps
@@ -194,12 +202,12 @@ print0(f"{'='*60}\n")
 
 t0 = time.time()
 smooth_loss = None
+batch_sharding = NamedSharding(mesh, P('data'))
+prefetcher = BackgroundPrefetcher(get_batch, mesh, batch_sharding, prefetch_count=2)
 
 for step in range(num_steps):
-    # Get batch
-    inputs_np, targets_np = get_batch()
-    inputs = jax.device_put(jnp.array(inputs_np), NamedSharding(mesh, P('data')))
-    targets = jax.device_put(jnp.array(targets_np), NamedSharding(mesh, P('data')))
+    # Batches arrive pre-sharded from the background prefetcher
+    inputs, targets = next(prefetcher)
 
     loss = train_step(model, optimizer, inputs, targets)
     loss_val = float(loss)
@@ -211,15 +219,16 @@ for step in range(num_steps):
         tok_s = (step + 1) * tok_per_step / elapsed if elapsed > 0 else 0
         eta = (num_steps - step) * elapsed / max(step + 1, 1)
         lr_now = float(schedule(step))
+        mfu = (flops_per_token * tok_s) / peak_flops if peak_flops > 0 else 0
         print0(
             f"step {step:5d}/{num_steps} | loss {loss_val:.4f} (smooth {smooth_loss:.4f}) | "
-            f"lr {lr_now:.2e} | {tok_s/1e6:.2f}M tok/s | "
+            f"lr {lr_now:.2e} | {tok_s/1e6:.2f}M tok/s | mfu {mfu:.1%} | "
             f"eta {eta/3600:.1f}h"
         )
         if use_wandb:
             wandb.log({
                 "loss": loss_val, "smooth_loss": smooth_loss,
-                "lr": lr_now, "tok_per_sec": tok_s, "step": step,
+                "lr": lr_now, "tok_per_sec": tok_s, "mfu": mfu, "step": step,
                 "tokens_seen": (step + 1) * tok_per_step,
             })
 
@@ -234,6 +243,8 @@ for step in range(num_steps):
             })
             mgr.wait_until_finished()
             print0(f"  Saved checkpoint at step {step}")
+
+prefetcher.stop()
 
 # ── Final ──
 elapsed = time.time() - t0

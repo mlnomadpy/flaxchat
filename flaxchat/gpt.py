@@ -23,12 +23,22 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
+from jax.sharding import PartitionSpec as P
+
 from flaxchat.config import GPTConfig
 from flaxchat.common import COMPUTE_DTYPE, print0
 
 # Compat: nnx.List/Dict exist in Flax 0.12+, plain list/dict work in 0.11
 _NNX_LIST = getattr(nnx, 'List', list)
 _NNX_DICT = getattr(nnx, 'Dict', dict)
+
+
+def _maybe_shard(x, spec):
+    """Apply sharding constraint only when a mesh is active, otherwise no-op."""
+    try:
+        return jax.lax.with_sharding_constraint(x, spec)
+    except RuntimeError:
+        return x
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +112,10 @@ class CausalSelfAttention(nnx.Module):
         k = self.c_k(x).reshape(B, T, n_kv_head, head_dim)
         v = self.c_v(x).reshape(B, T, n_kv_head, head_dim)
 
-        if ve is not None:
+        # Guard on _has_ve (Python bool) rather than `ve is not None` so the
+        # scan path can always pass a (possibly zero) ve tensor without
+        # triggering ve_gate lookups on layers that lack it.
+        if self._has_ve and ve is not None:
             ve = ve.reshape(B, T, n_kv_head, head_dim)
             gate = 3.0 * jax.nn.sigmoid(self.ve_gate(x[..., :12]))
             v = v + gate[..., None] * ve
@@ -166,7 +179,9 @@ class Block(nnx.Module):
 
     def _forward(self, x, ve, cos, sin, window_size):
         x = x + self.attn(rms_norm(x), ve, cos, sin, window_size)
+        x = _maybe_shard(x, P('data', None, None))
         x = x + self.mlp(rms_norm(x))
+        x = _maybe_shard(x, P('data', None, None))
         return x
 
     def __call__(self, x, ve, cos, sin, window_size):
@@ -308,6 +323,84 @@ class GPT(nnx.Module):
         window_sizes[-1] = (long_window, 0)
         return window_sizes
 
+    def _forward_loop(self, x, x0, idx, cos, sin, n_layer, backout_layer):
+        """Run transformer blocks in a Python loop (default path)."""
+        x_backout = None
+        for i, block in enumerate(self.blocks):
+            x = self.resid_lambdas[...][i] * x + self.x0_lambdas[...][i] * x0
+            ve_key = str(i)
+            ve = self.value_embeds[ve_key](idx).astype(x.dtype) if ve_key in self.value_embeds else None
+            x = block(x, ve, cos, sin, self.window_sizes[i])
+            if i == backout_layer:
+                x_backout = x
+        return x, x_backout
+
+    def _forward_scan(self, x, x0, idx, cos, sin, n_layer, backout_layer):
+        """Scan-based forward pass: O(1) XLA compile time, constant memory.
+
+        Uses jax.lax.scan over layer indices. Per-layer data (lambdas, window
+        sizes, value embeddings) are pre-stacked into arrays and indexed
+        dynamically. Blocks are dispatched via jax.lax.switch so XLA only
+        needs to compile a single block body.
+        """
+        resid_lambdas = self.resid_lambdas[...]
+        x0_lambdas = self.x0_lambdas[...]
+
+        # Stack window sizes: (n_layer, 2)
+        window_sizes = jnp.array(self.window_sizes, dtype=jnp.int32)
+
+        # Precompute ALL value embeddings stacked: (n_layer, B, T, kv_dim).
+        # Non-VE layers get zeros; the block's _has_ve guard skips them.
+        head_dim = self.config.n_embd // self.config.n_head
+        kv_dim = self.config.n_kv_head * head_dim
+        B, T = idx.shape
+        ve_list = []
+        for i in range(n_layer):
+            ve_key = str(i)
+            if ve_key in self.value_embeds:
+                ve_list.append(self.value_embeds[ve_key](idx).astype(x.dtype))
+            else:
+                ve_list.append(jnp.zeros((B, T, kv_dim), dtype=x.dtype))
+        ve_all = jnp.stack(ve_list, axis=0)  # (n_layer, B, T, kv_dim)
+
+        # Build per-block dispatch functions for jax.lax.switch.
+        # Each branch closes over its own Block module and window_size.
+        branches = []
+        for i in range(n_layer):
+            block = self.blocks[i]
+            ws = self.window_sizes[i]
+            # Capture block and ws by value via default arg
+            branches.append(
+                lambda x_, ve_, cos_=cos, sin_=sin, b=block, w=ws: b(x_, ve_, cos_, sin_, w)
+            )
+
+        def scan_body(carry, layer_idx):
+            x_c, x0_c, x_backout_c = carry
+
+            # Per-layer residual scaling
+            rl = jax.lax.dynamic_index_in_dim(resid_lambdas, layer_idx, keepdims=False)
+            xl = jax.lax.dynamic_index_in_dim(x0_lambdas, layer_idx, keepdims=False)
+            x_c = rl * x_c + xl * x0_c
+
+            # Value embedding for this layer
+            ve_i = jax.lax.dynamic_index_in_dim(ve_all, layer_idx, axis=0, keepdims=False)
+
+            # Dispatch to the correct block via lax.switch
+            x_c = jax.lax.switch(layer_idx, branches, x_c, ve_i)
+
+            # Capture backout at the right layer
+            x_backout_c = jnp.where(
+                layer_idx == backout_layer, x_c, x_backout_c
+            )
+            return (x_c, x0_c, x_backout_c), None
+
+        x_backout_init = jnp.zeros_like(x)
+        init_carry = (x, x0, x_backout_init)
+        layer_indices = jnp.arange(n_layer, dtype=jnp.int32)
+
+        (x, _, x_backout), _ = jax.lax.scan(scan_body, init_carry, layer_indices)
+        return x, x_backout
+
     def __call__(self, idx, targets=None):
         B, T = idx.shape
         config = self.config
@@ -318,6 +411,7 @@ class GPT(nnx.Module):
         x = self.wte(idx)
         x = x.astype(COMPUTE_DTYPE)
         x = rms_norm(x)
+        x = _maybe_shard(x, P('data', None, None))
 
         # Smear
         gate = self.smear_lambda[...].astype(x.dtype) * jax.nn.sigmoid(self.smear_gate(x[:, 1:, :24]))
@@ -327,15 +421,11 @@ class GPT(nnx.Module):
         x0 = x
         n_layer = config.n_layer
         backout_layer = n_layer // 2
-        x_backout = None
 
-        for i, block in enumerate(self.blocks):
-            x = self.resid_lambdas[...][i] * x + self.x0_lambdas[...][i] * x0
-            ve_key = str(i)
-            ve = self.value_embeds[ve_key](idx).astype(x.dtype) if hasattr(self.value_embeds, ve_key) else None
-            x = block(x, ve, cos, sin, self.window_sizes[i])
-            if i == backout_layer:
-                x_backout = x
+        if config.use_scan:
+            x, x_backout = self._forward_scan(x, x0, idx, cos, sin, n_layer, backout_layer)
+        else:
+            x, x_backout = self._forward_loop(x, x0, idx, cos, sin, n_layer, backout_layer)
 
         if x_backout is not None:
             x = x - self.backout_lambda[...].astype(x.dtype) * x_backout

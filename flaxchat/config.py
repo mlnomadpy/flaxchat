@@ -24,6 +24,7 @@ class GPTConfig:
     n_embd: int = 768
     window_pattern: str = "SSSL"
     tie_embeddings: bool = False
+    use_scan: bool = False
 
 
 # Register GPTConfig as a JAX pytree with all-static fields

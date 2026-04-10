@@ -19,7 +19,11 @@ from flaxchat.gpt import GPT, GPTConfig
 from flaxchat.engine import Engine, generate, generate_with_cache, generate_fast, generate_speculative
 from flaxchat.eval import evaluate_core, evaluate_bpb
 from flaxchat.execution import execute_code, ExecutionResult
-from flaxchat.common import compute_init, get_mesh, setup_mesh
+from flaxchat.common import (
+    compute_init, get_mesh, setup_mesh,
+    LOGICAL_AXIS_RULES, shard_model_params, shard_batch_logical,
+)
+from flaxchat.prefetch import BackgroundPrefetcher
 
 __all__ = [
     "FlaxChatConfig", "GPT", "GPTConfig",
@@ -27,4 +31,6 @@ __all__ = [
     "evaluate_core", "evaluate_bpb",
     "execute_code", "ExecutionResult",
     "compute_init", "get_mesh", "setup_mesh",
+    "LOGICAL_AXIS_RULES", "shard_model_params", "shard_batch_logical",
+    "BackgroundPrefetcher",
 ]

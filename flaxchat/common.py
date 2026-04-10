@@ -218,6 +218,53 @@ def shard_batch(inputs, targets, mesh: Mesh | None = None):
 
 
 # ---------------------------------------------------------------------------
+# Logical axis annotations (MaxText-style)
+# Maps logical tensor axis names to mesh axis names.
+# None = replicated.  For pure data-parallel the only sharded axis is batch.
+# ---------------------------------------------------------------------------
+LOGICAL_AXIS_RULES = [
+    ("batch", "data"),
+    ("embed", None),     # replicated
+    ("heads", None),     # replicated
+    ("mlp", None),       # replicated
+    ("kv", None),        # replicated
+    ("vocab", None),     # replicated
+    ("length", None),    # replicated
+]
+
+
+def logical_to_mesh_sharding(logical_spec, mesh: Mesh | None = None):
+    """Convert a logical PartitionSpec to a concrete NamedSharding using LOGICAL_AXIS_RULES."""
+    if mesh is None:
+        mesh = get_mesh()
+    rules = dict(LOGICAL_AXIS_RULES)
+    mesh_axes = tuple(rules.get(ax, None) if ax is not None else None
+                      for ax in logical_spec)
+    return NamedSharding(mesh, P(*mesh_axes))
+
+
+def shard_model_params(model, mesh: Mesh | None = None):
+    """
+    Place model params on the mesh using logical axis rules.
+
+    For data-parallel (default): all params are replicated (P()).
+    The batch dimension is the only thing sharded — handled by shard_batch.
+    """
+    if mesh is None:
+        mesh = get_mesh()
+    replicated = NamedSharding(mesh, P())
+    return jax.device_put(model, replicated)
+
+
+def shard_batch_logical(batch, mesh: Mesh | None = None):
+    """Shard a batch dict/pytree along the 'data' axis using logical annotations."""
+    if mesh is None:
+        mesh = get_mesh()
+    batch_sharding = NamedSharding(mesh, P('data'))
+    return jax.tree.map(lambda x: jax.device_put(x, batch_sharding), batch)
+
+
+# ---------------------------------------------------------------------------
 # Distributed init for multi-host TPU pods
 # ---------------------------------------------------------------------------
 def compute_init():
