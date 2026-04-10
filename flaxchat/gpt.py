@@ -34,11 +34,8 @@ _NNX_DICT = getattr(nnx, 'Dict', dict)
 
 
 def _maybe_shard(x, spec):
-    """Apply sharding constraint only when a mesh is active, otherwise no-op."""
-    try:
-        return jax.lax.with_sharding_constraint(x, spec)
-    except RuntimeError:
-        return x
+    """No-op — sharding is handled at the train step level."""
+    return x
 
 
 # ---------------------------------------------------------------------------
