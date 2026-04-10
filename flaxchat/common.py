@@ -318,6 +318,7 @@ def get_peak_flops(device_kind: str | None = None) -> float:
         "tpu v5e":   197e12,
         "tpu v5p":   459e12,
         "tpu v6e":   918e12,
+        "tpu v6 lite": 918e12,
         # GPU fallbacks
         "a100":      312e12,
         "h100":      989e12,

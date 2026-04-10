@@ -87,7 +87,7 @@ class CausalSelfAttention(nnx.Module):
         # Store config (registered as static) and scalar metadata
         self.config: GPTConfig = nnx.data(config)
         self.layer_idx: int = nnx.data(layer_idx)
-        self._has_ve: bool = nnx.data(has_ve(layer_idx, config.n_layer))
+        self._has_ve = has_ve(layer_idx, config.n_layer)  # plain Python bool, not traced
 
         head_dim = config.n_embd // config.n_head
         self.c_q = nnx.Linear(config.n_embd, config.n_head * head_dim, use_bias=False, rngs=rngs)
