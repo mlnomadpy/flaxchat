@@ -1,0 +1,16 @@
+# Runtime dependencies for the flaxchat -> PyTorch port.
+# Inference itself only needs torch + numpy. The conversion script additionally
+# needs JAX + Flax + Orbax to restore the original checkpoint.
+
+# --- Inference (required) ---
+torch>=2.1
+numpy>=1.23
+
+# --- Conversion (only needed to run convert_flax_to_torch.py) ---
+# Already in the parent repo's pixi.toml; listed here for standalone use.
+# jax>=0.6.0
+# flax>=0.11.0
+# orbax-checkpoint>=0.11.0
+
+# --- Optional: tokenizer for end-to-end text generation ---
+# transformers>=4.40.0

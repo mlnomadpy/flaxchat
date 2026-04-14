@@ -33,6 +33,17 @@ def create_checkpoint_manager(
     return manager
 
 
+def _opt_state_pytree(optimizer: nnx.Optimizer):
+    """Extract the optimizer's pure pytree state (opt_state moments etc).
+
+    Uses `optimizer.opt_state` directly: it's the raw optax state (e.g.
+    tuple of ScaleByAdamState, ScaleByLearningRateState, EmptyState for
+    plain AdamW). Avoids `nnx.state(optimizer)` which also includes the
+    wrapped model params.
+    """
+    return optimizer.opt_state
+
+
 def save_checkpoint(
     manager: ocp.CheckpointManager,
     step: int,
@@ -40,15 +51,16 @@ def save_checkpoint(
     optimizer: nnx.Optimizer,
     metadata: dict,
 ):
-    """Save model, optimizer state, and metadata."""
+    """Save model params, optimizer state, and metadata to a composite checkpoint."""
     model_state = nnx.state(model, nnx.Param)
-    # Convert to pure dict for serialization
     model_dict = nnx.to_pure_dict(model_state)
+    opt_state = _opt_state_pytree(optimizer)
 
     manager.save(
         step,
         args=ocp.args.Composite(
             model=ocp.args.PyTreeSave(model_dict),
+            optimizer=ocp.args.PyTreeSave(opt_state),
             metadata=ocp.args.JsonSave(metadata),
         ),
     )
@@ -58,41 +70,50 @@ def load_checkpoint(
     manager: ocp.CheckpointManager,
     step: int | None = None,
     model: nnx.Module | None = None,
-) -> tuple[dict, dict]:
+    optimizer: nnx.Optimizer | None = None,
+) -> tuple[dict, object, dict]:
     """
-    Load checkpoint. Returns (model_dict, metadata).
+    Load checkpoint. Returns (model_dict, opt_state, metadata).
     If step is None, loads the latest checkpoint.
+    If `optimizer` is None, optimizer state is not restored (returns None).
     """
     if step is None:
         step = manager.latest_step()
         if step is None:
             raise ValueError("No checkpoints found")
 
-    # Get abstract state for restore shape inference
+    # Abstract states for restore shape inference
     if model is not None:
-        model_state = nnx.state(model, nnx.Param)
-        abstract_model = nnx.to_pure_dict(model_state)
+        abstract_model = nnx.to_pure_dict(nnx.state(model, nnx.Param))
     else:
         abstract_model = None
 
-    restored = manager.restore(
-        step,
-        args=ocp.args.Composite(
-            model=ocp.args.PyTreeRestore(abstract_model),
-            metadata=ocp.args.JsonRestore(),
-        ),
-    )
-    return restored.model, restored.metadata
+    composite_args = {
+        "model": ocp.args.PyTreeRestore(abstract_model),
+        "metadata": ocp.args.JsonRestore(),
+    }
+    if optimizer is not None:
+        composite_args["optimizer"] = ocp.args.PyTreeRestore(_opt_state_pytree(optimizer))
+
+    restored = manager.restore(step, args=ocp.args.Composite(**composite_args))
+    opt_state = restored.optimizer if optimizer is not None else None
+    return restored.model, opt_state, restored.metadata
 
 
 def restore_model_from_checkpoint(
     model: nnx.Module,
     checkpoint_dir: str,
     step: int | None = None,
+    optimizer: nnx.Optimizer | None = None,
 ):
-    """Load checkpoint and apply to model in-place."""
+    """Load checkpoint and apply to model (and optionally optimizer) in-place.
+
+    Returns metadata dict. If `optimizer` is provided, its state is also
+    restored (opt_state is reassigned in place).
+    """
     manager = create_checkpoint_manager(checkpoint_dir, max_to_keep=999)
-    model_dict, metadata = load_checkpoint(manager, step, model)
+    model_dict, opt_state, metadata = load_checkpoint(manager, step, model, optimizer)
+
     # Apply loaded params to model in-place via state traversal
     import jax.numpy as jnp
 
@@ -106,4 +127,11 @@ def restore_model_from_checkpoint(
     model_state = nnx.state(model, nnx.Param)
     _apply_dict(model_state, model_dict)
     nnx.update(model, model_state)
+
+    if optimizer is not None and opt_state is not None:
+        # Reassign opt_state — this is a pytree of optax state NamedTuples
+        # with restored arrays inside. nnx.Optimizer holds opt_state as an
+        # attribute so we can just overwrite.
+        optimizer.opt_state = opt_state
+
     return metadata
