@@ -183,9 +183,15 @@ class Block(nnx.Module):
 
     def __call__(self, x, ve, cos, sin, window_size):
         if self._use_remat:
+            # nnx.remat rejects bound methods; pass the unbound function
+            # and forward `self` explicitly. window_size is a Python tuple
+            # of ints used in a Python-level `if`, so mark it static.
+            # Args positional order: (self, x, ve, cos, sin, window_size)
+            # → static_argnums=5
             return nnx.remat(
-                self._forward,
+                Block._forward,
                 policy=jax.checkpoint_policies.dots_saveable,
+                static_argnums=(5,),
             )(self, x, ve, cos, sin, window_size)
         return self._forward(x, ve, cos, sin, window_size)
 

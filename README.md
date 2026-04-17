@@ -248,7 +248,7 @@ End-to-end training pipeline completed on a single Kaggle TPU v5e-8 session:
 
 ### Chinchilla Scaling Law (TRC TPU v6e-8)
 
-Nanochat architecture (ReLU², value embeddings, sliding window, tied embeddings) trained at Chinchilla-optimal token budgets (20x params) on C4 with AdamW:
+Nanochat architecture (value embeddings, sliding window, tied embeddings) trained at Chinchilla-optimal token budgets (20× params) on C4 with plain AdamW:
 
 | Depth | Params | Tokens | Final Loss | Throughput |
 |-------|--------|--------|-----------|------------|
@@ -260,6 +260,37 @@ Nanochat architecture (ReLU², value embeddings, sliding window, tied embeddings
 | 16 | 503M | 10.06B | **3.39** | 290K tok/s |
 
 ![Scaling Law](docs/scaling_law.png)
+
+### GELU MLP Ablation — d=12 Chinchilla (TRC TPU v6e-8)
+
+The nanochat architecture at d=12 with **GELU** replacing the default ReLU² in the MLP (`Linear → gelu → Linear`), trained on C4 to Chinchilla 20× (5.22B tokens) with plain AdamW. 3 seeds for variance estimation.
+
+| | Seed 0 | Seed 1 | Seed 2 | **Mean ± Std** |
+|---|---|---|---|---|
+| **C4 smooth loss** | 3.1106 | 3.1097 | 3.1261 | **3.1155 ± 0.008** |
+| **Throughput** | 703K tok/s | 717K tok/s | 717K tok/s | 712 ± 7 K tok/s |
+| **Wall time** | 2.06 h | 2.02 h | 2.02 h | 2.03 h |
+
+**Downstream evaluation (seed 0):**
+
+| Benchmark | Score |
+|---|---|
+| Wikitext-103 PPL | **46.52** |
+| LAMBADA accuracy | 18.4% |
+| LAMBADA PPL | 42.0 |
+| HellaSwag | 31.4% |
+| ARC-Easy | 34.5% |
+
+Config: d=12, n_embd=768, n_head=12, n_kv_head=12, seq_len=1024, tied embeddings, SSSL sliding window, batch 256, LR 0.01 warmup-cosine-decay. Hardware: single TPU v6e-8 (TRC, europe-west4-a).
+
+**Pretrained weights**: [`mlnomad/gelu-d12-chinchilla-261M`](https://huggingface.co/mlnomad/gelu-d12-chinchilla-261M) (Flax/Orbax) · [`mlnomad/gelu-d12-chinchilla-261M-pytorch`](https://huggingface.co/mlnomad/gelu-d12-chinchilla-261M-pytorch) (PyTorch, `AutoModelForCausalLM` compatible)
+
+```python
+# Load and generate with 3 lines:
+from transformers import AutoModelForCausalLM, AutoTokenizer
+model = AutoModelForCausalLM.from_pretrained("mlnomad/gelu-d12-chinchilla-261M-pytorch", trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+```
 
 ### TinyStories Baselines
 
