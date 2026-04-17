@@ -322,8 +322,10 @@ class GELU_GPT(nn.Module):
         cos, sin = precompute_rotary_embeddings(
             rotary_seq_len, config.head_dim, base=config.rope_base
         )
-        self.register_buffer("rope_cos", cos, persistent=False)
-        self.register_buffer("rope_sin", sin, persistent=False)
+        # persistent=True so HF from_pretrained (which can meta-init
+        # non-persistent buffers as NaN) restores them correctly.
+        self.register_buffer("rope_cos", cos, persistent=True)
+        self.register_buffer("rope_sin", sin, persistent=True)
 
     # ------------------------------------------------------------------
     # Forward
