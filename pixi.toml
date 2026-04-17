@@ -28,8 +28,9 @@ transformers = ">=5.5.0, <6"
 huggingface-hub = ">=1.9.2, <2"
 matplotlib = ">=3.10.8, <4"
 tpuz = ">=0.1.11, <0.2"
-nmn = ">=0.2.28"
+nmn = ">=0.2.29"
 torch = ">=2.11.0, <3"
+gcsfs = ">=2026.2.0, <2027"
 
 [tasks]
 test = "pytest tests/ -v"
