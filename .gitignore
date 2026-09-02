@@ -43,9 +43,6 @@ wandb/
 *.prof
 tensorboard/
 
-# Pixi lock (platform-specific)
-pixi.lock
-
 # Jekyll build
 docs/_site/
 docs/.jekyll-cache/
