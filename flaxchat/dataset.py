@@ -6,8 +6,12 @@ import os
 import glob
 from flaxchat.common import get_base_dir, print0, download_file_with_lock
 
-# ClimbMix-400B dataset on HuggingFace
-DATASET_URL_TEMPLATE = "https://huggingface.co/datasets/karpathy/climbmix-400b-shuffle/resolve/main/data/shard-{shard_id:05d}.parquet"
+# ClimbMix-400B dataset on HuggingFace, pinned for reproducible manifests.
+DATASET_REVISION = "915333b4f8b8684f39aeaafea600fea6f43fb703"
+DATASET_URL_TEMPLATE = (
+    "https://huggingface.co/datasets/karpathy/climbmix-400b-shuffle/resolve/"
+    f"{DATASET_REVISION}/data/shard-{{shard_id:05d}}.parquet"
+)
 TOTAL_SHARDS = 6542
 
 

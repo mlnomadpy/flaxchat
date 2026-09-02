@@ -25,6 +25,7 @@ class GPTConfig:
     window_pattern: str = "SSSL"
     tie_embeddings: bool = False
     use_scan: bool = False
+    attention_backend: str = "auto"  # auto | xla | splash
 
 
 # Register GPTConfig as a JAX pytree with all-static fields
@@ -48,6 +49,7 @@ class TrainingConfig:
     matrix_lr: float = 0.02
     scalar_lr: float = 0.5
     weight_decay: float = 0.28
+    gradient_accumulation_dtype: str = "float32"
     # Schedule
     warmup_steps: int = 40
     warmdown_ratio: float = 0.65

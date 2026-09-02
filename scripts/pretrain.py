@@ -18,6 +18,7 @@ import json
 import time
 import math
 import argparse
+import subprocess
 from functools import partial
 from dataclasses import asdict
 
@@ -27,7 +28,7 @@ import numpy as np
 from jax.sharding import NamedSharding, PartitionSpec as P
 from flax import nnx
 
-from flaxchat.gpt import GPT
+from flaxchat.gpt import GPT, attention_backend_metadata
 from flaxchat.config import FlaxChatConfig, GPTConfig
 from flaxchat.common import (
     compute_init, setup_mesh, shard_batch, replicate_on_mesh,
@@ -36,9 +37,15 @@ from flaxchat.common import (
 )
 from flaxchat.tokenizer import get_tokenizer
 from flaxchat.dataloader import data_loader_bos_bestfit
-from flaxchat.optim import setup_optimizer, make_lr_schedule, make_weight_decay_schedule
+from flaxchat.optim import setup_optimizer, make_lr_schedule
 from flaxchat.checkpoint import create_checkpoint_manager, save_checkpoint
 from flaxchat.engine import Engine
+from flaxchat.training import (
+    accumulation_dtype,
+    apply_gradients_if_finite,
+    gradients_for_microbatches,
+    tree_all_finite,
+)
 
 print_banner()
 
@@ -67,6 +74,8 @@ parser.add_argument("--scalar-lr", type=float, default=0.5)
 parser.add_argument("--warmup-steps", type=int, default=40)
 parser.add_argument("--warmdown-ratio", type=float, default=0.65)
 parser.add_argument("--final-lr-frac", type=float, default=0.05)
+parser.add_argument("--gradient-accumulation-dtype", type=str, default="float32",
+                    choices=["float32", "bfloat16"])
 parser.add_argument("--resume-from-step", type=int, default=-1)
 # Evaluation
 parser.add_argument("--eval-every", type=int, default=250)
@@ -75,8 +84,28 @@ parser.add_argument("--sample-every", type=int, default=2000)
 parser.add_argument("--save-every", type=int, default=-1)
 # Output
 parser.add_argument("--model-tag", type=str, default=None)
+parser.add_argument("--cpu-smoke", action="store_true",
+                    help="run two deterministic optimizer steps without external data")
 args = parser.parse_args()
+if args.cpu_smoke:
+    args.depth = 2
+    args.aspect_ratio = 16
+    args.head_dim = 16
+    args.max_seq_len = 16
+    args.device_batch_size = 2
+    args.total_batch_size = 32
+    args.num_iterations = 2
+    args.eval_every = 0
+    args.sample_every = 0
+    args.save_every = -1
+    args.model_tag = args.model_tag or "cpu-smoke"
 user_config = vars(args).copy()
+try:
+    source_revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+    ).strip()
+except (OSError, subprocess.SubprocessError):
+    source_revision = "unavailable"
 
 # ---------------------------------------------------------------------------
 # Distributed init
@@ -98,7 +127,17 @@ wandb_run = DummyWandb() if use_dummy_wandb else wandb.init(project="flaxchat", 
 # ---------------------------------------------------------------------------
 # Tokenizer
 # ---------------------------------------------------------------------------
-tokenizer = get_tokenizer()
+if args.cpu_smoke:
+    class _SmokeTokenizer:
+        def get_vocab_size(self):
+            return 256
+
+        def get_bos_token_id(self):
+            return 0
+
+    tokenizer = _SmokeTokenizer()
+else:
+    tokenizer = get_tokenizer()
 vocab_size = tokenizer.get_vocab_size()
 print0(f"Vocab size: {vocab_size:,}")
 
@@ -175,27 +214,8 @@ if batch_lr_scale != 1.0:
 # Weight decay scaling (T_epoch framework)
 weight_decay_scaled = args.weight_decay * math.sqrt(total_batch_size / B_REF) * (D_REF / target_tokens)
 
-# ---------------------------------------------------------------------------
-# Optimizer
-# ---------------------------------------------------------------------------
-config.training.embedding_lr = args.embedding_lr
-config.training.unembedding_lr = args.unembedding_lr
-config.training.matrix_lr = args.matrix_lr
-config.training.scalar_lr = args.scalar_lr
-
-optimizer = setup_optimizer(model, config, batch_lr_scale, weight_decay_scaled,
-                           lr_schedule_fn=lr_schedule)
-
-# ---------------------------------------------------------------------------
-# Dataloader
-# ---------------------------------------------------------------------------
-train_loader = data_loader_bos_bestfit(
-    tokenizer, args.device_batch_size, args.max_seq_len, split="train",
-)
-
-# ---------------------------------------------------------------------------
-# Training iterations
-# ---------------------------------------------------------------------------
+# Resolve the complete training horizon before constructing any schedule or
+# optimizer. This ordering is part of the serialized run contract.
 assert args.num_iterations > 0 or args.target_param_data_ratio > 0 or args.target_flops > 0
 if args.num_iterations > 0:
     num_iterations = args.num_iterations
@@ -204,19 +224,59 @@ elif args.target_flops > 0:
 else:
     num_iterations = target_tokens // total_batch_size
 total_tokens = total_batch_size * num_iterations
-print0(f"Training iterations: {num_iterations:,}")
-print0(f"Total training tokens: {total_tokens:,}")
 
-# Grad accumulation
 tokens_per_fwdbwd = args.device_batch_size * args.max_seq_len
 world_tokens_per_fwdbwd = tokens_per_fwdbwd * num_devices
 assert total_batch_size % world_tokens_per_fwdbwd == 0
 grad_accum_steps = total_batch_size // world_tokens_per_fwdbwd
+
+lr_schedule = make_lr_schedule(
+    num_iterations, args.warmup_steps, args.warmdown_ratio, args.final_lr_frac
+)
+user_config.update({
+    "effective_global_batch_tokens": total_batch_size,
+    "total_update_count": num_iterations,
+    "warmup_count": args.warmup_steps,
+    "gradient_accumulation_steps": grad_accum_steps,
+    "weight_decay_scaled": weight_decay_scaled,
+})
+
+print0(f"Training iterations: {num_iterations:,}")
+print0(f"Total training tokens: {total_tokens:,}")
 print0(f"Gradient accumulation steps: {grad_accum_steps}")
 
-# LR schedule
-lr_schedule = make_lr_schedule(num_iterations, args.warmup_steps, args.warmdown_ratio, args.final_lr_frac)
-wd_schedule = make_weight_decay_schedule(num_iterations, weight_decay_scaled)
+# ---------------------------------------------------------------------------
+# Optimizer
+# ---------------------------------------------------------------------------
+config.training.embedding_lr = args.embedding_lr
+config.training.unembedding_lr = args.unembedding_lr
+config.training.matrix_lr = args.matrix_lr
+config.training.scalar_lr = args.scalar_lr
+config.training.gradient_accumulation_dtype = args.gradient_accumulation_dtype
+
+optimizer = setup_optimizer(model, config, batch_lr_scale, weight_decay_scaled,
+                           lr_schedule_fn=lr_schedule)
+
+# ---------------------------------------------------------------------------
+# Dataloader
+# ---------------------------------------------------------------------------
+if args.cpu_smoke:
+    def _smoke_loader():
+        rng = np.random.default_rng(1234)
+        while True:
+            tokens = rng.integers(
+                0, vocab_size,
+                size=(args.device_batch_size, args.max_seq_len + 1),
+                dtype=np.int32,
+            )
+            yield tokens[:, :-1], tokens[:, 1:], {
+                "epoch": 1, "pq_idx": 0, "rg_idx": 0,
+            }
+    train_loader = _smoke_loader()
+else:
+    train_loader = data_loader_bos_bestfit(
+        tokenizer, args.device_batch_size, args.max_seq_len, split="train",
+    )
 
 # ---------------------------------------------------------------------------
 # JIT-compiled train step with automatic data sharding
@@ -235,17 +295,12 @@ def train_step(model, optimizer, inputs, targets):
 
     loss, grads = nnx.value_and_grad(loss_fn)(model)
 
-    # NaN guard
-    grad_finite = jax.tree.reduce(
-        lambda x, y: x & jnp.all(jnp.isfinite(y)),
-        grads, initializer=True,
-    )
     grads = jax.tree.map(
-        lambda g: jnp.where(grad_finite, g, jnp.zeros_like(g)),
+        lambda g: g.astype(accumulation_dtype(args.gradient_accumulation_dtype)),
         grads,
     )
-
-    optimizer.update(model, grads)
+    grad_finite = jnp.isfinite(loss) & tree_all_finite(grads)
+    apply_gradients_if_finite(model, optimizer, grads, loss)
 
     grad_norm = jnp.sqrt(jax.tree.reduce(
         lambda x, y: x + jnp.sum(y ** 2), grads, initializer=0.0
@@ -261,40 +316,15 @@ def train_step_grad_accum(model, optimizer, all_inputs, all_targets, num_accum_s
     all_inputs: (num_accum, B, T) — stacked micro-batches
     all_targets: (num_accum, B, T)
     """
-    def micro_step(acc_grads, micro_batch):
-        micro_inputs, micro_targets = micro_batch
-
-        def loss_fn(model):
-            return model(micro_inputs, micro_targets)
-
-        loss, grads = nnx.value_and_grad(loss_fn)(model)
-        # Accumulate gradients
-        new_acc = jax.tree.map(lambda a, g: a + g, acc_grads, grads)
-        return new_acc, loss
-
-    # Initialize accumulated grads to zeros
-    zero_grads = jax.tree.map(jnp.zeros_like, nnx.state(model, nnx.Param))
-
-    # Scan over micro-batches
-    acc_grads, losses = jax.lax.scan(
-        micro_step, zero_grads, (all_inputs, all_targets)
+    del num_accum_steps
+    avg_loss, avg_grads = gradients_for_microbatches(
+        model,
+        all_inputs,
+        all_targets,
+        dtype=accumulation_dtype(args.gradient_accumulation_dtype),
     )
-
-    # Average gradients
-    avg_grads = jax.tree.map(lambda g: g / num_accum_steps, acc_grads)
-    avg_loss = jnp.mean(losses)
-
-    # NaN guard
-    grad_finite = jax.tree.reduce(
-        lambda x, y: x & jnp.all(jnp.isfinite(y)),
-        avg_grads, initializer=True,
-    )
-    avg_grads = jax.tree.map(
-        lambda g: jnp.where(grad_finite, g, jnp.zeros_like(g)),
-        avg_grads,
-    )
-
-    optimizer.update(model, avg_grads)
+    grad_finite = jnp.isfinite(avg_loss) & tree_all_finite(avg_grads)
+    apply_gradients_if_finite(model, optimizer, avg_grads, avg_loss)
 
     grad_norm = jnp.sqrt(jax.tree.reduce(
         lambda x, y: x + jnp.sum(y ** 2), avg_grads, initializer=0.0
@@ -317,6 +347,10 @@ ckpt_manager = create_checkpoint_manager(checkpoint_dir, max_to_keep=3)
 step = 0
 smooth_train_loss = 0.0
 total_training_time = 0.0
+microbatches_processed = 0
+successful_updates = 0
+skipped_updates = 0
+dataloader_state = None
 
 print0(f"\nStarting training for {num_iterations} steps...")
 
@@ -360,12 +394,31 @@ while True:
 
     # Save checkpoint
     if last_step or (step > 0 and args.save_every > 0 and step % args.save_every == 0):
-        save_checkpoint(ckpt_manager, step, model, optimizer, {
+        checkpoint_metadata = {
             "step": step,
             "model_config": asdict(model_config),
+            "resolved_config": config.to_dict(),
             "user_config": user_config,
             "total_batch_size": total_batch_size,
-        })
+            "tokenizer_identity": {
+                "class": f"{type(tokenizer).__module__}.{type(tokenizer).__qualname__}",
+                "vocab_size": vocab_size,
+            },
+            "data_manifest_identity": (
+                dataloader_state.get("dataset_manifest", {}).get("sha256", "unavailable")
+                if dataloader_state else "unavailable"
+            ),
+            "dataloader_state": dataloader_state,
+            "source_revision": source_revision,
+            "attention_backend": attention_backend_metadata(model_config.attention_backend),
+            "microbatches_processed": microbatches_processed,
+            "successful_updates": successful_updates,
+            "skipped_updates": skipped_updates,
+        }
+        save_checkpoint(
+            ckpt_manager, step, model, optimizer, checkpoint_metadata,
+            training_state={"update_step": jnp.asarray(step, dtype=jnp.int32)},
+        )
 
     if last_step:
         break
@@ -385,6 +438,7 @@ while True:
             inputs = jnp.array(inputs_np)
             targets = jnp.array(targets_np)
         loss, grad_norm, grad_finite = train_step(model, optimizer, inputs, targets)
+        microbatches_processed += 1
     else:
         # Gradient accumulation: collect micro-batches then scan
         micro_inputs_list = []
@@ -398,9 +452,13 @@ while True:
         loss, grad_norm, grad_finite = train_step_grad_accum(
             model, optimizer, all_inputs, all_targets, grad_accum_steps
         )
+        microbatches_processed += grad_accum_steps
 
     # Force sync for timing
     loss_val = float(loss)
+    update_succeeded = bool(grad_finite)
+    successful_updates += int(update_succeeded)
+    skipped_updates += int(not update_succeeded)
     t1 = time.time()
     dt = t1 - t0
 
@@ -441,6 +499,9 @@ while True:
             "train/tok_per_sec": tok_per_sec,
             "train/mfu": mfu,
             "train/grad_norm": float(grad_norm),
+            "train/microbatches_processed": microbatches_processed,
+            "train/successful_updates": successful_updates,
+            "train/skipped_updates": skipped_updates,
         })
 
     step += 1
@@ -451,4 +512,6 @@ while True:
 
 # Cleanup
 print0(f"\nTraining complete! Total time: {total_training_time / 60:.1f}m")
+ckpt_manager.wait_until_finished()
+ckpt_manager.close()
 wandb_run.finish()

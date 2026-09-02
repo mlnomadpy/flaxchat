@@ -1,0 +1,25 @@
+name: CPU tests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+      - run: pixi run test-quick
+      - name: Public CLI smoke test
+        env:
+          FLAXCHAT_BASE_DIR: ${{ runner.temp }}/flaxchat
+        run: pixi run python -m scripts.pretrain --cpu-smoke

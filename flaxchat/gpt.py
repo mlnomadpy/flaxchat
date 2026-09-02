@@ -18,6 +18,7 @@ Notable features (all from nanochat):
 """
 
 import math
+from functools import lru_cache
 
 import jax
 import jax.numpy as jnp
@@ -31,6 +32,78 @@ from flaxchat.common import COMPUTE_DTYPE, print0
 # Compat: nnx.List/Dict exist in Flax 0.12+, plain list/dict work in 0.11
 _NNX_LIST = getattr(nnx, 'List', list)
 _NNX_DICT = getattr(nnx, 'Dict', dict)
+
+
+def _resolve_attention_backend(policy: str) -> tuple[str, str | None]:
+    """Resolve an explicit exact-attention backend without changing semantics."""
+    if policy not in {"auto", "xla", "splash"}:
+        raise ValueError(
+            f"Unsupported attention_backend={policy!r}; expected auto, xla, or splash"
+        )
+    is_tpu = any(device.platform == "tpu" for device in jax.devices())
+    if policy == "splash" and not is_tpu:
+        raise RuntimeError("SplashAttention requires a TPU; use attention_backend='xla'")
+    if policy == "auto":
+        return ("splash", None) if is_tpu else (
+            "xla", "SplashAttention is only available on TPU"
+        )
+    return policy, None
+
+
+def attention_backend_metadata(policy: str) -> dict[str, str | None]:
+    selected, fallback_reason = _resolve_attention_backend(policy)
+    return {
+        "requested": policy,
+        "selected": selected,
+        "fallback_reason": fallback_reason,
+    }
+
+
+@lru_cache(maxsize=32)
+def _make_splash_kernel(num_heads: int, seq_len: int, window_left: int):
+    """Build and cache a TPU SplashAttention kernel with a symbolic mask."""
+    from jax.experimental.pallas.ops.tpu.splash_attention import (
+        splash_attention_kernel as splash,
+        splash_attention_mask as mask_lib,
+    )
+
+    if 0 < window_left < seq_len:
+        base_mask = mask_lib.LocalMask(
+            (seq_len, seq_len), window_size=(window_left, 0), offset=0
+        )
+    else:
+        base_mask = mask_lib.CausalMask((seq_len, seq_len))
+    mask = mask_lib.MultiHeadMask([base_mask] * num_heads)
+    return splash.make_splash_mha_single_device(mask)
+
+
+def exact_attention(q, k, v, *, window_left: int, backend: str = "auto"):
+    """Exact causal softmax attention using XLA or TPU SplashAttention.
+
+    Inputs and outputs use ``(batch, sequence, heads, head_dim)`` layout.
+    The XLA path relies on causal/window metadata and never materializes a
+    dense sequence-by-sequence mask or additive bias.
+    """
+    selected, _ = _resolve_attention_backend(backend)
+    if selected == "xla":
+        local_window = (window_left, 0) if 0 < window_left < q.shape[1] else None
+        return jax.nn.dot_product_attention(
+            q,
+            k,
+            v,
+            is_causal=True,
+            local_window_size=local_window,
+            scale=1.0 / math.sqrt(q.shape[-1]),
+            implementation="xla",
+        )
+
+    # Splash uses (heads, sequence, head_dim); vmap supplies the batch axis.
+    kernel = _make_splash_kernel(q.shape[2], q.shape[1], window_left)
+    q_bhtd = jnp.transpose(q, (0, 2, 1, 3))
+    k_bhtd = jnp.transpose(k, (0, 2, 1, 3))
+    v_bhtd = jnp.transpose(v, (0, 2, 1, 3))
+    output = jax.vmap(kernel)(q_bhtd, k_bhtd, v_bhtd)
+    return jnp.transpose(output, (0, 2, 1, 3))
 
 
 def _maybe_shard(x, spec):
@@ -129,20 +202,11 @@ class CausalSelfAttention(nnx.Module):
             k = jnp.repeat(k, repeats, axis=2)
             v = jnp.repeat(v, repeats, axis=2)
 
-        # Build causal + sliding window mask
         window_left = window_size[0]
-        causal_mask = jnp.tril(jnp.ones((T, T), dtype=jnp.bool_))
-        if window_left > 0 and window_left < T:
-            row_idx = jnp.arange(T)[:, None]
-            col_idx = jnp.arange(T)[None, :]
-            window_mask = (row_idx - col_idx) <= window_left
-            causal_mask = causal_mask & window_mask
-        # (T, T) -> (1, 1, T, T) for broadcast
-        bias = jnp.where(causal_mask, 0.0, -1e9)[None, None, :, :]
-
-        # Use JAX's hardware-adaptive attention (auto-selects cuDNN/XLA kernels)
-        # q,k,v: (B, T, H, D) — BTNH layout for dot_product_attention
-        y = jax.nn.dot_product_attention(q, k, v, bias=bias, scale=1.0 / math.sqrt(head_dim))
+        y = exact_attention(
+            q, k, v, window_left=window_left,
+            backend=self.config.attention_backend,
+        )
         y = y.reshape(B, T, -1)
         y = self.c_proj(y)
         return y
@@ -444,10 +508,12 @@ class GPT(nnx.Module):
         logits = softcap * jnp.tanh(logits / softcap)
 
         if targets is not None:
-            one_hot = jax.nn.one_hot(targets, config.vocab_size)
             log_probs = jax.nn.log_softmax(logits, axis=-1)
             mask = (targets >= 0).astype(jnp.float32)
-            loss = -jnp.sum(one_hot * log_probs, axis=-1)
+            safe_targets = jnp.where(targets >= 0, targets, 0)
+            loss = -jnp.take_along_axis(
+                log_probs, safe_targets[..., None], axis=-1
+            )[..., 0]
             loss = jnp.sum(loss * mask) / jnp.maximum(jnp.sum(mask), 1.0)
             return loss
         else:

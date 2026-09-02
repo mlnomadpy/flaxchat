@@ -7,6 +7,8 @@ and test the algorithmic core: best-fit packing, BOS alignment, and shapes.
 
 import numpy as np
 import pytest
+import pyarrow as pa
+import pyarrow.parquet as parquet
 from unittest.mock import patch, MagicMock
 
 from flaxchat.dataloader import (
@@ -143,6 +145,49 @@ class TestDocumentBatches:
 # ---------------------------------------------------------------------------
 
 class TestDataLoaderBOSBestFit:
+    @patch("flaxchat.dataloader.list_parquet_files")
+    def test_resume_reproduces_exact_next_batches(self, mock_list, tmp_path):
+        train_path = tmp_path / 'train.parquet'
+        val_path = tmp_path / 'val.parquet'
+        texts = [f"document-{index}-" * 4 for index in range(30)]
+        parquet.write_table(pa.table({'text': texts}), train_path, row_group_size=7)
+        parquet.write_table(pa.table({'text': ['validation']}), val_path)
+        mock_list.return_value = [str(train_path), str(val_path)]
+        tokenizer = FakeTokenizer(bos_id=0)
+
+        uninterrupted = data_loader_bos_bestfit(
+            tokenizer, B=2, T=16, split='train',
+            tokenizer_batch_size=3, buffer_size=5,
+        )
+        _, _, state = next(uninterrupted)
+        expected = [next(uninterrupted)[:2] for _ in range(3)]
+
+        resumed = data_loader_bos_bestfit(
+            tokenizer, B=2, T=16, split='train',
+            tokenizer_batch_size=3, buffer_size=5,
+            resume_state_dict=state,
+        )
+        actual = [next(resumed)[:2] for _ in range(3)]
+        for expected_batch, actual_batch in zip(expected, actual):
+            assert np.array_equal(expected_batch[0], actual_batch[0])
+            assert np.array_equal(expected_batch[1], actual_batch[1])
+
+    @patch("flaxchat.dataloader.list_parquet_files")
+    def test_resume_rejects_changed_topology_or_packing(self, mock_list, tmp_path):
+        train_path = tmp_path / 'train.parquet'
+        val_path = tmp_path / 'val.parquet'
+        parquet.write_table(pa.table({'text': ['abc' * 20] * 20}), train_path)
+        parquet.write_table(pa.table({'text': ['val']}), val_path)
+        mock_list.return_value = [str(train_path), str(val_path)]
+        tokenizer = FakeTokenizer()
+        loader = data_loader_bos_bestfit(tokenizer, 1, 8, 'train', buffer_size=2)
+        _, _, state = next(loader)
+        changed = data_loader_bos_bestfit(
+            tokenizer, 1, 9, 'train', buffer_size=2, resume_state_dict=state
+        )
+        with pytest.raises(ValueError, match='resume contract changed'):
+            next(changed)
+
     @patch("flaxchat.dataloader._document_batches")
     def test_output_shapes(self, mock_doc_batches):
         """Loader yields (inputs, targets, state_dict) with correct shapes."""

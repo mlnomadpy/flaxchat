@@ -9,10 +9,10 @@ authors = [
     { name = "Taha Bouhsine" },
 ]
 dependencies = [
-    "jax>=0.6.0",
-    "flax>=0.11.0",
+    "jax>=0.9.0",
+    "flax>=0.12.0",
     "optax>=0.2.4",
-    "orbax-checkpoint>=0.11.0",
+    "orbax-checkpoint>=0.12.0",
     "datasets>=4.0.0",
     "tokenizers>=0.22.0",
     "tiktoken>=0.11.0",

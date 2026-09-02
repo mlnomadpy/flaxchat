@@ -25,6 +25,14 @@ from flaxchat.gpt import GPT
 # ---------------------------------------------------------------------------
 
 class TestCreateCheckpointManager:
+    @pytest.mark.parametrize("enabled", [True, False])
+    def test_async_policy_is_honored(self, tmp_path, enabled):
+        manager = create_checkpoint_manager(
+            str(tmp_path / f"async-{enabled}"), async_checkpointing=enabled
+        )
+        assert manager._options.enable_async_checkpointing is enabled
+        manager.close()
+
     def test_creates_directory(self, tmp_path):
         """Manager should create the checkpoint directory if it doesn't exist."""
         ckpt_dir = str(tmp_path / "checkpoints")

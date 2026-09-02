@@ -296,13 +296,18 @@ def make_lr_schedule(
     warmdown_iters = round(warmdown_ratio * num_iterations)
 
     def lr_multiplier(step):
-        if step < warmup_steps:
-            return (step + 1) / warmup_steps
-        elif step <= num_iterations - warmdown_iters:
-            return 1.0
-        else:
-            progress = (num_iterations - step) / warmdown_iters
-            return progress * 1.0 + (1 - progress) * final_lr_frac
+        step_array = jnp.asarray(step)
+        warmup = (step_array + 1) / max(warmup_steps, 1)
+        progress = (num_iterations - step_array) / max(warmdown_iters, 1)
+        decay = progress + (1 - progress) * final_lr_frac
+        value = jnp.where(
+            step_array < warmup_steps,
+            warmup,
+            jnp.where(step_array <= num_iterations - warmdown_iters, 1.0, decay),
+        )
+        if isinstance(step, (int, float)):
+            return float(value)
+        return value
     return lr_multiplier
 
 

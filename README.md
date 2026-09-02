@@ -1,5 +1,9 @@
 # flaxchat
 
+Reproducibility and checkpoint contracts are documented in
+[docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) and
+[docs/CHECKPOINT_FORMAT.md](docs/CHECKPOINT_FORMAT.md).
+
 A minimal, end-to-end LLM training harness for **Google Cloud TPU pods**, built on **JAX/Flax NNX**.
 
 Faithful port of [nanochat](https://github.com/karpathy/nanochat) (Andrej Karpathy's PyTorch GPU trainer) to the JAX ecosystem, with full feature parity plus speculative decoding.

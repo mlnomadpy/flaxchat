@@ -1,19 +1,23 @@
-"""
-Checkpoint management using Orbax.
+"""Versioned, integrity-checked Orbax checkpoints for exact resumption."""
 
-Supports:
-- Async checkpointing for non-blocking saves
-- Multi-tier: fast local + durable GCS
-- Rotation (max_to_keep)
-- Exact resumption (model, optimizer, metadata)
-"""
+from __future__ import annotations
 
-import os
+import hashlib
 import json
+import os
+from typing import Any
 
 import jax
+import numpy as np
 import orbax.checkpoint as ocp
 from flax import nnx
+
+
+CHECKPOINT_FORMAT_VERSION = 2
+
+
+class CheckpointCompatibilityError(ValueError):
+    """Raised before live state is mutated when a checkpoint is incompatible."""
 
 
 def create_checkpoint_manager(
@@ -21,27 +25,56 @@ def create_checkpoint_manager(
     max_to_keep: int = 3,
     async_checkpointing: bool = True,
 ) -> ocp.CheckpointManager:
-    """Create an Orbax CheckpointManager."""
+    """Create an atomic Orbax manager honoring the async policy."""
     os.makedirs(checkpoint_dir, exist_ok=True)
     options = ocp.CheckpointManagerOptions(
         max_to_keep=max_to_keep,
+        enable_async_checkpointing=async_checkpointing,
+        cleanup_tmp_directories=True,
     )
-    manager = ocp.CheckpointManager(
-        directory=checkpoint_dir,
-        options=options,
-    )
-    return manager
+    return ocp.CheckpointManager(directory=checkpoint_dir, options=options)
 
 
 def _opt_state_pytree(optimizer: nnx.Optimizer):
-    """Extract the optimizer's pure pytree state (opt_state moments etc).
-
-    Uses `optimizer.opt_state` directly: it's the raw optax state (e.g.
-    tuple of ScaleByAdamState, ScaleByLearningRateState, EmptyState for
-    plain AdamW). Avoids `nnx.state(optimizer)` which also includes the
-    wrapped model params.
-    """
     return optimizer.opt_state
+
+
+def _json_hash(value: Any) -> str:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _state_manifest(tree) -> dict[str, dict[str, Any]]:
+    """Return a canonical schema and content digest for each array leaf."""
+    manifest = {}
+    for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
+        array = np.asarray(jax.device_get(leaf))
+        name = jax.tree_util.keystr(path)
+        manifest[name] = {
+            "shape": list(array.shape),
+            "dtype": str(array.dtype),
+            "sha256": hashlib.sha256(array.tobytes(order="C")).hexdigest(),
+        }
+    return manifest
+
+
+def _checkpoint_manifest(step, model_state, opt_state, metadata, training_state):
+    identities = {
+        "resolved_config": metadata.get("resolved_config", metadata.get("model_config")),
+        "tokenizer": metadata.get("tokenizer_identity", "unavailable"),
+        "data_manifest": metadata.get("data_manifest_identity", "unavailable"),
+        "source_revision": metadata.get("source_revision", "unavailable"),
+    }
+    return {
+        "format_version": CHECKPOINT_FORMAT_VERSION,
+        "step": int(step),
+        "model_state": _state_manifest(model_state),
+        "optimizer_state": _state_manifest(opt_state),
+        "training_state": _state_manifest(training_state) if training_state is not None else {},
+        "metadata_sha256": _json_hash(metadata),
+        "identity": identities,
+        "identity_sha256": _json_hash(identities),
+    }
 
 
 def save_checkpoint(
@@ -50,20 +83,46 @@ def save_checkpoint(
     model: nnx.Module,
     optimizer: nnx.Optimizer,
     metadata: dict,
+    *,
+    training_state: dict | None = None,
 ):
-    """Save model params, optimizer state, and metadata to a composite checkpoint."""
-    model_state = nnx.state(model, nnx.Param)
-    model_dict = nnx.to_pure_dict(model_state)
+    """Save all persistent model variables, optimizer and resumable run state."""
+    model_state = nnx.to_pure_dict(nnx.state(model))
     opt_state = _opt_state_pytree(optimizer)
-
-    manager.save(
-        step,
-        args=ocp.args.Composite(
-            model=ocp.args.PyTreeSave(model_dict),
-            optimizer=ocp.args.PyTreeSave(opt_state),
-            metadata=ocp.args.JsonSave(metadata),
-        ),
+    metadata = dict(metadata)
+    manifest = _checkpoint_manifest(
+        step, model_state, opt_state, metadata, training_state
     )
+    items = {
+        "model": ocp.args.PyTreeSave(model_state),
+        "optimizer": ocp.args.PyTreeSave(opt_state),
+        "metadata": ocp.args.JsonSave(metadata),
+        "manifest": ocp.args.JsonSave(manifest),
+    }
+    if training_state is not None:
+        items["training_state"] = ocp.args.PyTreeSave(training_state)
+    return manager.save(step, args=ocp.args.Composite(**items))
+
+
+def _validate_manifest(manifest, model_state, opt_state, metadata, training_state):
+    if manifest.get("format_version") != CHECKPOINT_FORMAT_VERSION:
+        raise CheckpointCompatibilityError(
+            f"Unsupported checkpoint format {manifest.get('format_version')!r}; "
+            f"expected {CHECKPOINT_FORMAT_VERSION}"
+        )
+    actual = {
+        "model_state": _state_manifest(model_state),
+        "optimizer_state": _state_manifest(opt_state) if opt_state is not None else None,
+        "training_state": _state_manifest(training_state) if training_state is not None else {},
+    }
+    if actual["model_state"] != manifest.get("model_state"):
+        raise CheckpointCompatibilityError("Model checkpoint state is incomplete or corrupt")
+    if opt_state is not None and actual["optimizer_state"] != manifest.get("optimizer_state"):
+        raise CheckpointCompatibilityError("Optimizer checkpoint state is incomplete or corrupt")
+    if training_state is not None and actual["training_state"] != manifest.get("training_state"):
+        raise CheckpointCompatibilityError("Training checkpoint state is incomplete or corrupt")
+    if _json_hash(metadata) != manifest.get("metadata_sha256"):
+        raise CheckpointCompatibilityError("Checkpoint metadata is corrupt")
 
 
 def load_checkpoint(
@@ -71,33 +130,44 @@ def load_checkpoint(
     step: int | None = None,
     model: nnx.Module | None = None,
     optimizer: nnx.Optimizer | None = None,
-) -> tuple[dict, object, dict]:
-    """
-    Load checkpoint. Returns (model_dict, opt_state, metadata).
-    If step is None, loads the latest checkpoint.
-    If `optimizer` is None, optimizer state is not restored (returns None).
+    *,
+    load_training_state: bool = False,
+):
+    """Load and validate a checkpoint without mutating live objects.
+
+    For compatibility, returns ``(model_state, metadata)`` unless optimizer or
+    training state was requested; then it returns a four-tuple containing both.
     """
     if step is None:
         step = manager.latest_step()
         if step is None:
             raise ValueError("No checkpoints found")
 
-    # Abstract states for restore shape inference
-    if model is not None:
-        abstract_model = nnx.to_pure_dict(nnx.state(model, nnx.Param))
-    else:
-        abstract_model = None
-
-    composite_args = {
-        "model": ocp.args.PyTreeRestore(abstract_model),
+    model_abstract = nnx.to_pure_dict(nnx.state(model)) if model is not None else None
+    items = {
+        "model": ocp.args.PyTreeRestore(model_abstract),
         "metadata": ocp.args.JsonRestore(),
+        "manifest": ocp.args.JsonRestore(),
     }
     if optimizer is not None:
-        composite_args["optimizer"] = ocp.args.PyTreeRestore(_opt_state_pytree(optimizer))
+        items["optimizer"] = ocp.args.PyTreeRestore(_opt_state_pytree(optimizer))
+    if load_training_state:
+        items["training_state"] = ocp.args.PyTreeRestore()
+    try:
+        restored = manager.restore(step, args=ocp.args.Composite(**items))
+    except Exception as exc:
+        raise CheckpointCompatibilityError(
+            f"Checkpoint {step} is incomplete, corrupt, or incompatible: {exc}"
+        ) from exc
 
-    restored = manager.restore(step, args=ocp.args.Composite(**composite_args))
     opt_state = restored.optimizer if optimizer is not None else None
-    return restored.model, opt_state, restored.metadata
+    training_state = restored.training_state if load_training_state else None
+    _validate_manifest(
+        restored.manifest, restored.model, opt_state, restored.metadata, training_state
+    )
+    if optimizer is None and not load_training_state:
+        return restored.model, restored.metadata
+    return restored.model, opt_state, restored.metadata, training_state
 
 
 def restore_model_from_checkpoint(
@@ -105,33 +175,49 @@ def restore_model_from_checkpoint(
     checkpoint_dir: str,
     step: int | None = None,
     optimizer: nnx.Optimizer | None = None,
+    *,
+    expected_identity: dict | None = None,
+    load_training_state: bool = False,
 ):
-    """Load checkpoint and apply to model (and optionally optimizer) in-place.
+    """Validate first, then atomically apply restored model/optimizer state."""
+    manager = create_checkpoint_manager(
+        checkpoint_dir, max_to_keep=999, async_checkpointing=False
+    )
+    loaded = load_checkpoint(
+        manager, step, model, optimizer, load_training_state=load_training_state
+    )
+    if optimizer is None and not load_training_state:
+        model_dict, metadata = loaded
+        opt_state = training_state = None
+    else:
+        model_dict, opt_state, metadata, training_state = loaded
 
-    Returns metadata dict. If `optimizer` is provided, its state is also
-    restored (opt_state is reassigned in place).
-    """
-    manager = create_checkpoint_manager(checkpoint_dir, max_to_keep=999)
-    model_dict, opt_state, metadata = load_checkpoint(manager, step, model, optimizer)
+    if expected_identity is not None:
+        actual = {
+            "resolved_config": metadata.get("resolved_config", metadata.get("model_config")),
+            "tokenizer": metadata.get("tokenizer_identity", "unavailable"),
+            "data_manifest": metadata.get("data_manifest_identity", "unavailable"),
+            "source_revision": metadata.get("source_revision", "unavailable"),
+        }
+        mismatches = {
+            key: (actual.get(key), value)
+            for key, value in expected_identity.items()
+            if actual.get(key) != value
+        }
+        if mismatches:
+            raise CheckpointCompatibilityError(
+                f"Checkpoint identity mismatch: {mismatches}"
+            )
 
-    # Apply loaded params to model in-place via state traversal
-    import jax.numpy as jnp
-
-    def _apply_dict(module_state, loaded_dict):
-        for key, val in loaded_dict.items():
-            if isinstance(val, dict):
-                _apply_dict(module_state[key], val)
-            else:
-                module_state[key].value = jnp.array(val)
-
-    model_state = nnx.state(model, nnx.Param)
-    _apply_dict(model_state, model_dict)
+    model_state = nnx.state(model)
+    pure_state = nnx.to_pure_dict(model_state)
+    if _state_manifest(pure_state).keys() != _state_manifest(model_dict).keys():
+        raise CheckpointCompatibilityError("Live model state schema does not match checkpoint")
+    nnx.replace_by_pure_dict(model_state, model_dict)
     nnx.update(model, model_state)
-
     if optimizer is not None and opt_state is not None:
-        # Reassign opt_state — this is a pytree of optax state NamedTuples
-        # with restored arrays inside. nnx.Optimizer holds opt_state as an
-        # attribute so we can just overwrite.
         optimizer.opt_state = opt_state
-
+    manager.close()
+    if load_training_state:
+        return metadata, training_state
     return metadata

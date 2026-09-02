@@ -26,7 +26,8 @@ parser = argparse.ArgumentParser(description="Evaluate model")
 parser.add_argument("--model", type=str, default="d12")
 parser.add_argument("--checkpoint-type", type=str, default="base", choices=["base", "sft", "rl"])
 parser.add_argument("--tasks", type=str, default="core", help="core | mmlu | gsm8k | arc | all")
-parser.add_argument("--max-per-task", type=int, default=500)
+parser.add_argument("--max-per-task", type=int, default=0, help="0 evaluates the full pinned split")
+parser.add_argument("--manifest-path", type=str, default="core_eval_manifest.json")
 parser.add_argument("--temperature", type=float, default=0.0)
 parser.add_argument("--max-tokens", type=int, default=512)
 args = parser.parse_args()
@@ -54,9 +55,16 @@ task_list = args.tasks.split(",")
 
 if "core" in task_list or "all" in task_list:
     print0("\n=== CORE Metric ===")
-    core_results = evaluate_core(model, tokenizer, max_per_task=args.max_per_task)
+    core_results = evaluate_core(
+        model, tokenizer, max_per_task=args.max_per_task,
+        manifest_path=args.manifest_path,
+        model_checkpoint_identity=checkpoint_dir,
+    )
     results["core"] = core_results
-    print0(f"CORE: {core_results['core_metric']:.4f}")
+    if core_results['core_metric'] is None:
+        print0("CORE: INCOMPLETE (see task errors and manifest)")
+    else:
+        print0(f"CORE: {core_results['core_metric']:.4f}")
 
 if "mmlu" in task_list or "all" in task_list:
     print0("\n=== MMLU ===")

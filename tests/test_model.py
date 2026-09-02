@@ -9,7 +9,7 @@ from flax import nnx
 
 from flaxchat.gpt import (
     GPT, GPTConfig, rms_norm, precompute_rotary_embeddings,
-    apply_rotary_emb, has_ve, CausalSelfAttention, MLP, Block,
+    apply_rotary_emb, has_ve, CausalSelfAttention, MLP, Block, exact_attention,
 )
 
 
@@ -90,6 +90,39 @@ class TestMLP:
 
 
 class TestCausalSelfAttention:
+    @pytest.mark.parametrize("window_left", [3, 8])
+    def test_xla_attention_matches_dense_reference(self, window_left):
+        q = jax.random.normal(jax.random.key(10), (1, 8, 2, 8))
+        k = jax.random.normal(jax.random.key(11), (1, 8, 2, 8))
+        v = jax.random.normal(jax.random.key(12), (1, 8, 2, 8))
+        actual = exact_attention(q, k, v, window_left=window_left, backend="xla")
+        rows = jnp.arange(8)[:, None]
+        cols = jnp.arange(8)[None, :]
+        mask = (cols <= rows) & ((rows - cols) <= window_left)
+        logits = jnp.einsum('bthd,bshd->bhts', q, k) / jnp.sqrt(8.0)
+        weights = jax.nn.softmax(jnp.where(mask[None, None], logits, -jnp.inf), axis=-1)
+        expected = jnp.einsum('bhts,bshd->bthd', weights, v)
+        assert jnp.allclose(actual, expected, atol=2e-5, rtol=2e-5)
+
+    def test_xla_attention_gradient_matches_dense_reference(self):
+        q = jax.random.normal(jax.random.key(13), (1, 8, 2, 8))
+        def fused(value):
+            return jnp.sum(exact_attention(value, value, value, window_left=8, backend="xla"))
+        def dense(value):
+            rows = jnp.arange(8)[:, None]
+            cols = jnp.arange(8)[None, :]
+            logits = jnp.einsum('bthd,bshd->bhts', value, value) / jnp.sqrt(8.0)
+            weights = jax.nn.softmax(jnp.where((cols <= rows)[None, None], logits, -jnp.inf), axis=-1)
+            return jnp.sum(jnp.einsum('bhts,bshd->bthd', weights, value))
+        assert jnp.allclose(jax.grad(fused)(q), jax.grad(dense)(q), atol=5e-5, rtol=5e-5)
+
+    def test_splash_fails_clearly_without_tpu(self):
+        if any(device.platform == 'tpu' for device in jax.devices()):
+            pytest.skip('CPU/GPU fallback test')
+        q = jnp.ones((1, 4, 1, 8))
+        with pytest.raises(RuntimeError, match='requires a TPU'):
+            exact_attention(q, q, q, window_left=4, backend='splash')
+
     def test_forward_shape(self, tiny_config):
         attn = CausalSelfAttention(tiny_config, layer_idx=0, rngs=nnx.Rngs(0))
         B, T = 2, 16
