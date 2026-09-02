@@ -116,8 +116,10 @@ master_process = jax.process_index() == 0
 num_devices = jax.device_count()
 if args.cpu_smoke:
     # Keep the smoke run to one forward/backward pass per update on any device
-    # count. The original fixed value (32 tokens) was only valid on one device.
+    # count. The batch dimension itself must also divide the data mesh.
+    args.device_batch_size = max(args.device_batch_size, num_devices)
     args.total_batch_size = args.device_batch_size * args.max_seq_len * num_devices
+    user_config["device_batch_size"] = args.device_batch_size
     user_config["total_batch_size"] = args.total_batch_size
 
 # TPU peak FLOPS

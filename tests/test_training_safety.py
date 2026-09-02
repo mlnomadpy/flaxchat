@@ -7,6 +7,7 @@ import jax.numpy as jnp
 import optax
 from flax import nnx
 
+from flaxchat.common import COMPUTE_DTYPE
 from flaxchat.gpt import GPT
 from flaxchat.training import apply_gradients_if_finite, gradients_for_microbatches
 
@@ -47,9 +48,16 @@ def test_fp32_microbatch_accumulation_matches_large_batch(tiny_config):
         return model(inputs, targets)
 
     _, full_grads = nnx.value_and_grad(loss_fn)(model_full)
+    if COMPUTE_DTYPE == jnp.bfloat16:
+        # Splitting the batch changes BF16 reduction order on TPU. Accumulation
+        # remains FP32, but each individual microbatch gradient originates from
+        # BF16 compute and is therefore only comparable at BF16 precision.
+        atol, rtol = 2e-4, 2e-2
+    else:
+        atol, rtol = 2e-5, 2e-4
     for micro, full in zip(_arrays(micro_grads), _arrays(full_grads)):
         assert micro.dtype == jnp.float32
-        assert jnp.allclose(micro, full.astype(jnp.float32), atol=2e-5, rtol=2e-4)
+        assert jnp.allclose(micro, full.astype(jnp.float32), atol=atol, rtol=rtol)
 
 
 def test_single_microbatch_path_is_supported(tiny_model, random_batch):
