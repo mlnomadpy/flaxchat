@@ -114,6 +114,11 @@ except (OSError, subprocess.SubprocessError):
 mesh = compute_init()
 master_process = jax.process_index() == 0
 num_devices = jax.device_count()
+if args.cpu_smoke:
+    # Keep the smoke run to one forward/backward pass per update on any device
+    # count. The original fixed value (32 tokens) was only valid on one device.
+    args.total_batch_size = args.device_batch_size * args.max_seq_len * num_devices
+    user_config["total_batch_size"] = args.total_batch_size
 
 # TPU peak FLOPS
 peak_flops = get_peak_flops()
@@ -410,7 +415,9 @@ while True:
             ),
             "dataloader_state": dataloader_state,
             "source_revision": source_revision,
-            "attention_backend": attention_backend_metadata(model_config.attention_backend),
+            "attention_backend": attention_backend_metadata(
+                model_config.attention_backend, model_config.sequence_len
+            ),
             "microbatches_processed": microbatches_processed,
             "successful_updates": successful_updates,
             "skipped_updates": skipped_updates,

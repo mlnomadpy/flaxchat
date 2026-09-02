@@ -34,7 +34,12 @@ _NNX_LIST = getattr(nnx, 'List', list)
 _NNX_DICT = getattr(nnx, 'Dict', dict)
 
 
-def _resolve_attention_backend(policy: str) -> tuple[str, str | None]:
+_SPLASH_SEQUENCE_BLOCK_SIZE = 128
+
+
+def _resolve_attention_backend(
+    policy: str, seq_len: int | None = None
+) -> tuple[str, str | None]:
     """Resolve an explicit exact-attention backend without changing semantics."""
     if policy not in {"auto", "xla", "splash"}:
         raise ValueError(
@@ -44,14 +49,22 @@ def _resolve_attention_backend(policy: str) -> tuple[str, str | None]:
     if policy == "splash" and not is_tpu:
         raise RuntimeError("SplashAttention requires a TPU; use attention_backend='xla'")
     if policy == "auto":
-        return ("splash", None) if is_tpu else (
-            "xla", "SplashAttention is only available on TPU"
-        )
+        if not is_tpu:
+            return "xla", "SplashAttention is only available on TPU"
+        if seq_len is not None and seq_len % _SPLASH_SEQUENCE_BLOCK_SIZE:
+            return (
+                "xla",
+                f"sequence length {seq_len} is not divisible by the SplashAttention "
+                f"block size {_SPLASH_SEQUENCE_BLOCK_SIZE}",
+            )
+        return "splash", None
     return policy, None
 
 
-def attention_backend_metadata(policy: str) -> dict[str, str | None]:
-    selected, fallback_reason = _resolve_attention_backend(policy)
+def attention_backend_metadata(
+    policy: str, seq_len: int | None = None
+) -> dict[str, str | None]:
+    selected, fallback_reason = _resolve_attention_backend(policy, seq_len)
     return {
         "requested": policy,
         "selected": selected,
@@ -84,7 +97,7 @@ def exact_attention(q, k, v, *, window_left: int, backend: str = "auto"):
     The XLA path relies on causal/window metadata and never materializes a
     dense sequence-by-sequence mask or additive bias.
     """
-    selected, _ = _resolve_attention_backend(backend)
+    selected, _ = _resolve_attention_backend(backend, q.shape[1])
     if selected == "xla":
         local_window = (window_left, 0) if 0 < window_left < q.shape[1] else None
         return jax.nn.dot_product_attention(

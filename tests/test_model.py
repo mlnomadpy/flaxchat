@@ -10,6 +10,7 @@ from flax import nnx
 from flaxchat.gpt import (
     GPT, GPTConfig, rms_norm, precompute_rotary_embeddings,
     apply_rotary_emb, has_ve, CausalSelfAttention, MLP, Block, exact_attention,
+    attention_backend_metadata,
 )
 
 
@@ -90,6 +91,18 @@ class TestMLP:
 
 
 class TestCausalSelfAttention:
+    def test_auto_backend_metadata_includes_sequence_compatibility(self):
+        metadata = attention_backend_metadata("auto", seq_len=64)
+        if any(device.platform == "tpu" for device in jax.devices()):
+            assert metadata["selected"] == "xla"
+            assert "not divisible" in metadata["fallback_reason"]
+        else:
+            assert metadata == {
+                "requested": "auto",
+                "selected": "xla",
+                "fallback_reason": "SplashAttention is only available on TPU",
+            }
+
     @pytest.mark.parametrize("window_left", [3, 8])
     def test_xla_attention_matches_dense_reference(self, window_left):
         q = jax.random.normal(jax.random.key(10), (1, 8, 2, 8))
