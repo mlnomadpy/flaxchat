@@ -14,7 +14,7 @@ import jax
 import jax.numpy as jnp
 from jax.sharding import NamedSharding, PartitionSpec as P, Mesh
 
-from flaxchat.prefetch import BackgroundPrefetcher
+from flaxchat.prefetch import BackgroundPrefetcher, PrefetchWorkerError
 
 
 # ---------------------------------------------------------------------------
@@ -155,3 +155,33 @@ class TestBackgroundPrefetcher:
 
         assert isinstance(inp, jax.Array)
         assert isinstance(tgt, jax.Array)
+
+    def test_worker_failure_is_not_silently_reported_as_eof(self):
+        mesh = _cpu_mesh()
+        sharding = NamedSharding(mesh, P())
+
+        def corrupt_data():
+            raise ValueError("corrupt parquet row")
+
+        pf = BackgroundPrefetcher(corrupt_data, mesh, sharding)
+        with pytest.raises(PrefetchWorkerError, match="background") as caught:
+            next(pf)
+        assert isinstance(caught.value.__cause__, ValueError)
+        pf.stop()
+
+    def test_queue_applies_bounded_backpressure(self):
+        mesh = _cpu_mesh()
+        sharding = NamedSharding(mesh, P())
+        pf = BackgroundPrefetcher(
+            _make_counter_fn(100), mesh, sharding, prefetch_count=2
+        )
+        time.sleep(0.2)
+        try:
+            assert pf._queue.qsize() <= 2
+        finally:
+            pf.stop()
+
+    def test_invalid_prefetch_count_fails_early(self):
+        mesh = _cpu_mesh()
+        with pytest.raises(ValueError, match="positive"):
+            BackgroundPrefetcher(lambda: (), mesh, NamedSharding(mesh, P()), 0)

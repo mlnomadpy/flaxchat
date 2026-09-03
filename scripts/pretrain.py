@@ -32,6 +32,7 @@ from flaxchat.gpt import GPT, attention_backend_metadata
 from flaxchat.config import FlaxChatConfig, GPTConfig
 from flaxchat.common import (
     compute_init, setup_mesh, shard_batch, replicate_on_mesh,
+    replicate_optimizer_state,
     print0, print_banner, get_base_dir, get_peak_flops,
     COMPUTE_DTYPE, COMPUTE_DTYPE_REASON, DummyWandb,
 )
@@ -267,6 +268,7 @@ config.training.gradient_accumulation_dtype = args.gradient_accumulation_dtype
 
 optimizer = setup_optimizer(model, config, batch_lr_scale, weight_decay_scaled,
                            lr_schedule_fn=lr_schedule)
+replicate_optimizer_state(optimizer, mesh)
 
 # ---------------------------------------------------------------------------
 # Checkpoint restore (must happen before constructing the resumable loader)

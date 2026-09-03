@@ -20,6 +20,10 @@ import jax
 import jax.numpy as jnp
 
 
+class PrefetchWorkerError(RuntimeError):
+    """Raised on the consumer thread when background loading fails."""
+
+
 class BackgroundPrefetcher:
     """Prefetch batches in a background thread while TPU computes."""
 
@@ -34,6 +38,8 @@ class BackgroundPrefetcher:
                             placing arrays on devices.
             prefetch_count: number of batches to prefetch ahead.
         """
+        if prefetch_count < 1:
+            raise ValueError("prefetch_count must be positive")
         self.data_fn = data_fn
         self.mesh = mesh
         self.batch_sharding = batch_sharding
@@ -70,13 +76,15 @@ class BackgroundPrefetcher:
                         break
                     except queue.Full:
                         continue
-        except Exception:
-            # If the worker dies unexpectedly, send a sentinel so the main
-            # thread doesn't hang forever.
-            try:
-                self._queue.put(_SENTINEL, timeout=1.0)
-            except queue.Full:
-                pass
+        except Exception as error:
+            # Preserve the original failure and deliver it once capacity is
+            # available. Consumers must never mistake corruption for EOF.
+            while not self._stop_event.is_set():
+                try:
+                    self._queue.put((_WORKER_ERROR, error), timeout=0.1)
+                    return
+                except queue.Full:
+                    continue
 
     # ── iterator protocol ────────────────────────────────────────────────
     def __iter__(self):
@@ -90,6 +98,9 @@ class BackgroundPrefetcher:
         if item is _SENTINEL:
             self._exhausted = True
             raise StopIteration
+        if isinstance(item, tuple) and item and item[0] is _WORKER_ERROR:
+            self._exhausted = True
+            raise PrefetchWorkerError("background data loading failed") from item[1]
         return item
 
     # ── cleanup ──────────────────────────────────────────────────────────
@@ -107,3 +118,4 @@ class BackgroundPrefetcher:
 
 # Sentinel object to signal end-of-data through the queue.
 _SENTINEL = object()
+_WORKER_ERROR = object()

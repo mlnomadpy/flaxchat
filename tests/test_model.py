@@ -194,6 +194,26 @@ class TestBlock:
 
 
 class TestGPT:
+    def test_declared_rng_controls_initialization(self, tiny_config):
+        first = GPT(tiny_config, rngs=nnx.Rngs(123))
+        repeated = GPT(tiny_config, rngs=nnx.Rngs(123))
+        different = GPT(tiny_config, rngs=nnx.Rngs(124))
+        first_weights = nnx.to_pure_dict(nnx.state(first, nnx.Param))
+        repeated_weights = nnx.to_pure_dict(nnx.state(repeated, nnx.Param))
+        different_weights = nnx.to_pure_dict(nnx.state(different, nnx.Param))
+        assert all(
+            jnp.array_equal(left, right)
+            for left, right in zip(
+                jax.tree.leaves(first_weights), jax.tree.leaves(repeated_weights)
+            )
+        )
+        assert any(
+            not jnp.array_equal(left, right)
+            for left, right in zip(
+                jax.tree.leaves(first_weights), jax.tree.leaves(different_weights)
+            )
+        )
+
     def test_construction(self, tiny_config):
         model = GPT(tiny_config, rngs=nnx.Rngs(0))
         assert model.config == tiny_config

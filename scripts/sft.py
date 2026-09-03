@@ -23,7 +23,7 @@ from flaxchat.gpt import GPT
 from flaxchat.config import FlaxChatConfig, GPTConfig
 from flaxchat.common import (
     compute_init, setup_mesh, print0, print_banner,
-    get_base_dir, COMPUTE_DTYPE, DummyWandb,
+    get_base_dir, COMPUTE_DTYPE, DummyWandb, replicate_optimizer_state,
 )
 from flaxchat.tokenizer import get_tokenizer
 from flaxchat.optim import setup_optimizer
@@ -98,6 +98,7 @@ schedule = optax.warmup_cosine_decay_schedule(
 )
 tx = optax.adamw(learning_rate=schedule, b1=0.9, b2=0.95, weight_decay=0.01)
 optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
+replicate_optimizer_state(optimizer)
 
 
 # ---------------------------------------------------------------------------

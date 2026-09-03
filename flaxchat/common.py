@@ -181,6 +181,12 @@ def replicate_on_mesh(state, mesh: Mesh | None = None):
     return jax.device_put(state, replicated)
 
 
+def replicate_optimizer_state(optimizer, mesh: Mesh | None = None):
+    """Place every optimizer leaf, including scalar counters, on the mesh."""
+    optimizer.opt_state = replicate_on_mesh(optimizer.opt_state, mesh)
+    return optimizer
+
+
 def shard_model_fsdp(state, mesh: Mesh | None = None):
     """
     Shard model params across the 'fsdp' mesh axis.

@@ -181,6 +181,20 @@ class TestDocumentBatches:
 # ---------------------------------------------------------------------------
 
 class TestDataLoaderBOSBestFit:
+    @patch("flaxchat.dataloader._document_batches")
+    def test_corrupt_document_is_not_skipped(self, mock_batches):
+        mock_batches.return_value = iter([(["corrupt"], (0, 0, 1))])
+
+        class RejectingTokenizer(FakeTokenizer):
+            def encode(self, texts, prepend=None, num_threads=None):
+                raise UnicodeError("invalid document encoding")
+
+        loader = data_loader_bos_bestfit(
+            RejectingTokenizer(), 1, 8, "train", buffer_size=1
+        )
+        with pytest.raises(UnicodeError, match="invalid document"):
+            next(loader)
+
     @pytest.mark.parametrize("interruption_batch", [1, 2, 5, 9])
     @patch("flaxchat.dataloader.list_parquet_files")
     def test_resume_reproduces_exact_next_batches(

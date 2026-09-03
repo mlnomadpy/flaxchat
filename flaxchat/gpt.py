@@ -364,30 +364,30 @@ class GPT(nnx.Module):
         self.rope_sin: jax.Array = nnx.data(sin)
 
         # Initialize weights
-        self._init_weights()
+        self._init_weights(rngs)
 
-    def _init_weights(self):
-        """Initialize weights matching nanochat exactly."""
+    def _init_weights(self, rngs: nnx.Rngs):
+        """Initialize weights with the declared reproducible parameter stream."""
         config = self.config
         n_embd = config.n_embd
         n_layer = config.n_layer
 
         # Embedding: normal(0, 0.8)
         self.wte.embedding[...] = jax.random.normal(
-            jax.random.key(0), self.wte.embedding[...].shape
+            rngs.params(), self.wte.embedding[...].shape
         ) * 0.8
         self.wte.embedding[...] = self.wte.embedding[...].astype(COMPUTE_DTYPE)
 
         # lm_head: normal(0, 0.001) — skip if tied
         if self.lm_head is not None:
             self.lm_head.kernel[...] = jax.random.normal(
-                jax.random.key(1), self.lm_head.kernel[...].shape
+                rngs.params(), self.lm_head.kernel[...].shape
             ) * 0.001
 
         # Transformer blocks: uniform init
         s = 3**0.5 * n_embd**-0.5
         for i, block in enumerate(self.blocks):
-            key = jax.random.key(100 + i)
+            key = rngs.params()
             keys = jax.random.split(key, 6)
 
             block.attn.c_q.kernel[...] = jax.random.uniform(keys[0], block.attn.c_q.kernel[...].shape, minval=-s, maxval=s)
@@ -412,7 +412,7 @@ class GPT(nnx.Module):
         for key_str, ve in self.value_embeds.items():
             i = int(key_str)
             ve.embedding[...] = jax.random.uniform(
-                jax.random.key(200 + i), ve.embedding[...].shape, minval=-s, maxval=s
+                rngs.params(), ve.embedding[...].shape, minval=-s, maxval=s
             )
             ve.embedding[...] = ve.embedding[...].astype(COMPUTE_DTYPE)
 

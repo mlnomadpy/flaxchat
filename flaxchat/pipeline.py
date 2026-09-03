@@ -17,7 +17,7 @@ import numpy as np
 import optax
 
 from flaxchat.checkpoint import create_checkpoint_manager, save_checkpoint
-from flaxchat.common import compute_init, replicate_on_mesh
+from flaxchat.common import compute_init, replicate_on_mesh, replicate_optimizer_state
 from flaxchat.engine import generate_with_cache
 from flaxchat.gpt import GPT, attention_backend_metadata
 from flaxchat.config import GPTConfig
@@ -263,6 +263,7 @@ def run_pipeline(
         optax.adamw(schedule, b1=0.9, b2=0.95, weight_decay=0.01),
         wrt=nnx.Param,
     )
+    replicate_optimizer_state(optimizer, mesh)
 
     train_tokens = _token_stream(tokenizer, train_stories)
     validation_tokens = _token_stream(tokenizer, validation_stories)

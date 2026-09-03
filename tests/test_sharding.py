@@ -3,9 +3,16 @@ import os
 import jax
 import jax.numpy as jnp
 import pytest
+from flax import nnx
+import optax
 from jax.sharding import NamedSharding, PartitionSpec as P
 
-from flaxchat.common import replicate_on_mesh, setup_mesh, shard_batch
+from flaxchat.common import (
+    replicate_on_mesh,
+    replicate_optimizer_state,
+    setup_mesh,
+    shard_batch,
+)
 
 
 def test_default_mesh_consumes_every_device():
@@ -28,3 +35,21 @@ def test_virtual_multidevice_job_really_has_eight_devices():
     if "xla_force_host_platform_device_count=8" not in os.environ.get("XLA_FLAGS", ""):
         pytest.skip("dedicated virtual multi-device job only")
     assert jax.device_count() == 8
+
+
+def test_optimizer_state_inherits_replicated_parameter_sharding():
+    class Tiny(nnx.Module):
+        def __init__(self):
+            self.weight = nnx.Param(jnp.ones((4, 4)))
+
+    mesh = setup_mesh()
+    model = Tiny()
+    nnx.update(model, replicate_on_mesh(nnx.state(model), mesh))
+    optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
+    replicate_optimizer_state(optimizer, mesh)
+    expected = NamedSharding(mesh, P())
+    arrays = [leaf for leaf in jax.tree.leaves(optimizer.opt_state) if hasattr(leaf, "sharding")]
+    assert arrays
+    assert all(
+        leaf.sharding.is_equivalent_to(expected, leaf.ndim) for leaf in arrays
+    )
