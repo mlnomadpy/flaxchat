@@ -8,7 +8,12 @@ from pathlib import Path
 
 import pytest
 
-from flaxchat.pipeline import PipelineConfig, load_fixture_stories, run_pipeline
+from flaxchat.pipeline import (
+    PipelineConfig,
+    _pipeline_attention_backend,
+    load_fixture_stories,
+    run_pipeline,
+)
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "tiny_corpus.txt"
@@ -21,6 +26,15 @@ def test_pipeline_config_rejects_invalid_shapes():
         PipelineConfig(embedding_dim=25, heads=2)
     with pytest.raises(ValueError, match="every training stage"):
         PipelineConfig(rl_steps=0)
+    with pytest.raises(ValueError, match="attention_backend"):
+        PipelineConfig(attention_backend="unknown")
+
+
+def test_distributed_tpu_attention_fallback_is_explicit():
+    selected, reason = _pipeline_attention_backend("auto", "tpu", 8)
+    assert selected == "xla"
+    assert "cannot be automatically partitioned" in reason
+    assert _pipeline_attention_backend("auto", "tpu", 1) == ("auto", None)
 
 
 def test_fixture_split_is_deterministic():

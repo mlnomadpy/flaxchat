@@ -38,6 +38,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-new-tokens", type=int, default=8)
+    parser.add_argument(
+        "--attention-backend", choices=("auto", "xla", "splash"), default="auto"
+    )
     return parser
 
 
@@ -56,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         learning_rate=args.learning_rate,
         seed=args.seed,
         max_new_tokens=args.max_new_tokens,
+        attention_backend=args.attention_backend,
     )
     if args.smoke:
         fixture = ROOT / "tests" / "fixtures" / "tiny_corpus.txt"

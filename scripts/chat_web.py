@@ -11,14 +11,7 @@ import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 import uvicorn
-from flax import nnx
-
-from flaxchat.gpt import GPT
-from flaxchat.config import FlaxChatConfig
-from flaxchat.common import get_base_dir, print0
-from flaxchat.tokenizer import get_tokenizer
-from flaxchat.engine import generate_with_cache
-from flaxchat.checkpoint import restore_model_from_checkpoint
+from flaxchat.chat import GenerationConfig, load_chat_service
 
 parser = argparse.ArgumentParser(description="Web Chat UI")
 parser.add_argument("--model", type=str, default="d12")
@@ -27,20 +20,8 @@ parser.add_argument("--host", type=str, default="0.0.0.0")
 parser.add_argument("--checkpoint-type", type=str, default="sft", choices=["base", "sft"])
 args = parser.parse_args()
 
-# Load model
-tokenizer = get_tokenizer()
-vocab_size = tokenizer.get_vocab_size()
-
-depth = int(args.model.replace("d", ""))
-config = FlaxChatConfig.from_depth(depth=depth, vocab_size=vocab_size)
-model = GPT(config.model, rngs=nnx.Rngs(0))
-
-base_dir = get_base_dir()
-ckpt_dir = f"{args.checkpoint_type}_checkpoints"
-checkpoint_dir = f"{base_dir}/{ckpt_dir}/{args.model}"
-print0(f"Loading model from {checkpoint_dir}")
-restore_model_from_checkpoint(model, checkpoint_dir)
-print0(f"Model loaded: {model.num_params():,} params")
+service = load_chat_service(args.model, args.checkpoint_type)
+model = service.model
 
 app = FastAPI()
 
@@ -134,24 +115,8 @@ async def websocket_endpoint(websocket: WebSocket):
             if len(user_text) > 8000:
                 user_text = user_text[:8000]
 
-            # Build tokens
-            bos = tokenizer.encode_special("<|bos|>")
-            user_start = tokenizer.encode_special("<|user_start|>")
-            user_end = tokenizer.encode_special("<|user_end|>")
-            assistant_start = tokenizer.encode_special("<|assistant_start|>")
-            assistant_end = tokenizer.encode_special("<|assistant_end|>")
-
-            tokens = [bos, user_start] + tokenizer.encode(user_text) + [user_end, assistant_start]
-
-            # Generate
-            output = generate_with_cache(model, tokens, max_tokens=512, temperature=0.8, top_k=50)
-
-            # Stream tokens after prompt
-            response_tokens = output[len(tokens):]
-            for t in response_tokens:
-                if t == assistant_end:
-                    break
-                text = tokenizer.decode([t])
+            config = GenerationConfig(max_tokens=512, temperature=0.8, top_k=50)
+            for text in service.stream_text(user_text, config):
                 await websocket.send_text(json.dumps({"type": "token", "text": text}))
 
             await websocket.send_text(json.dumps({"type": "done"}))

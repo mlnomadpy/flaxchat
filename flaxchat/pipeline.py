@@ -44,6 +44,7 @@ class PipelineConfig:
     learning_rate: float = 3e-4
     seed: int = 42
     max_new_tokens: int = 8
+    attention_backend: str = "auto"
 
     def __post_init__(self):
         if self.sequence_length <= 0 or self.embedding_dim < 24:
@@ -52,6 +53,8 @@ class PipelineConfig:
             raise ValueError("embedding_dim must be divisible by heads")
         if min(self.pretrain_steps, self.sft_steps, self.rl_steps) < 1:
             raise ValueError("every training stage must run at least one update")
+        if self.attention_backend not in {"auto", "xla", "splash"}:
+            raise ValueError("attention_backend must be auto, xla, or splash")
 
 
 @nnx.jit
@@ -97,6 +100,16 @@ def _source_revision() -> str:
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         return "unavailable"
+
+
+def _pipeline_attention_backend(requested: str, backend: str, device_count: int):
+    """Resolve the distributed-training backend without silent semantic changes."""
+    if requested == "auto" and backend == "tpu" and device_count > 1:
+        return "xla", (
+            "Mosaic Splash kernels cannot be automatically partitioned across "
+            "the data mesh; using exact XLA attention for distributed training"
+        )
+    return requested, None
 
 
 def load_tinystories(max_train_stories: int, max_validation_stories: int):
@@ -239,6 +252,9 @@ def run_pipeline(
     tokenizer.save(str(tokenizer_dir))
     tokenizer_hash = _sha256_file(tokenizer_dir / "tokenizer.json")
 
+    attention_backend, attention_fallback = _pipeline_attention_backend(
+        config.attention_backend, jax.default_backend(), device_count
+    )
     model_config = GPTConfig(
         sequence_len=config.sequence_length,
         vocab_size=tokenizer.get_vocab_size(),
@@ -247,7 +263,7 @@ def run_pipeline(
         n_kv_head=max(1, config.heads // 2),
         n_embd=config.embedding_dim,
         window_pattern="L",
-        attention_backend="auto",
+        attention_backend=attention_backend,
     )
     model = GPT(model_config, rngs=nnx.Rngs(config.seed))
     nnx.update(model, replicate_on_mesh(nnx.state(model), mesh))
@@ -365,6 +381,9 @@ def run_pipeline(
 
     checkpoint_manifest = checkpoint_dir / str(final_step) / "manifest" / "metadata"
 
+    backend_metadata = attention_backend_metadata(
+        model_config.attention_backend, model_config.sequence_len
+    )
     manifest = {
         "format_version": PIPELINE_FORMAT_VERSION,
         "status": "complete",
@@ -380,9 +399,11 @@ def run_pipeline(
             "backend": jax.default_backend(),
             "device_count": device_count,
             "device_kind": jax.devices()[0].device_kind,
-            "attention": attention_backend_metadata(
-                model_config.attention_backend, model_config.sequence_len
-            ),
+            "attention": {
+                **backend_metadata,
+                "requested": config.attention_backend,
+                "fallback_reason": attention_fallback or backend_metadata["fallback_reason"],
+            },
         },
         "metrics": metrics,
         "sample": {"prompt": prompt, "text": sample, "token_ids": generated_ids},

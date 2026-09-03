@@ -1,6 +1,8 @@
-# flaxchat → PyTorch port
+# flaxchat → PyTorch validation baseline
 
-A standalone PyTorch port of the flaxchat GPT model (GELU MLP variant) plus
+This directory is a parity/export baseline for the JAX implementation, not an
+independent training system or a second flaxchat implementation. It contains a
+PyTorch port of the flaxchat GPT model (GELU MLP variant) plus
 a conversion script that loads an Orbax checkpoint produced by Flax NNX
 training and emits a `.pt` file.
 

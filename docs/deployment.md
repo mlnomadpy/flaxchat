@@ -41,6 +41,9 @@ Logs, artifacts, JUnit XML, and a JSON summary are downloaded together.
 
 ## 3. GCP TPU Pod
 
+The production flex-start launcher, pinned environment, worker coordination,
+artifact collection, and teardown guardrails live in [`infra/tpu/`](../infra/tpu/README.md).
+
 ### Python API
 
 ```python
