@@ -8,25 +8,13 @@ permalink: /deployment/
 
 ## Remote Execution Backends
 
-flaxchat supports three ways to run training:
+flaxchat supports local execution plus two CLI-driven accelerator paths:
 
 ```mermaid
 graph TD
     USER[Your Laptop] --> |"pixi run"| LOCAL[Local CPU/GPU]
-    USER --> |"KaggleRunner"| KAGGLE[Kaggle 2xT4 / TPU v3-8]
-    USER --> |"TPULauncher"| GCP[GCP TPU Pod<br/>v4-8 to v6e-256]
-
-    subgraph "RemoteRunner Interface"
-        SETUP[.setup]
-        CHECK[.check_devices]
-        RUN[.run]
-        STATUS[.status]
-        WAIT[.wait]
-        STOP[.stop]
-    end
-
-    KAGGLE --> SETUP & CHECK & RUN & STATUS & WAIT & STOP
-    GCP --> SETUP & CHECK & RUN & STATUS & WAIT & STOP
+    USER --> |"kaggle CLI"| KAGGLE[Kaggle TPU v5e-8]
+    USER --> |"tpuz CLI/API"| GCP[GCP TPU Pod]
 ```
 
 All backends implement the same `RemoteRunner` interface.
@@ -38,68 +26,29 @@ pixi install
 python -m scripts.run_tinystories --depth=4 --steps=1000
 ```
 
-## 2. Kaggle (free GPUs)
-
-```python
-from flaxchat.remote import KaggleRunner
-
-# Paste your Kaggle notebook URL
-runner = KaggleRunner("https://kkb-production.jupyter-proxy.kaggle.net/k/.../proxy")
-runner.setup()
-runner.check_devices()  # {'backend': 'gpu', 'device_count': 2}
-runner.run(code)        # Execute Python code via WebSocket
-runner.wait()
-```
-
-## 3. GCP TPU Pod
-
-### CLI Workflow
+## 2. Kaggle TPU test bundle
 
 ```bash
-# 1. Create TPU VM
-python -m flaxchat.cloud.launcher \
-    --project=my-project --zone=us-central2-b \
-    --tpu-name=flaxchat-d24 --accelerator=v4-8 \
-    --create --setup --upload=.
-
-# 2. Launch training
-python -m flaxchat.cloud.launcher \
-    --project=my-project \
-    --run "python -m scripts.pretrain --depth=24"
-
-# 3. Monitor
-python -m flaxchat.cloud.launcher --project=my-project --logs
-python -m flaxchat.cloud.launcher --project=my-project --health
-
-# 4. Auto-recovery from preemption
-python -m flaxchat.cloud.launcher --project=my-project \
-    --recover "python -m scripts.pretrain --depth=24"
-
-# 5. Teardown
-python -m flaxchat.cloud.launcher --project=my-project --teardown
+python -m pip install kaggle
+python -m scripts.kaggle_tpu_tests \
+  --kernel-id OWNER/flaxchat-tpu-tests --wait
 ```
+
+The generated private kernel checks out the exact current Git revision, installs
+TPU JAX, verifies eight devices, runs the entire suite once, and runs the public
+pretraining smoke. Logs, JUnit XML, and a JSON summary are downloaded together.
+
+## 3. GCP TPU Pod
 
 ### Python API
 
 ```python
-from flaxchat.cloud import TPULauncher, TPUConfig
+from tpuz import TPU
 
-config = TPUConfig(
-    project="my-project",
-    zone="us-central2-b",
-    tpu_name="flaxchat-d24",
-    accelerator_type="v4-8",
-    preemptible=True,
-)
-launcher = TPULauncher(config)
-
-launcher.create()
-launcher.setup(local_repo_path=".")
-launcher.run("python -m scripts.pretrain --depth=24")
-launcher.logs(follow=True)  # Ctrl-C to detach
-launcher.wait()
-launcher.download_checkpoint("./checkpoints")
-launcher.teardown()
+tpu = TPU("flaxchat-d24", accelerator="v6e-8")
+tpu.up()
+tpu.setup(extra_pip="flaxchat")
+tpu.run("python -m scripts.pretrain --depth=24", sync=".")
 ```
 
 ### TPU Types
@@ -115,12 +64,10 @@ launcher.teardown()
 
 ### Multi-Host Training
 
-For pods with >8 chips, flaxchat automatically:
-1. Creates multi-worker VMs via `num_workers_for(accelerator)`
-2. SSHs commands to all workers in parallel
-3. Distributes config via internal network
-4. JAX's `jax.distributed.initialize()` handles cross-host coordination
-5. SPMD mesh spans all chips across all hosts
+For pods with multiple processes, JAX distributed initialization coordinates
+hosts and FlaxChat builds one global SPMD mesh. Each host consumes alternating
+parquet row groups and reconstructs global batches with
+`jax.make_array_from_process_local_data`.
 
 ### Preemption Recovery
 

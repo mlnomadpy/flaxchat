@@ -11,7 +11,12 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-14
+    name: Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +24,44 @@ jobs:
         with:
           cache: true
       - run: pixi run test-quick
+
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+      - run: pixi run test-coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+
+  virtual-multidevice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+      - run: pixi run test-multidevice
       - name: Public CLI smoke test
         env:
           FLAXCHAT_BASE_DIR: ${{ runner.temp }}/flaxchat
+          XLA_FLAGS: --xla_force_host_platform_device_count=8
         run: pixi run python -m scripts.pretrain --cpu-smoke
+
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+      - run: pixi run build-package
+      - name: Verify wheel contents
+        run: unzip -l dist/*.whl | grep -E 'flaxchat/(gpt|checkpoint|dataloader)\.py'

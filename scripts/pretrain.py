@@ -38,7 +38,11 @@ from flaxchat.common import (
 from flaxchat.tokenizer import get_tokenizer
 from flaxchat.dataloader import data_loader_bos_bestfit
 from flaxchat.optim import setup_optimizer, make_lr_schedule
-from flaxchat.checkpoint import create_checkpoint_manager, save_checkpoint
+from flaxchat.checkpoint import (
+    create_checkpoint_manager,
+    restore_model_from_checkpoint,
+    save_checkpoint,
+)
 from flaxchat.engine import Engine
 from flaxchat.training import (
     accumulation_dtype,
@@ -191,11 +195,11 @@ def build_model_meta(depth):
     # Scaling params = block params + lm_head params
     all_p = jax.tree.leaves(nnx.state(ref_model, nnx.Param))
     total = sum(p.size for p in all_p)
-    wte_size = ref_model.wte.embedding.value.size
-    ve_size = sum(ve.embedding.value.size for ve in ref_model.value_embeds.values())
-    scalar_size = (ref_model.resid_lambdas.value.size + ref_model.x0_lambdas.value.size +
-                   ref_model.smear_gate.kernel.value.size + ref_model.smear_lambda.value.size +
-                   ref_model.backout_lambda.value.size)
+    wte_size = ref_model.wte.embedding[...].size
+    ve_size = sum(ve.embedding[...].size for ve in ref_model.value_embeds.values())
+    scalar_size = (ref_model.resid_lambdas[...].size + ref_model.x0_lambdas[...].size +
+                   ref_model.smear_gate.kernel[...].size + ref_model.smear_lambda[...].size +
+                   ref_model.backout_lambda[...].size)
     scaling_params = total - wte_size - ve_size - scalar_size
     return scaling_params
 
@@ -265,11 +269,48 @@ optimizer = setup_optimizer(model, config, batch_lr_scale, weight_decay_scaled,
                            lr_schedule_fn=lr_schedule)
 
 # ---------------------------------------------------------------------------
+# Checkpoint restore (must happen before constructing the resumable loader)
+# ---------------------------------------------------------------------------
+base_dir = get_base_dir()
+output_dirname = args.model_tag if args.model_tag else f"d{args.depth}"
+checkpoint_dir = os.path.join(base_dir, "base_checkpoints", output_dirname)
+step = 0
+microbatches_processed = 0
+successful_updates = 0
+skipped_updates = 0
+resume_dataloader_state = None
+if args.resume_from_step >= 0:
+    restored_metadata, restored_training_state = restore_model_from_checkpoint(
+        model,
+        checkpoint_dir,
+        step=args.resume_from_step,
+        optimizer=optimizer,
+        load_training_state=True,
+    )
+    step = int(restored_training_state["update_step"])
+    if step != args.resume_from_step:
+        raise ValueError(
+            f"Checkpoint step mismatch: requested {args.resume_from_step}, restored {step}"
+        )
+    resume_dataloader_state = restored_metadata.get("dataloader_state")
+    microbatches_processed = int(restored_metadata.get("microbatches_processed", 0))
+    successful_updates = int(restored_metadata.get("successful_updates", step))
+    skipped_updates = int(restored_metadata.get("skipped_updates", 0))
+    print0(f"Resumed model, optimizer, and loader state from step {step}")
+ckpt_manager = create_checkpoint_manager(checkpoint_dir, max_to_keep=3)
+
+# ---------------------------------------------------------------------------
 # Dataloader
 # ---------------------------------------------------------------------------
 if args.cpu_smoke:
-    def _smoke_loader():
+    def _smoke_loader(consumed_batches=0):
         rng = np.random.default_rng(1234)
+        for _ in range(consumed_batches):
+            rng.integers(
+                0, vocab_size,
+                size=(args.device_batch_size, args.max_seq_len + 1),
+                dtype=np.int32,
+            )
         while True:
             tokens = rng.integers(
                 0, vocab_size,
@@ -279,10 +320,11 @@ if args.cpu_smoke:
             yield tokens[:, :-1], tokens[:, 1:], {
                 "epoch": 1, "pq_idx": 0, "rg_idx": 0,
             }
-    train_loader = _smoke_loader()
+    train_loader = _smoke_loader(microbatches_processed)
 else:
     train_loader = data_loader_bos_bestfit(
         tokenizer, args.device_batch_size, args.max_seq_len, split="train",
+        resume_state_dict=resume_dataloader_state,
     )
 
 # ---------------------------------------------------------------------------
@@ -341,23 +383,11 @@ def train_step_grad_accum(model, optimizer, all_inputs, all_targets, num_accum_s
 
 
 # ---------------------------------------------------------------------------
-# Checkpointing
-# ---------------------------------------------------------------------------
-base_dir = get_base_dir()
-output_dirname = args.model_tag if args.model_tag else f"d{args.depth}"
-checkpoint_dir = os.path.join(base_dir, "base_checkpoints", output_dirname)
-ckpt_manager = create_checkpoint_manager(checkpoint_dir, max_to_keep=3)
-
-# ---------------------------------------------------------------------------
 # Training loop
 # ---------------------------------------------------------------------------
-step = 0
 smooth_train_loss = 0.0
 total_training_time = 0.0
-microbatches_processed = 0
-successful_updates = 0
-skipped_updates = 0
-dataloader_state = None
+dataloader_state = resume_dataloader_state
 
 print0(f"\nStarting training for {num_iterations} steps...")
 
@@ -426,7 +456,12 @@ while True:
         }
         save_checkpoint(
             ckpt_manager, step, model, optimizer, checkpoint_metadata,
-            training_state={"update_step": jnp.asarray(step, dtype=jnp.int32)},
+            training_state={
+                "update_step": jnp.asarray(step, dtype=jnp.int32),
+                "microbatches_processed": jnp.asarray(
+                    microbatches_processed, dtype=jnp.int32
+                ),
+            },
         )
 
     if last_step:

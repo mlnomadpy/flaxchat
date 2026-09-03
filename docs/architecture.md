@@ -15,7 +15,7 @@ graph TD
     subgraph "User Interface"
         CLI[CLI Scripts]
         WEB[Web Chat UI]
-        REMOTE[Remote Runners]
+        AUTOMATION[CLI Automation]
     end
 
     subgraph "Core Library"
@@ -39,13 +39,13 @@ graph TD
     end
 
     subgraph "Infrastructure"
-        TPU[cloud/launcher.py<br/>GCP TPU Pods]
-        KAGGLE[remote/kaggle_runner.py<br/>Kaggle GPUs]
+        TPU[tpuz<br/>GCP TPU Pods]
+        KAGGLE[kaggle CLI<br/>Kaggle TPU]
     end
 
     CLI --> PT & SFT & RL & EV
     WEB --> ENG
-    REMOTE --> TPU & KAGGLE
+    AUTOMATION --> TPU & KAGGLE
 
     PT --> GPT & OPT & DL & COMMON & CKPT
     SFT --> GPT & OPT & COMMON & CKPT
@@ -75,15 +75,13 @@ flaxchat/__init__.py
     ├── eval.py            ← common.py
     ├── checkpoint.py      (no internal deps, uses orbax)
     ├── report.py          ← common.py
-    ├── remote/
-    │   ├── base.py        (no deps — abstract interface)
-    │   └── kaggle_runner.py ← base.py
-    └── cloud/
-        ├── tpu_vm.py      (no internal deps — uses gcloud CLI)
-        └── launcher.py    ← tpu_vm.py, remote/base.py
+    ├── prefetch.py        (background device prefetch)
+    └── training.py        (numerically safe update helpers)
 ```
 
-No circular dependencies. `config.py` and `common.py` are leaf modules.
+Remote provisioning is intentionally outside the importable core: `tpuz`
+handles Google Cloud TPUs, while `scripts/kaggle_tpu_tests.py` submits pinned
+test bundles through the Kaggle CLI.
 
 ## GPT Model Architecture
 

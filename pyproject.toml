@@ -30,7 +30,31 @@ tpu = ["jax[tpu]>=0.6.0", "tpuz>=0.1.0"]
 kaggle = ["kgz>=0.1.0"]
 dev = [
     "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+    "build>=1.2.0",
     "matplotlib>=3.10.0",
+]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+testpaths = ["tests"]
+markers = [
+    "slow: tests intentionally excluded from the quick developer loop",
+    "integration: tests spanning multiple public components or processes",
+    "accelerator: tests requiring a GPU or TPU backend",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["flaxchat"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 65
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
 ]
 
 [build-system]

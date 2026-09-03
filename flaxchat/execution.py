@@ -52,12 +52,13 @@ def time_limit(seconds: float):
         return
     def handler(signum, frame):
         raise TimeoutException("Timed out!")
+    previous_handler = signal.signal(signal.SIGALRM, handler)
     signal.setitimer(signal.ITIMER_REAL, seconds)
-    signal.signal(signal.SIGALRM, handler)
     try:
         yield
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 @contextlib.contextmanager
@@ -203,28 +204,31 @@ def execute_code(
     Returns:
         ExecutionResult with success, stdout, stderr, error, timeout, memory_exceeded.
     """
-    manager = multiprocessing.Manager()
-    result_dict = manager.dict()
+    # JAX owns background threads, so forking the parent process can deadlock.
+    # A fresh interpreter is slower to start but safe on every supported OS.
+    context = multiprocessing.get_context("spawn")
+    with context.Manager() as manager:
+        result_dict = manager.dict()
+        process = context.Process(
+            target=_unsafe_execute,
+            args=(code, timeout, maximum_memory_bytes, result_dict),
+        )
+        process.start()
+        process.join(timeout=timeout + 1)
 
-    p = multiprocessing.Process(
-        target=_unsafe_execute,
-        args=(code, timeout, maximum_memory_bytes, result_dict),
-    )
-    p.start()
-    p.join(timeout=timeout + 1)
+        if process.is_alive():
+            process.kill()
+            process.join()
+            return ExecutionResult(timeout=True, error="Execution timed out (process killed)")
 
-    if p.is_alive():
-        p.kill()
-        return ExecutionResult(timeout=True, error="Execution timed out (process killed)")
+        if not result_dict:
+            return ExecutionResult(error="Execution failed (no result)")
 
-    if not result_dict:
-        return ExecutionResult(error="Execution failed (no result)")
-
-    return ExecutionResult(
-        success=result_dict.get("success", False),
-        stdout=result_dict.get("stdout", ""),
-        stderr=result_dict.get("stderr", ""),
-        error=result_dict.get("error"),
-        timeout=result_dict.get("timeout", False),
-        memory_exceeded=result_dict.get("memory_exceeded", False),
-    )
+        return ExecutionResult(
+            success=result_dict.get("success", False),
+            stdout=result_dict.get("stdout", ""),
+            stderr=result_dict.get("stderr", ""),
+            error=result_dict.get("error"),
+            timeout=result_dict.get("timeout", False),
+            memory_exceeded=result_dict.get("memory_exceeded", False),
+        )

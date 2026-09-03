@@ -42,6 +42,9 @@ wandb/
 *.log
 *.prof
 tensorboard/
+.coverage
+coverage.xml
+artifacts/
 
 # Jekyll build
 docs/_site/

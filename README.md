@@ -10,7 +10,7 @@ Faithful port of [nanochat](https://github.com/karpathy/nanochat) (Andrej Karpat
 
 ```bash
 pixi install
-pixi run test                     # 148 tests
+pixi run test                     # 204 collected tests
 python -m scripts.run_tinystories # full pipeline on TinyStories
 ```
 
@@ -178,18 +178,19 @@ python -m scripts.chat_web --model=d24
 
 ### Remote execution
 
-```python
-# Kaggle GPU (via kgz)
-from flaxchat.remote import KaggleRunner
-runner = KaggleRunner("https://...")
-runner.run_pipeline(depth=8, steps=5000)
+```bash
+# Bundle the full suite into one Kaggle v5e-8 allocation and wait for artifacts.
+python -m scripts.kaggle_tpu_tests \
+  --kernel-id OWNER/flaxchat-tpu-tests --wait
 
 # GCP TPU (via tpuz)
+python - <<'PY'
 from tpuz import TPU
 tpu = TPU("my-tpu", accelerator="v6e-8")
 tpu.up()
 tpu.setup(extra_pip="flaxchat")
 tpu.run("python -m scripts.pretrain --depth=12", sync=".")
+PY
 ```
 
 ## Project Structure
@@ -211,7 +212,7 @@ flaxchat/
 │   └── dataset.py             # Parquet file listing
 ├── scripts/                   # Executable scripts (~2,500 LOC)
 ├── tasks/                     # Evaluation tasks (MMLU, ARC, GSM8K, HumanEval, ...)
-├── tests/                     # 148 unit tests
+├── tests/                     # unit, integration, sharding, and accelerator tests
 ├── docs/                      # GitHub Pages documentation
 ├── configs/                   # YAML configuration templates
 └── runs/                      # Launch scripts
@@ -219,20 +220,16 @@ flaxchat/
 
 ## Test Suite
 
-**148 tests** across 10 test files:
+**204 collected tests** across 17 test files cover model semantics, four
+generation modes, optimizer schedules and numerical safety, sandboxing,
+tokenizers, exact dataloader resume, checkpoint integrity, configuration,
+evaluation protocols, reports, datasets, sharding, and TPU attention parity.
 
-| File | Tests | Coverage |
-|------|-------|----------|
-| `test_model.py` | 23 | GPT architecture, forward pass, loss, gradients, masking, JIT |
-| `test_engine.py` | 17 | All 4 gen modes, speculative decoding, tool use |
-| `test_optim.py` | 17 | Muon, LR/WD/momentum schedules |
-| `test_execution.py` | 19 | Sandbox, timeout, safety guards |
-| `test_tokenizer.py` | 15 | BPE train/encode/decode/save/load |
-| `test_checkpoint.py` | 10 | Orbax save/load round-trip |
-| `test_eval.py` | 9 | CORE, multiple-choice, generative |
-| `test_dataloader.py` | 8 | BOS packing, sharding |
-| `test_config.py` | 8 | Depth scaling, YAML/JSON |
-| `test_common.py` | 13 | Mesh, dtype, distributed |
+```bash
+pixi run test-quick       # deterministic CPU developer loop
+pixi run test-coverage    # branch coverage with a 65% floor
+pixi run test-multidevice # eight virtual CPU devices
+```
 
 ## Verified Results
 
@@ -303,7 +300,8 @@ tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
 | Kaggle 2xT4 GPU | 8L/256d (18.9M) | 55K tok/s | 2.20 | 50 min |
 | Kaggle TPU v5e-8 | 8L/512d (90.2M) | 149K tok/s | 2.79 | 109s |
 
-**148 tests passing** on CPU (local), GPU (Kaggle 2xT4), and TPU (v5e-8).
+The suite is exercised on macOS and Linux CPUs, eight virtual JAX devices,
+and a manually dispatched Kaggle TPU v5e-8 workflow.
 
 ## Comparison with nanochat
 

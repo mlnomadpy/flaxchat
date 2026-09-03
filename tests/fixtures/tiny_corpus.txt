@@ -1,0 +1,15 @@
+First Citizen:
+Before we proceed any further, hear me speak.
+
+All:
+Speak, speak.
+
+First Citizen:
+You are all resolved rather to die than to famish?
+
+All:
+Resolved. resolved.
+
+This deliberately small, committed corpus makes tokenizer and model fixtures
+repeatable without a network request. The text repeats enough varied byte
+values for short sequence tests and remains reviewable in source control.

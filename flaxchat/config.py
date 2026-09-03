@@ -5,11 +5,9 @@ Depth-based auto-scaling config for flaxchat.
 All hyperparameters auto-derive from a single "depth" dial.
 """
 
-import math
 import yaml
 import json
-from dataclasses import dataclass, field, asdict
-from typing import Optional
+from dataclasses import dataclass, field, asdict, fields
 import jax
 
 
@@ -26,6 +24,22 @@ class GPTConfig:
     tie_embeddings: bool = False
     use_scan: bool = False
     attention_backend: str = "auto"  # auto | xla | splash
+
+    def __post_init__(self):
+        if self.sequence_len <= 0:
+            raise ValueError("sequence_len must be positive")
+        if self.vocab_size <= 0:
+            raise ValueError("vocab_size must be positive")
+        if self.n_layer <= 0 or self.n_head <= 0 or self.n_kv_head <= 0:
+            raise ValueError("n_layer, n_head, and n_kv_head must be positive")
+        if self.n_embd <= 0 or self.n_embd % self.n_head:
+            raise ValueError("n_embd must be positive and divisible by n_head")
+        if self.n_head % self.n_kv_head:
+            raise ValueError("n_head must be divisible by n_kv_head for GQA")
+        if not self.window_pattern or any(c not in "SLsl" for c in self.window_pattern):
+            raise ValueError("window_pattern must be a non-empty string containing only S/L")
+        if self.attention_backend not in {"auto", "xla", "splash"}:
+            raise ValueError("attention_backend must be one of: auto, xla, splash")
 
 
 # Register GPTConfig as a JAX pytree with all-static fields
@@ -72,6 +86,14 @@ class TPUConfig:
     fsdp: int = 1
     tensor_parallel: int = 1
 
+    def __post_init__(self):
+        if self.precision not in {"bf16", "f32"}:
+            raise ValueError("precision must be one of: bf16, f32")
+        if self.data_parallel == 0 or self.data_parallel < -1:
+            raise ValueError("data_parallel must be -1 or a positive integer")
+        if self.fsdp <= 0 or self.tensor_parallel <= 0:
+            raise ValueError("fsdp and tensor_parallel must be positive")
+
 
 @dataclass
 class CheckpointConfig:
@@ -106,6 +128,48 @@ class FlaxChatConfig:
     checkpoint: CheckpointConfig = field(default_factory=CheckpointConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
+    _SECTIONS = ("model", "training", "tpu", "checkpoint", "logging")
+
+    @staticmethod
+    def _field_names(instance) -> set[str]:
+        return {item.name for item in fields(instance)}
+
+    @classmethod
+    def _reject_unknown(cls, values: dict, instance, section: str):
+        unknown = set(values) - cls._field_names(instance)
+        if unknown:
+            names = ", ".join(sorted(unknown))
+            raise ValueError(f"Unknown {section} configuration field(s): {names}")
+
+    def validate(self) -> "FlaxChatConfig":
+        """Validate cross-field and mutable-section invariants."""
+        training = self.training
+        if training.device_batch_size <= 0:
+            raise ValueError("device_batch_size must be positive")
+        if training.total_batch_size != -1 and training.total_batch_size <= 0:
+            raise ValueError("total_batch_size must be -1 or positive")
+        if training.num_iterations != -1 and training.num_iterations <= 0:
+            raise ValueError("num_iterations must be -1 or positive")
+        if not 0 <= training.warmdown_ratio <= 1:
+            raise ValueError("warmdown_ratio must be between 0 and 1")
+        if not 0 <= training.final_lr_frac <= 1:
+            raise ValueError("final_lr_frac must be between 0 and 1")
+        if training.warmup_steps < 0 or training.eval_every < 0:
+            raise ValueError("warmup_steps and eval_every must be non-negative")
+        if training.gradient_accumulation_dtype not in {"float32", "bfloat16"}:
+            raise ValueError("gradient_accumulation_dtype must be float32 or bfloat16")
+        if self.tpu.precision not in {"bf16", "f32"}:
+            raise ValueError("precision must be one of: bf16, f32")
+        if self.tpu.data_parallel == 0 or self.tpu.data_parallel < -1:
+            raise ValueError("data_parallel must be -1 or a positive integer")
+        if self.tpu.fsdp <= 0 or self.tpu.tensor_parallel <= 0:
+            raise ValueError("fsdp and tensor_parallel must be positive")
+        if self.checkpoint.max_to_keep <= 0:
+            raise ValueError("max_to_keep must be positive")
+        if self.logging.log_interval <= 0:
+            raise ValueError("log_interval must be positive")
+        return self
+
     @classmethod
     def from_depth(
         cls,
@@ -138,18 +202,25 @@ class FlaxChatConfig:
 
         config = cls(model=model)
 
-        # Apply any overrides
+        # Apply any overrides. Typos must fail rather than silently changing a run.
         for key, value in overrides.items():
+            matched = False
             if hasattr(config.training, key):
                 setattr(config.training, key, value)
+                matched = True
             elif hasattr(config.tpu, key):
                 setattr(config.tpu, key, value)
+                matched = True
             elif hasattr(config.checkpoint, key):
                 setattr(config.checkpoint, key, value)
+                matched = True
             elif hasattr(config.logging, key):
                 setattr(config.logging, key, value)
+                matched = True
+            if not matched:
+                raise ValueError(f"Unknown configuration override: {key}")
 
-        return config
+        return config.validate()
 
     @classmethod
     def from_yaml(cls, path: str) -> "FlaxChatConfig":
@@ -165,37 +236,39 @@ class FlaxChatConfig:
 
     @classmethod
     def from_dict(cls, data: dict) -> "FlaxChatConfig":
+        if not isinstance(data, dict):
+            raise TypeError("Configuration root must be a mapping")
+        unknown_sections = set(data) - set(cls._SECTIONS) - {"depth"}
+        if unknown_sections:
+            names = ", ".join(sorted(unknown_sections))
+            raise ValueError(f"Unknown top-level configuration field(s): {names}")
+
         # Also support depth= at top level for convenience
         if "depth" in data:
-            return cls.from_depth(depth=data["depth"], **{
-                k: v for k, v in data.items()
-                if k not in ("depth", "model", "training", "tpu", "checkpoint", "logging")
+            if data.get("model"):
+                raise ValueError("Specify either depth or model fields, not both")
+            config = cls.from_depth(depth=data["depth"])
+        else:
+            model_kwargs = data.get("model", {})
+            if not isinstance(model_kwargs, dict):
+                raise TypeError("model configuration must be a mapping")
+            defaults = GPTConfig()
+            cls._reject_unknown(model_kwargs, defaults, "model")
+            model = GPTConfig(**{
+                f.name: model_kwargs.get(f.name, getattr(defaults, f.name))
+                for f in fields(defaults)
             })
+            config = cls(model=model)
 
-        # Build GPTConfig from dict (frozen dataclass — construct, don't mutate)
-        model_kwargs = data.get("model", {})
-        defaults = GPTConfig()
-        model = GPTConfig(**{
-            f.name: model_kwargs.get(f.name, getattr(defaults, f.name))
-            for f in defaults.__dataclass_fields__.values()
-        })
-
-        config = cls(model=model)
-
-        # Mutable configs can be set via setattr
-        if "training" in data:
-            for k, v in data["training"].items():
-                setattr(config.training, k, v)
-        if "tpu" in data:
-            for k, v in data["tpu"].items():
-                setattr(config.tpu, k, v)
-        if "checkpoint" in data:
-            for k, v in data["checkpoint"].items():
-                setattr(config.checkpoint, k, v)
-        if "logging" in data:
-            for k, v in data["logging"].items():
-                setattr(config.logging, k, v)
-        return config
+        for section in ("training", "tpu", "checkpoint", "logging"):
+            values = data.get(section, {})
+            if not isinstance(values, dict):
+                raise TypeError(f"{section} configuration must be a mapping")
+            target = getattr(config, section)
+            cls._reject_unknown(values, target, section)
+            for key, value in values.items():
+                setattr(target, key, value)
+        return config.validate()
 
     def to_dict(self) -> dict:
         return {

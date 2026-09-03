@@ -144,15 +144,26 @@ def load_checkpoint(
             raise ValueError("No checkpoints found")
 
     model_abstract = nnx.to_pure_dict(nnx.state(model)) if model is not None else None
+    model_restore_args = (
+        ocp.checkpoint_utils.construct_restore_args(model_abstract)
+        if model_abstract is not None else None
+    )
     items = {
-        "model": ocp.args.PyTreeRestore(model_abstract),
+        "model": ocp.args.PyTreeRestore(model_abstract, restore_args=model_restore_args),
         "metadata": ocp.args.JsonRestore(),
         "manifest": ocp.args.JsonRestore(),
     }
     if optimizer is not None:
-        items["optimizer"] = ocp.args.PyTreeRestore(_opt_state_pytree(optimizer))
+        optimizer_abstract = _opt_state_pytree(optimizer)
+        items["optimizer"] = ocp.args.PyTreeRestore(
+            optimizer_abstract,
+            restore_args=ocp.checkpoint_utils.construct_restore_args(optimizer_abstract),
+        )
     if load_training_state:
-        items["training_state"] = ocp.args.PyTreeRestore()
+        training_metadata = manager.item_metadata(step).training_state
+        items["training_state"] = ocp.args.PyTreeRestore(
+            restore_args=ocp.checkpoint_utils.construct_restore_args(training_metadata)
+        )
     try:
         restored = manager.restore(step, args=ocp.args.Composite(**items))
     except Exception as exc:
@@ -183,41 +194,43 @@ def restore_model_from_checkpoint(
     manager = create_checkpoint_manager(
         checkpoint_dir, max_to_keep=999, async_checkpointing=False
     )
-    loaded = load_checkpoint(
-        manager, step, model, optimizer, load_training_state=load_training_state
-    )
-    if optimizer is None and not load_training_state:
-        model_dict, metadata = loaded
-        opt_state = training_state = None
-    else:
-        model_dict, opt_state, metadata, training_state = loaded
+    try:
+        loaded = load_checkpoint(
+            manager, step, model, optimizer, load_training_state=load_training_state
+        )
+        if optimizer is None and not load_training_state:
+            model_dict, metadata = loaded
+            opt_state = training_state = None
+        else:
+            model_dict, opt_state, metadata, training_state = loaded
 
-    if expected_identity is not None:
-        actual = {
-            "resolved_config": metadata.get("resolved_config", metadata.get("model_config")),
-            "tokenizer": metadata.get("tokenizer_identity", "unavailable"),
-            "data_manifest": metadata.get("data_manifest_identity", "unavailable"),
-            "source_revision": metadata.get("source_revision", "unavailable"),
-        }
-        mismatches = {
-            key: (actual.get(key), value)
-            for key, value in expected_identity.items()
-            if actual.get(key) != value
-        }
-        if mismatches:
-            raise CheckpointCompatibilityError(
-                f"Checkpoint identity mismatch: {mismatches}"
-            )
+        if expected_identity is not None:
+            actual = {
+                "resolved_config": metadata.get("resolved_config", metadata.get("model_config")),
+                "tokenizer": metadata.get("tokenizer_identity", "unavailable"),
+                "data_manifest": metadata.get("data_manifest_identity", "unavailable"),
+                "source_revision": metadata.get("source_revision", "unavailable"),
+            }
+            mismatches = {
+                key: (actual.get(key), value)
+                for key, value in expected_identity.items()
+                if actual.get(key) != value
+            }
+            if mismatches:
+                raise CheckpointCompatibilityError(
+                    f"Checkpoint identity mismatch: {mismatches}"
+                )
 
-    model_state = nnx.state(model)
-    pure_state = nnx.to_pure_dict(model_state)
-    if _state_manifest(pure_state).keys() != _state_manifest(model_dict).keys():
-        raise CheckpointCompatibilityError("Live model state schema does not match checkpoint")
-    nnx.replace_by_pure_dict(model_state, model_dict)
-    nnx.update(model, model_state)
-    if optimizer is not None and opt_state is not None:
-        optimizer.opt_state = opt_state
-    manager.close()
-    if load_training_state:
-        return metadata, training_state
-    return metadata
+        model_state = nnx.state(model)
+        pure_state = nnx.to_pure_dict(model_state)
+        if _state_manifest(pure_state).keys() != _state_manifest(model_dict).keys():
+            raise CheckpointCompatibilityError("Live model state schema does not match checkpoint")
+        nnx.replace_by_pure_dict(model_state, model_dict)
+        nnx.update(model, model_state)
+        if optimizer is not None and opt_state is not None:
+            optimizer.opt_state = opt_state
+        if load_training_state:
+            return metadata, training_state
+        return metadata
+    finally:
+        manager.close()

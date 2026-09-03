@@ -115,5 +115,6 @@ config = GPTConfig(n_layer=16, n_embd=1024, tie_embeddings=True)
 ## Tests
 
 ```bash
-pixi run pytest tests/ -v  # 148 tests, no GCP needed
+pixi run test-quick        # deterministic CPU suite, no cloud needed
+pixi run test-multidevice  # force eight virtual JAX devices
 ```

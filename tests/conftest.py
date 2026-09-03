@@ -3,8 +3,7 @@ Shared test fixtures for flaxchat tests.
 Uses Shakespeare text for local testing.
 """
 
-import os
-import urllib.request
+from pathlib import Path
 import pytest
 import jax
 import jax.numpy as jnp
@@ -14,19 +13,13 @@ from flaxchat.config import FlaxChatConfig, GPTConfig
 from flaxchat.gpt import GPT
 
 
-SHAKESPEARE_URL = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
-SHAKESPEARE_CACHE = os.path.join(os.path.dirname(__file__), ".cache", "shakespeare.txt")
+CORPUS_FIXTURE = Path(__file__).parent / "fixtures" / "tiny_corpus.txt"
 
 
 @pytest.fixture(scope="session")
 def shakespeare_text():
-    """Download and cache tiny Shakespeare dataset."""
-    os.makedirs(os.path.dirname(SHAKESPEARE_CACHE), exist_ok=True)
-    if not os.path.exists(SHAKESPEARE_CACHE):
-        print(f"Downloading Shakespeare dataset...")
-        urllib.request.urlretrieve(SHAKESPEARE_URL, SHAKESPEARE_CACHE)
-    with open(SHAKESPEARE_CACHE, "r") as f:
-        return f.read()
+    """Return a committed corpus so tests never depend on the network."""
+    return CORPUS_FIXTURE.read_text(encoding="utf-8")
 
 
 @pytest.fixture

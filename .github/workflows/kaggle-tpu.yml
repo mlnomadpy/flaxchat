@@ -1,0 +1,38 @@
+name: Kaggle TPU tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_id:
+        description: Existing private Kaggle kernel as owner/kernel-slug
+        required: true
+        default: skywolfmo/flaxchat-tpu-full-test-suite
+
+permissions:
+  contents: read
+
+jobs:
+  tpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install kaggle
+      - name: Submit and monitor one bundled TPU run
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: >-
+          python -m scripts.kaggle_tpu_tests
+          --kernel-id "${{ inputs.kernel_id }}"
+          --revision "${{ github.sha }}"
+          --wait
+          --output-dir artifacts/kaggle
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kaggle-tpu-results
+          path: artifacts/kaggle

@@ -17,7 +17,7 @@ Part of the **2026 Q1 TPU Research Sprint**, supported by the [Google AI Develop
 
 ```bash
 pixi install
-pixi run test          # 148 tests
+pixi run test          # 204 collected tests
 pixi run -- python -m scripts.run_tinystories --depth=8 --steps=5000
 ```
 
@@ -104,7 +104,9 @@ config = FlaxChatConfig.from_depth(depth=12)
 
 ## Test Suite
 
-**148 tests** across 10 files covering model, engine (all 4 gen modes + speculative + tool use), optimizer, config, evaluation, execution sandbox, checkpoints, tokenizer, dataloader, and distributed utilities.
+**204 collected tests** across 17 files cover model and attention semantics,
+all generation modes, optimizer safety, exact resume, evaluation, sandboxing,
+tokenizers, data/report utilities, sharding, and accelerator parity.
 
 ```bash
 pixi run test  # all tests pass on CPU, GPU, and TPU
@@ -114,11 +116,10 @@ pixi run test  # all tests pass on CPU, GPU, and TPU
 
 ## Remote Execution
 
-### Kaggle GPU (via [kgz](https://github.com/mlnomadpy/kgz))
-```python
-from flaxchat.remote import KaggleRunner
-runner = KaggleRunner("https://...")
-runner.run_pipeline(depth=8, steps=5000)
+### Kaggle TPU (CLI)
+```bash
+python -m scripts.kaggle_tpu_tests \
+  --kernel-id OWNER/flaxchat-tpu-tests --wait
 ```
 
 ### GCP TPU (via [tpuz](https://github.com/mlnomadpy/tpuz))

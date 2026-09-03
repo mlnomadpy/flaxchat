@@ -28,6 +28,10 @@ def list_parquet_files(warn_on_legacy=False):
 
 def download_shard(shard_id: int):
     """Download a single shard from HuggingFace."""
+    if not isinstance(shard_id, int) or isinstance(shard_id, bool):
+        raise TypeError("shard_id must be an integer")
+    if not 0 <= shard_id < TOTAL_SHARDS:
+        raise ValueError(f"shard_id must be in [0, {TOTAL_SHARDS})")
     url = DATASET_URL_TEMPLATE.format(shard_id=shard_id)
     filename = os.path.join("data", f"shard-{shard_id:05d}.parquet")
     return download_file_with_lock(url, filename)
@@ -35,6 +39,8 @@ def download_shard(shard_id: int):
 
 def download_shards(start: int = 0, end: int = 170):
     """Download a range of shards."""
+    if not 0 <= start <= end <= TOTAL_SHARDS:
+        raise ValueError(f"expected 0 <= start <= end <= {TOTAL_SHARDS}")
     for shard_id in range(start, end):
         download_shard(shard_id)
         if shard_id % 10 == 0:

@@ -11,6 +11,9 @@ import jax.numpy as jnp
 from flax import nnx
 
 from flaxchat.checkpoint import (
+    CheckpointCompatibilityError,
+    _checkpoint_manifest,
+    _validate_manifest,
     create_checkpoint_manager,
     save_checkpoint,
     load_checkpoint,
@@ -143,6 +146,101 @@ class TestSaveLoadRoundTrip:
                     f"Mismatch at {path}"
 
         check_equal(original_dict, loaded_dict)
+
+    def test_manifest_detects_modified_state_before_mutation(self, tiny_model):
+        optimizer = self._make_optimizer(tiny_model)
+        model_state = nnx.to_pure_dict(nnx.state(tiny_model))
+        metadata = {"resolved_config": {"model": "tiny"}}
+        training_state = {"update_step": jnp.asarray(3)}
+        manifest = _checkpoint_manifest(
+            3, model_state, optimizer.opt_state, metadata, training_state
+        )
+        changed = jax.tree.map(lambda value: value, model_state)
+        first_path, first_leaf = jax.tree_util.tree_flatten_with_path(changed)[0][0]
+        del first_path
+        # Replacing one leaf is enough to prove the content digest is enforced.
+        leaves, treedef = jax.tree.flatten(changed)
+        leaves[0] = leaves[0] + jnp.ones_like(first_leaf)
+        changed = jax.tree.unflatten(treedef, leaves)
+        with pytest.raises(CheckpointCompatibilityError, match="incomplete or corrupt"):
+            _validate_manifest(
+                manifest, changed, optimizer.opt_state, metadata, training_state
+            )
+
+    @pytest.mark.integration
+    def test_interrupted_training_matches_uninterrupted_training(self, tmp_path):
+        """Five updates + restore + five updates must equal ten uninterrupted."""
+        import optax
+
+        class TinyRegressor(nnx.Module):
+            def __init__(self, seed):
+                self.linear = nnx.Linear(3, 2, rngs=nnx.Rngs(seed))
+
+            def __call__(self, x, y):
+                return jnp.mean((self.linear(x) - y) ** 2)
+
+        def make_run(seed=0):
+            current_model = TinyRegressor(seed)
+            current_optimizer = nnx.Optimizer(
+                current_model, optax.adam(1e-2), wrt=nnx.Param
+            )
+            return current_model, current_optimizer
+
+        def update(current_model, current_optimizer, batch):
+            x, y = batch
+            loss, grads = nnx.value_and_grad(lambda model: model(x, y))(current_model)
+            current_optimizer.update(current_model, grads)
+            return loss
+
+        data_key = jax.random.key(123)
+        keys = jax.random.split(data_key, 20)
+        batches = [
+            (jax.random.normal(keys[2 * i], (4, 3)), jax.random.normal(keys[2 * i + 1], (4, 2)))
+            for i in range(10)
+        ]
+
+        reference_model, reference_optimizer = make_run()
+        for batch in batches:
+            update(reference_model, reference_optimizer, batch)
+
+        interrupted_model, interrupted_optimizer = make_run()
+        for batch in batches[:5]:
+            update(interrupted_model, interrupted_optimizer, batch)
+        checkpoint_dir = str(tmp_path / "resume")
+        manager = create_checkpoint_manager(checkpoint_dir, async_checkpointing=False)
+        save_checkpoint(
+            manager,
+            5,
+            interrupted_model,
+            interrupted_optimizer,
+            {"next_batch": 5, "rng_key": [0, 123]},
+            training_state={"update_step": jnp.asarray(5), "next_batch": jnp.asarray(5)},
+        )
+        manager.wait_until_finished()
+        manager.close()
+
+        resumed_model, resumed_optimizer = make_run(seed=999)
+        metadata, training_state = restore_model_from_checkpoint(
+            resumed_model,
+            checkpoint_dir,
+            step=5,
+            optimizer=resumed_optimizer,
+            load_training_state=True,
+        )
+        start = int(training_state["next_batch"])
+        assert start == metadata["next_batch"] == 5
+        for batch in batches[start:]:
+            update(resumed_model, resumed_optimizer, batch)
+
+        reference = nnx.to_pure_dict(nnx.state(reference_model))
+        resumed = nnx.to_pure_dict(nnx.state(resumed_model))
+        for expected, actual in zip(jax.tree.leaves(reference), jax.tree.leaves(resumed)):
+            assert jnp.array_equal(expected, actual)
+        for expected, actual in zip(
+            jax.tree.leaves(reference_optimizer.opt_state),
+            jax.tree.leaves(resumed_optimizer.opt_state),
+        ):
+            assert jnp.array_equal(expected, actual)
 
 
 # ---------------------------------------------------------------------------

@@ -68,7 +68,10 @@ class TestFlaxChatConfig:
     def test_from_yaml(self):
         import yaml
         data = {
-            "model": {"n_layer": 4, "n_embd": 256, "vocab_size": 512},
+            "model": {
+                "n_layer": 4, "n_embd": 256, "n_head": 4,
+                "n_kv_head": 4, "vocab_size": 512,
+            },
             "training": {"num_iterations": 100},
         }
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
@@ -112,3 +115,51 @@ class TestFlaxChatConfig:
         config2 = FlaxChatConfig.from_dict(d)
         assert config.model.n_layer == config2.model.n_layer
         assert config.model.n_embd == config2.model.n_embd
+
+    @pytest.mark.parametrize("section", ["model", "training", "tpu", "checkpoint", "logging"])
+    def test_unknown_nested_field_is_rejected(self, section):
+        with pytest.raises(ValueError, match="Unknown"):
+            FlaxChatConfig.from_dict({section: {"typo_field": 1}})
+
+    def test_unknown_depth_override_is_rejected(self):
+        with pytest.raises(ValueError, match="Unknown configuration override"):
+            FlaxChatConfig.from_depth(depth=2, typo_field=1)
+
+    def test_depth_can_be_combined_with_training_section(self):
+        config = FlaxChatConfig.from_dict({
+            "depth": 2,
+            "training": {"device_batch_size": 4},
+        })
+        assert config.model.n_layer == 2
+        assert config.training.device_batch_size == 4
+
+    @pytest.mark.parametrize(
+        "kwargs, message",
+        [
+            ({"n_embd": 63, "n_head": 2}, "divisible by n_head"),
+            ({"n_head": 3, "n_kv_head": 2}, "divisible by n_kv_head"),
+            ({"window_pattern": "SX"}, "window_pattern"),
+            ({"attention_backend": "magic"}, "attention_backend"),
+        ],
+    )
+    def test_invalid_model_contract_is_rejected(self, kwargs, message):
+        with pytest.raises(ValueError, match=message):
+            GPTConfig(**kwargs)
+
+    def test_invalid_tpu_contract_is_rejected(self):
+        with pytest.raises(ValueError, match="precision"):
+            TPUConfig(precision="fp16")
+
+    @pytest.mark.parametrize(
+        "section, message",
+        [
+            ({"training": {"device_batch_size": 0}}, "device_batch_size"),
+            ({"training": {"warmdown_ratio": 1.5}}, "warmdown_ratio"),
+            ({"checkpoint": {"max_to_keep": 0}}, "max_to_keep"),
+            ({"tpu": {"fsdp": 0}}, "fsdp"),
+            ({"logging": {"log_interval": 0}}, "log_interval"),
+        ],
+    )
+    def test_invalid_mutable_section_contract_is_rejected(self, section, message):
+        with pytest.raises(ValueError, match=message):
+            FlaxChatConfig.from_dict(section)

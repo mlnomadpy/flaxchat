@@ -8,7 +8,11 @@ Format version 2 is an Orbax composite checkpoint with these items:
 - `metadata`: resolved configuration, tokenizer/data/source identities and
   the exact dataloader cursor;
 - `manifest`: canonical shapes, dtypes and SHA-256 digests for every state
-  leaf plus hashes of metadata and compatibility identities.
+leaf plus hashes of metadata and compatibility identities.
+
+`scripts.pretrain --resume-from-step=N` restores the model and optimizer before
+rebuilding the data iterator. Its saved cursor is then validated against the
+ordered dataset manifest, tokenizer, packing policy, and process topology.
 
 Orbax writes through temporary directories and publishes a completed step
 atomically. Asynchronous managers must be finalized with

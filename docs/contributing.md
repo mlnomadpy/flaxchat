@@ -12,7 +12,7 @@ permalink: /contributing/
 git clone https://github.com/tahabsn/flaxchat.git
 cd flaxchat
 pixi install
-pixi run test  # 81 tests, ~20s
+pixi run test-quick
 ```
 
 ## Project Structure
@@ -30,8 +30,6 @@ flaxchat/
 │   ├── tokenizer.py   # BPE (rustbpe + tiktoken)
 │   ├── checkpoint.py  # Orbax save/load
 │   ├── report.py      # Training reports
-│   ├── remote/        # KaggleRunner
-│   └── cloud/         # TPULauncher
 ├── scripts/           # Runnable scripts (python -m scripts.XXX)
 ├── tasks/             # Eval tasks (MMLU, GSM8K, etc.)
 ├── tests/             # pytest tests
@@ -50,8 +48,10 @@ flaxchat/
 ## Running Tests
 
 ```bash
-pixi run test              # All 81 tests
-pixi run test-quick        # Skip slow tests
+pixi run test              # All 204 collected tests
+pixi run test-quick        # Skip slow and accelerator tests
+pixi run test-coverage     # Enforce the branch-coverage floor
+pixi run test-multidevice  # Exercise an eight-device CPU mesh
 pixi run -- pytest tests/test_model.py -v  # Specific file
 ```
 
