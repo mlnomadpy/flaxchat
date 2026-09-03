@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -15,9 +16,33 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "accelerators" / "kaggle" / "launch.py"
 
 
+def kaggle_cli() -> list[str] | None:
+    """Locate Kaggle whether installed as a console script or Python module."""
+    executable = shutil.which("kaggle")
+    if executable:
+        return [executable]
+    candidates = [sys.executable, shutil.which("python3"), shutil.which("python")]
+    for python in dict.fromkeys(candidate for candidate in candidates if candidate):
+        result = subprocess.run(
+            [
+                python,
+                "-c",
+                "import importlib.util; raise SystemExit(importlib.util.find_spec('kaggle') is None)",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if result.returncode == 0:
+            return [python, "-m", "kaggle"]
+    return None
+
+
 def command(*args: str, capture: bool = False) -> subprocess.CompletedProcess:
+    cli = kaggle_cli()
+    if cli is None:
+        raise RuntimeError("Kaggle CLI not found")
     return subprocess.run(
-        ["kaggle", *args], check=True, text=True,
+        [*cli, *args], check=True, text=True,
         capture_output=capture,
     )
 
@@ -32,7 +57,7 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts" / "kaggle")
     args = parser.parse_args()
 
-    if shutil.which("kaggle") is None:
+    if kaggle_cli() is None:
         parser.error("Kaggle CLI not found; install with `python -m pip install kaggle`")
     revision = args.revision or subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
