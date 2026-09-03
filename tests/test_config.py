@@ -116,7 +116,13 @@ class TestFlaxChatConfig:
         assert config.model.n_layer == config2.model.n_layer
         assert config.model.n_embd == config2.model.n_embd
 
-    @pytest.mark.parametrize("section", ["model", "training", "tpu", "checkpoint", "logging"])
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "model", "training", "tpu", "checkpoint", "logging", "tokenizer",
+            "data", "evaluation", "generation",
+        ],
+    )
     def test_unknown_nested_field_is_rejected(self, section):
         with pytest.raises(ValueError, match="Unknown"):
             FlaxChatConfig.from_dict({section: {"typo_field": 1}})
@@ -158,6 +164,9 @@ class TestFlaxChatConfig:
             ({"checkpoint": {"max_to_keep": 0}}, "max_to_keep"),
             ({"tpu": {"fsdp": 0}}, "fsdp"),
             ({"logging": {"log_interval": 0}}, "log_interval"),
+            ({"tokenizer": {"vocab_size": 0}}, "vocab_size"),
+            ({"evaluation": {"max_per_task": -1}}, "max_per_task"),
+            ({"generation": {"temperature": -1}}, "temperature"),
         ],
     )
     def test_invalid_mutable_section_contract_is_rejected(self, section, message):

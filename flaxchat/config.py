@@ -113,6 +113,47 @@ class LoggingConfig:
 
 
 @dataclass
+class TokenizerConfig:
+    implementation: str = "rustbpe"
+    vocab_size: int = 32768
+    source_revision: str = "unavailable"
+
+
+@dataclass
+class DataConfig:
+    dataset: str = "HuggingFaceFW/fineweb-edu"
+    revision: str = "unavailable"
+    train_split: str = "train"
+    validation_split: str = "validation"
+    seed: int = 42
+
+
+@dataclass
+class EvaluationConfig:
+    seed: int = 1234
+    max_per_task: int = 0
+    prompt_template_version: str = "core-v2"
+
+
+@dataclass
+class GenerationConfig:
+    max_tokens: int = 512
+    temperature: float = 0.8
+    top_k: int = 50
+    seed: int = 42
+
+    def __post_init__(self):
+        if self.max_tokens <= 0:
+            raise ValueError("max_tokens must be positive")
+        if self.temperature < 0:
+            raise ValueError("temperature must be non-negative")
+        if self.top_k <= 0:
+            raise ValueError("top_k must be positive")
+        if self.seed < 0:
+            raise ValueError("seed must be non-negative")
+
+
+@dataclass
 class FlaxChatConfig:
     """
     Top-level config.
@@ -127,8 +168,15 @@ class FlaxChatConfig:
     tpu: TPUConfig = field(default_factory=TPUConfig)
     checkpoint: CheckpointConfig = field(default_factory=CheckpointConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
+    tokenizer: TokenizerConfig = field(default_factory=TokenizerConfig)
+    data: DataConfig = field(default_factory=DataConfig)
+    evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
+    generation: GenerationConfig = field(default_factory=GenerationConfig)
 
-    _SECTIONS = ("model", "training", "tpu", "checkpoint", "logging")
+    _SECTIONS = (
+        "model", "training", "tpu", "checkpoint", "logging", "tokenizer",
+        "data", "evaluation", "generation",
+    )
 
     @staticmethod
     def _field_names(instance) -> set[str]:
@@ -168,6 +216,16 @@ class FlaxChatConfig:
             raise ValueError("max_to_keep must be positive")
         if self.logging.log_interval <= 0:
             raise ValueError("log_interval must be positive")
+        if self.tokenizer.vocab_size <= 0:
+            raise ValueError("tokenizer vocab_size must be positive")
+        if self.data.seed < 0 or self.evaluation.seed < 0 or self.generation.seed < 0:
+            raise ValueError("data, evaluation, and generation seeds must be non-negative")
+        if self.evaluation.max_per_task < 0:
+            raise ValueError("max_per_task must be non-negative")
+        if self.generation.max_tokens <= 0 or self.generation.top_k <= 0:
+            raise ValueError("generation max_tokens and top_k must be positive")
+        if self.generation.temperature < 0:
+            raise ValueError("generation temperature must be non-negative")
         return self
 
     @classmethod
@@ -260,7 +318,7 @@ class FlaxChatConfig:
             })
             config = cls(model=model)
 
-        for section in ("training", "tpu", "checkpoint", "logging"):
+        for section in cls._SECTIONS[1:]:
             values = data.get(section, {})
             if not isinstance(values, dict):
                 raise TypeError(f"{section} configuration must be a mapping")
@@ -277,4 +335,8 @@ class FlaxChatConfig:
             "tpu": asdict(self.tpu),
             "checkpoint": asdict(self.checkpoint),
             "logging": asdict(self.logging),
+            "tokenizer": asdict(self.tokenizer),
+            "data": asdict(self.data),
+            "evaluation": asdict(self.evaluation),
+            "generation": asdict(self.generation),
         }

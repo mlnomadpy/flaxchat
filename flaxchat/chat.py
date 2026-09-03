@@ -3,33 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
 import os
 
 from flax import nnx
 
 from flaxchat.checkpoint import restore_model_from_checkpoint
 from flaxchat.common import get_base_dir
-from flaxchat.config import FlaxChatConfig
+from flaxchat.config import FlaxChatConfig, GenerationConfig
 from flaxchat.engine import generate_with_cache
 from flaxchat.gpt import GPT
 from flaxchat.tokenizer import get_tokenizer
-
-
-@dataclass(frozen=True)
-class GenerationConfig:
-    max_tokens: int = 512
-    temperature: float = 0.8
-    top_k: int = 50
-    seed: int = 42
-
-    def __post_init__(self):
-        if self.max_tokens < 1:
-            raise ValueError("max_tokens must be positive")
-        if self.temperature < 0:
-            raise ValueError("temperature must be non-negative")
-        if self.top_k < 1:
-            raise ValueError("top_k must be positive")
 
 
 class ChatService:

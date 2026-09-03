@@ -15,6 +15,10 @@ graph TD
     FC --> TPUC[TPUConfig]
     FC --> CC[CheckpointConfig]
     FC --> LC[LoggingConfig]
+    FC --> TOK[TokenizerConfig]
+    FC --> DATA[DataConfig]
+    FC --> EVAL[EvaluationConfig]
+    FC --> GEN[GenerationConfig]
 ```
 
 ## Quick Start
@@ -111,6 +115,15 @@ class TPUConfig:
 ```
 
 Mesh shape: `(data_parallel, fsdp, tensor_parallel)` = total devices.
+
+## Reproducibility sections
+
+The validated top-level schema also includes `tokenizer` (implementation,
+vocabulary size, source revision), `data` (dataset, immutable revision, splits,
+seed), `evaluation` (seed, sample bound, prompt-template version), and
+`generation` (token limit, temperature, top-k, seed). Optimization and schedule
+fields live under `training`; mesh and precision live under `tpu`. Unknown keys
+and invalid ranges fail during config construction rather than during a run.
 
 ## YAML Example
 
