@@ -1,0 +1,30 @@
+name: flaxchat-trainer-comparison-v1
+purpose: matched single-accelerator trainer systems comparison
+model:
+  family: dense_decoder_only_transformer
+  target_trainable_parameters: 600000
+  parameter_tolerance_fraction: 0.05
+  sequence_length: 256
+training:
+  global_batch_size: 8
+  precision: float32
+  optimizer: adamw
+  seed: 42
+data:
+  dataset: roneneldan/TinyStories
+  revision: f54c09fd23315a6f9c86f9dc80f725de7d8f9c64
+measurement:
+  hardware: Tesla P100-PCIE-16GB
+  device_count: 1
+  warmup_steps: 5
+  measured_steps: 20
+  throughput_unit: non_padding_tokens_per_second
+  compile_timing: fresh_process_first_compilation
+  checkpoint_timing: synchronous_durable_save
+  validation_metric: held_out_cross_entropy
+rules:
+  - Include tokenizer and output projection parameters in trainable counts.
+  - Exclude data loading and compilation from steady-state throughput.
+  - Synchronize the accelerator before starting and stopping every timer.
+  - Use the same tokenized and right-padded batches in every framework.
+  - Archive raw records and logs even when validation or performance disappoints.

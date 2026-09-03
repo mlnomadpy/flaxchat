@@ -112,6 +112,18 @@ if install["return_code"] == 0:
         "--warmup", "1", "--iterations", "3",
     ]
     checks.append(run("attention-benchmark", attention_command, cwd=SOURCE))
+    if ACCELERATOR == "tpu":
+        checks.append(run(
+            "training-scaling",
+            [
+                sys.executable, "-m", "benchmarks.training_scaling",
+                "--device-counts", "1", "2", "4", "8",
+                "--global-batch-size", "32",
+                "--warmup", "2", "--iterations", "5",
+                "--output", str(RESULTS / "training-scaling.json"),
+            ],
+            cwd=SOURCE,
+        ))
     checks.append(run(
         "speculative-benchmark",
         [

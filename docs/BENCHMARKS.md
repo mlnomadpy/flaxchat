@@ -10,6 +10,8 @@ The attention benchmark emits JSON suitable for archiving:
 python -m benchmarks.attention --backend=xla --sequence-length=2048
 python -m benchmarks.attention --backend=splash --sequence-lengths 1024 2048 4096 8192
 python -m benchmarks.speculative --max-tokens=16 --draft-steps=4
+python -m benchmarks.training_scaling --device-counts 1 2 4 8 \
+  --global-batch-size 32 --output artifacts/training-scaling.json
 ```
 
 Do not compare compile-inclusive first-call latency with warmed execution.
@@ -23,18 +25,32 @@ results report exact greedy agreement, proposal acceptance, main-model call
 count, steady-state throughput, and measured speedup. Keep regressions even
 when speedup is below 1.0; hardware/model pairing determines the break-even.
 
+The training-scaling command performs single-host strong scaling: model shape
+and global batch remain fixed while the data mesh grows. Each point records
+compile time, steady tokens/sec, a conventional `6*N*tokens` MFU estimate,
+compiled memory, synchronous Orbax checkpoint latency, loss samples, and
+efficiency relative to the one-device result. This does not substitute for a
+physical multi-host run; the output labels that limitation explicitly.
+
 ## Trainer comparisons
 
-`benchmarks/baselines/` defines matched flaxchat, MaxText, and nanochat run
-controls. Replace every `REQUIRED` revision, run on the same hardware, and
-capture each result with all fields enforced by `benchmarks.compare`:
+`benchmarks/baselines/` defines pinned flaxchat, MaxText, and nanochat run
+controls. Every plan remains labeled `pending_matched_run` until executed on
+the declared hardware. Capture each result with all fields enforced by
+`benchmarks.compare`:
 
 ```bash
-python -m benchmarks.compare artifacts/flaxchat.json artifacts/maxtext.json artifacts/nanochat.json
+python -m benchmarks.compare --protocol benchmarks/protocol.yaml \
+  artifacts/flaxchat.json artifacts/maxtext.json artifacts/nanochat.json
 ```
 
-The command fails closed if hardware, device count, precision, parameter count,
-sequence length, global batch size, or validation metric differs. It never
+The command fails closed if the protocol hash, dataset revision, optimizer,
+seed, warmup/measurement counts, hardware, device count, precision, parameter
+target/tolerance, sequence length, global batch size, or validation metric differs.
+Each actual trainable parameter count must fall within the declared tolerance.
+The CLI recomputes the protocol file's SHA-256 and rejects records bound to any
+other protocol. Exact
+40-character source revisions and finite measurements are mandatory. It never
 silently presents unmatched historical numbers as an apples-to-apples result.
 Records must include tokens/sec, model FLOPs utilization, compile time, peak
 memory, checkpoint time, scaling efficiency, validation quality, and an

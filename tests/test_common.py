@@ -2,10 +2,12 @@
 Tests for common utilities.
 """
 
+from unittest.mock import patch
+
 import pytest
 from flaxchat.common import (
     COMPUTE_DTYPE, COMPUTE_DTYPE_REASON,
-    get_base_dir, get_peak_flops, DummyWandb,
+    compute_init, get_base_dir, get_peak_flops, DummyWandb,
 )
 import jax.numpy as jnp
 
@@ -45,3 +47,40 @@ class TestDummyWandb:
         wb = DummyWandb()
         wb.log({"loss": 1.0})  # should not raise
         wb.finish()  # should not raise
+
+
+class TestComputeInit:
+    def test_distributed_initialization_precedes_topology_queries(self, monkeypatch):
+        events = []
+        monkeypatch.setenv("JAX_COORDINATOR_ADDRESS", "coordinator:1234")
+        with (
+            patch("flaxchat.common.jax.distributed.is_initialized", return_value=False),
+            patch(
+                "flaxchat.common.jax.distributed.initialize",
+                side_effect=lambda: events.append("initialize"),
+            ),
+            patch(
+                "flaxchat.common.jax.process_count",
+                side_effect=lambda: events.append("process_count") or 2,
+            ),
+            patch("flaxchat.common.jax.device_count", return_value=8),
+            patch("flaxchat.common.jax.local_device_count", return_value=4),
+            patch("flaxchat.common.jax.default_backend", return_value="tpu"),
+            patch("flaxchat.common.setup_mesh", return_value="mesh"),
+        ):
+            assert compute_init() == "mesh"
+        assert events[0] == "initialize"
+
+    def test_initialized_launcher_is_not_initialized_twice(self, monkeypatch):
+        monkeypatch.setenv("TPU_WORKER_ID", "0")
+        with (
+            patch("flaxchat.common.jax.distributed.is_initialized", return_value=True),
+            patch("flaxchat.common.jax.distributed.initialize") as initialize,
+            patch("flaxchat.common.jax.process_count", return_value=2),
+            patch("flaxchat.common.jax.device_count", return_value=8),
+            patch("flaxchat.common.jax.local_device_count", return_value=4),
+            patch("flaxchat.common.jax.default_backend", return_value="tpu"),
+            patch("flaxchat.common.setup_mesh", return_value="mesh"),
+        ):
+            compute_init()
+        initialize.assert_not_called()

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,14 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "accelerators" / "kaggle" / "launch.py"
+_GIT_SHA = re.compile(r"[0-9a-f]{40}")
+
+
+def validate_revision(revision: str) -> str:
+    """Require an immutable, full Git object ID for remote execution."""
+    if not _GIT_SHA.fullmatch(revision):
+        raise ValueError("revision must be a full lowercase 40-character Git SHA")
+    return revision
 
 
 def kaggle_cli() -> list[str] | None:
@@ -93,6 +102,10 @@ def main() -> int:
     revision = args.revision or subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
     ).strip()
+    try:
+        revision = validate_revision(revision)
+    except ValueError as error:
+        parser.error(str(error))
     owner, separator, slug = args.kernel_id.partition("/")
     if not separator or not owner or not slug:
         parser.error("--kernel-id must use owner/kernel-slug")

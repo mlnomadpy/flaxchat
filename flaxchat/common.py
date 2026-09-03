@@ -286,8 +286,20 @@ def compute_init():
 
     Returns the mesh after calling setup_mesh().
     """
-    # Multi-host init (TPU pods, SLURM clusters)
-    if jax.process_count() > 1 or 'JAX_COORDINATOR_ADDRESS' in os.environ:
+    # Distributed initialization must happen before *any* topology query: calls
+    # such as process_count() may initialize the backend and make a later
+    # initialize() fail. Explicit JAX coordination and Cloud TPU worker
+    # environments are both recognized. Already-initialized launchers are safe.
+    distributed_keys = (
+        "JAX_COORDINATOR_ADDRESS",
+        "JAX_PROCESS_COUNT",
+        "JAX_PROCESS_INDEX",
+        "TPU_WORKER_ID",
+        "TPU_WORKER_HOSTNAMES",
+        "CLOUD_TPU_TASK_ID",
+    )
+    distributed_environment = any(os.environ.get(key) for key in distributed_keys)
+    if distributed_environment and not jax.distributed.is_initialized():
         jax.distributed.initialize()
 
     print0(f"Devices: {jax.device_count()} total, "
@@ -309,7 +321,7 @@ def get_peak_flops(device_kind: str | None = None) -> float:
     if device_kind is None:
         devices = jax.devices()
         if devices:
-            device_kind = devices[0].device_kind
+            device_kind = str(devices[0].device_kind)
         else:
             return float('inf')
 

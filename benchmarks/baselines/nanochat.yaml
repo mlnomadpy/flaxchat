@@ -1,10 +1,19 @@
 framework: nanochat
-source_revision: REQUIRED
-model_parameters: 90000000
-sequence_length: 1024
-global_batch_size: 256
-precision: bfloat16
+repository: https://github.com/karpathy/nanochat.git
+source_revision: a445144d3905c6845fda2d3cab8e63248a70cd32
+target_model_parameters: 600000
+parameter_tolerance_fraction: 0.05
+parameter_counting: trainable_parameters
+sequence_length: 256
+global_batch_size: 8
+precision: float32
 optimizer: adamw
 dataset: roneneldan/TinyStories
 dataset_revision: f54c09fd23315a6f9c86f9dc80f725de7d8f9c64
 measurement: post_compile_steady_state
+hardware: Tesla P100-PCIE-16GB
+device_count: 1
+seed: 42
+warmup_steps: 5
+measured_steps: 20
+status: pending_matched_run
