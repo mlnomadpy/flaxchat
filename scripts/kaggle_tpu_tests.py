@@ -55,6 +55,8 @@ def command(*args: str, capture: bool = False) -> subprocess.CompletedProcess:
                 "connecttimeout",
                 "connection timed out",
                 "connectionerror",
+                "connection reset",
+                "connection aborted",
                 "max retries exceeded",
                 "temporarily unavailable",
             )

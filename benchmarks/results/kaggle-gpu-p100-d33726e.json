@@ -1,0 +1,38 @@
+{
+  "format_version": 1,
+  "source_revision": "d33726ea0606318ccce866f4b6b93f90e2688ff4",
+  "kaggle_kernel": "skywolfmo/flaxchat-gpu-full-test-suite",
+  "hardware": {"backend": "gpu", "device_kind": "Tesla P100-PCIE-16GB", "device_count": 1},
+  "suite": {"passed": true, "pytest_passed": 236, "pytest_skipped": 5},
+  "tinystories": {
+    "dataset_revision": "f54c09fd23315a6f9c86f9dc80f725de7d8f9c64",
+    "train_stories": 128,
+    "validation_stories": 32,
+    "pretrain_loss": [5.768511772155762, 5.768589019775391],
+    "sft_loss": [5.765129566192627],
+    "preference_loss": [1.7282425165176392],
+    "validation_loss": 5.763397216796875,
+    "wall_time_seconds": 24.153838252000014,
+    "attention_backend": "xla"
+  },
+  "xla_attention": [
+    {"sequence_length": 1024, "compile_seconds": 1.690720097000053, "tokens_per_second": 2779999.9275723184, "peak_bytes_estimate": 12845072},
+    {"sequence_length": 2048, "compile_seconds": 5.86745368000004, "tokens_per_second": 2499529.1006955663, "peak_bytes_estimate": 67387664}
+  ],
+  "speculative": {
+    "greedy_exact_match": true,
+    "max_tokens": 16,
+    "draft_steps": 4,
+    "acceptance_rate": 0.0,
+    "main_model_calls": 16,
+    "baseline_tokens_per_second": 6.576515972957412,
+    "speculative_tokens_per_second": 1.2941968950106317,
+    "speedup": 0.19679065637981577
+  },
+  "limitations": [
+    "The end-to-end run is an acceptance-scale training run, not a quality-converged checkpoint.",
+    "Compiled memory is argument plus output plus XLA temporary bytes, not a device-wide HBM watermark.",
+    "Attention microbenchmarks are single-program measurements and do not establish multi-device scaling efficiency.",
+    "The randomly initialized draft model accepted no proposed tokens in this run, so speculative decoding was correctly slower than baseline."
+  ]
+}
