@@ -91,6 +91,7 @@ summary = {
     "passed": bool(checks) and all(item["return_code"] == 0 for item in checks),
 }
 (RESULTS / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+shutil.rmtree(SOURCE, ignore_errors=True)
 print("\n===== FINAL SUMMARY =====", flush=True)
 print(json.dumps(summary, indent=2), flush=True)
 raise SystemExit(0 if summary["passed"] else 1)

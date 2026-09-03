@@ -112,7 +112,9 @@ def exact_attention(q, k, v, *, window_left: int, backend: str = "auto"):
 
     # Splash uses (heads, sequence, head_dim); vmap supplies the batch axis.
     kernel = _make_splash_kernel(q.shape[2], q.shape[1], window_left)
-    q_bhtd = jnp.transpose(q, (0, 2, 1, 3))
+    # Splash does not apply the conventional head-dimension scale itself.
+    # Keep it exactly aligned with the XLA path above.
+    q_bhtd = jnp.transpose(q * (1.0 / math.sqrt(q.shape[-1])), (0, 2, 1, 3))
     k_bhtd = jnp.transpose(k, (0, 2, 1, 3))
     v_bhtd = jnp.transpose(v, (0, 2, 1, 3))
     output = jax.vmap(kernel)(q_bhtd, k_bhtd, v_bhtd)

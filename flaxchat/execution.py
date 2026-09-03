@@ -206,29 +206,39 @@ def execute_code(
     """
     # JAX owns background threads, so forking the parent process can deadlock.
     # A fresh interpreter is slower to start but safe on every supported OS.
+    # On an accelerator host the isolated child must not reacquire the parent's
+    # exclusive TPU/GPU runtime; generated Python is intentionally CPU-only.
     context = multiprocessing.get_context("spawn")
-    with context.Manager() as manager:
-        result_dict = manager.dict()
-        process = context.Process(
-            target=_unsafe_execute,
-            args=(code, timeout, maximum_memory_bytes, result_dict),
-        )
-        process.start()
-        process.join(timeout=timeout + 1)
+    previous_platforms = os.environ.get("JAX_PLATFORMS")
+    os.environ["JAX_PLATFORMS"] = "cpu"
+    try:
+        with context.Manager() as manager:
+            result_dict = manager.dict()
+            process = context.Process(
+                target=_unsafe_execute,
+                args=(code, timeout, maximum_memory_bytes, result_dict),
+            )
+            process.start()
+            process.join(timeout=timeout + 1)
 
-        if process.is_alive():
-            process.kill()
-            process.join()
-            return ExecutionResult(timeout=True, error="Execution timed out (process killed)")
+            if process.is_alive():
+                process.kill()
+                process.join()
+                return ExecutionResult(timeout=True, error="Execution timed out (process killed)")
 
-        if not result_dict:
-            return ExecutionResult(error="Execution failed (no result)")
+            if not result_dict:
+                return ExecutionResult(error="Execution failed (no result)")
 
-        return ExecutionResult(
-            success=result_dict.get("success", False),
-            stdout=result_dict.get("stdout", ""),
-            stderr=result_dict.get("stderr", ""),
-            error=result_dict.get("error"),
-            timeout=result_dict.get("timeout", False),
-            memory_exceeded=result_dict.get("memory_exceeded", False),
-        )
+            return ExecutionResult(
+                success=result_dict.get("success", False),
+                stdout=result_dict.get("stdout", ""),
+                stderr=result_dict.get("stderr", ""),
+                error=result_dict.get("error"),
+                timeout=result_dict.get("timeout", False),
+                memory_exceeded=result_dict.get("memory_exceeded", False),
+            )
+    finally:
+        if previous_platforms is None:
+            os.environ.pop("JAX_PLATFORMS", None)
+        else:
+            os.environ["JAX_PLATFORMS"] = previous_platforms
