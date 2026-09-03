@@ -145,6 +145,35 @@ class TestSpecialTokens:
             assert isinstance(token, str)
 
 
+class TestConversationRendering:
+    def test_huggingface_backend_marks_only_assistant_targets(
+        self, trained_tokenizer
+    ):
+        conversation = {
+            "messages": [
+                {"role": "user", "content": "Tell me a story."},
+                {"role": "assistant", "content": "Once upon a time."},
+            ]
+        }
+        ids, mask = trained_tokenizer.render_conversation(conversation)
+        assert len(ids) == len(mask)
+        assert any(mask)
+        first_target = mask.index(1)
+        assert all(value == 0 for value in mask[:first_target])
+        assert ids[-1] == trained_tokenizer.encode_special("<|assistant_end|>")
+
+    def test_completion_removes_reference_answer(self, trained_tokenizer):
+        conversation = {
+            "messages": [
+                {"role": "user", "content": "Continue."},
+                {"role": "assistant", "content": "Secret answer."},
+            ]
+        }
+        ids = trained_tokenizer.render_for_completion(conversation)
+        assert ids[-1] == trained_tokenizer.encode_special("<|assistant_start|>")
+        assert "Secret answer" not in trained_tokenizer.decode(ids)
+
+
 # ---------------------------------------------------------------------------
 # Tests for save / load round-trip
 # ---------------------------------------------------------------------------

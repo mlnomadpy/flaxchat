@@ -6,12 +6,14 @@ Reproducibility and checkpoint contracts are documented in
 
 A minimal, end-to-end LLM training harness for **Google Cloud TPU pods**, built on **JAX/Flax NNX**.
 
-Faithful port of [nanochat](https://github.com/karpathy/nanochat) (Andrej Karpathy's PyTorch GPU trainer) to the JAX ecosystem, with full feature parity plus speculative decoding.
+JAX/Flax NNX adaptation of [nanochat](https://github.com/karpathy/nanochat),
+with TPU-oriented execution and speculative decoding.
 
 ```bash
 pixi install
-pixi run test                     # 204 collected tests
-python -m scripts.run_tinystories # full pipeline on TinyStories
+pixi run test
+pixi run test-e2e                 # offline end-to-end acceptance smoke
+python -m scripts.run_tinystories # pinned TinyStories end-to-end pipeline
 ```
 
 ---
@@ -74,7 +76,7 @@ Four generation modes with increasing performance:
 | Padded | `generate()` | ~1-2 tok/s | Testing, debugging |
 | KV-cached | `generate_with_cache()` | ~10-50 tok/s | Production, Python loop |
 | Fully JIT | `generate_fast()` | ~200+ tok/s | TPU inference via `jax.lax.while_loop` |
-| Speculative | `generate_speculative()` | ~2-4x KV-cached | Large model + small draft model |
+| Speculative | `generate_speculative()` | Measured per pairing | Large model + small draft model |
 
 ### Tool Use
 
@@ -163,8 +165,15 @@ pixi install    # or: pip install -e ".[dev]"
 ### Train locally on TinyStories
 
 ```bash
-python -m scripts.run_tinystories --depth=4 --steps=1000
+python -m scripts.run_tinystories \
+  --layers=4 --embedding-dim=256 \
+  --pretrain-steps=1000 --sft-steps=100 --rl-steps=100
 ```
+
+The dataset is streamed from an immutable revision. The output directory
+contains the trained tokenizer, complete Orbax state, generated sample, stage
+metrics, source/config/data hashes, licensing metadata, and `run_manifest.json`.
+Use `--smoke` for the committed offline corpus.
 
 ### Full pipeline on TPU pod
 
@@ -301,7 +310,9 @@ tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
 | Kaggle TPU v5e-8 | 8L/512d (90.2M) | 149K tok/s | 2.79 | 109s |
 
 The suite is exercised on macOS and Linux CPUs, eight virtual JAX devices,
-and a manually dispatched Kaggle TPU v5e-8 workflow.
+and a Kaggle TPU workflow. The accelerator bundle runs all tests, the pinned
+TinyStories pipeline, 1K–8K Splash attention measurements, and speculative
+decoding characterization in one queued job.
 
 ## Comparison with nanochat
 

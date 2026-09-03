@@ -23,7 +23,7 @@ All backends implement the same `RemoteRunner` interface.
 
 ```bash
 pixi install
-python -m scripts.run_tinystories --depth=4 --steps=1000
+python -m scripts.run_tinystories --layers=4 --pretrain-steps=1000
 ```
 
 ## 2. Kaggle TPU test bundle
@@ -35,8 +35,9 @@ python -m scripts.kaggle_tpu_tests \
 ```
 
 The generated private kernel checks out the exact current Git revision, installs
-TPU JAX, verifies eight devices, runs the entire suite once, and runs the public
-pretraining smoke. Logs, JUnit XML, and a JSON summary are downloaded together.
+TPU JAX, verifies eight devices, runs the entire suite once, executes the pinned
+TinyStories end-to-end pipeline, and records attention/speculative benchmarks.
+Logs, artifacts, JUnit XML, and a JSON summary are downloaded together.
 
 ## 3. GCP TPU Pod
 

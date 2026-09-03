@@ -408,12 +408,13 @@ def _prefill(model, tokens, k_cache, v_cache, prev_emb):
 
 
 def generate_speculative(model, draft_model, tokens, max_tokens=256,
-                         temperature=1.0, top_k=40, seed=42, draft_steps=4):
+                         temperature=1.0, top_k=40, seed=42, draft_steps=4,
+                         return_stats=False):
     """Speculative decoding: use a smaller draft model to propose tokens, verify with the main model.
 
     Algorithm:
         1. Draft model generates ``draft_steps`` tokens autoregressively.
-        2. Main model verifies all draft tokens via sequential forward passes.
+        2. Main model verifies the whole proposal block in one batched forward pass.
         3. Compare draft vs main model distributions at each position.
         4. Accept tokens where draft distribution matches main (rejection sampling).
         5. If a token is rejected, resample from the adjusted distribution.
@@ -432,31 +433,43 @@ def generate_speculative(model, draft_model, tokens, max_tokens=256,
         seed: random seed
         draft_steps: number of tokens the draft model proposes per round
 
+        return_stats: return ``(tokens, stats)`` with verification accounting
+
     Returns:
-        list of int -- prompt + generated tokens
+        prompt + generated tokens, optionally paired with a statistics dictionary
     """
     assert model.config.vocab_size == draft_model.config.vocab_size, \
         "Main and draft models must share the same vocabulary size"
+
+    if draft_steps < 1:
+        raise ValueError("draft_steps must be positive")
+    if len(tokens) + max_tokens > model.config.sequence_len:
+        raise ValueError("prompt plus max_tokens exceeds the main model sequence length")
+    if len(tokens) + max_tokens > draft_model.config.sequence_len:
+        raise ValueError("prompt plus max_tokens exceeds the draft model sequence length")
 
     sharding = _get_replicated_sharding()
     key = jax.random.key(seed)
     vocab_size = model.config.vocab_size
     total_len = len(tokens) + max_tokens + draft_steps  # extra room for draft overshoot
 
-    # Initialize KV caches for both models
-    main_k, main_v, main_prev = _init_kv_cache(model, total_len)
+    # Only the cheap draft model decodes serially. The main model verifies an
+    # entire proposed block with one full causal forward pass.
     draft_k, draft_v, draft_prev = _init_kv_cache(draft_model, total_len)
 
-    # Prefill both models with the prompt
-    main_logits, main_k, main_v, main_prev, main_pos = _prefill(
-        model, tokens, main_k, main_v, main_prev
-    )
     draft_logits, draft_k, draft_v, draft_prev, draft_pos = _prefill(
         draft_model, tokens, draft_k, draft_v, draft_prev
     )
 
     generated = list(tokens)
-    num_generated = 0
+    prompt_length = len(tokens)
+    stats = {
+        "main_model_calls": 0,
+        "draft_model_calls": 0,
+        "proposed_tokens": 0,
+        "accepted_draft_tokens": 0,
+        "rejected_blocks": 0,
+    }
 
     def _apply_top_k(logits_2d, k):
         """Apply top-k filtering to logits (1, V) -> filtered logits (1, V)."""
@@ -481,11 +494,13 @@ def generate_speculative(model, draft_model, tokens, max_tokens=256,
         token = jax.random.categorical(sk, jnp.log(jnp.maximum(probs, 1e-10)))
         return int(token), rng
 
-    while num_generated < max_tokens:
+    while len(generated) - prompt_length < max_tokens:
         # --- Phase 1: Draft model generates draft_steps tokens ---
         draft_tokens = []
         draft_probs_list = []
-        steps_this_round = min(draft_steps, max_tokens - num_generated)
+        steps_this_round = min(
+            draft_steps, max_tokens - (len(generated) - prompt_length)
+        )
 
         cur_draft_logits = draft_logits
 
@@ -499,6 +514,7 @@ def generate_speculative(model, draft_model, tokens, max_tokens=256,
                 token = int(jnp.argmax(d_probs))
 
             draft_tokens.append(token)
+            stats["draft_model_calls"] += 1
 
             # Advance draft model by one step
             tok = _to_device(jnp.array([[token]], dtype=jnp.int32), sharding)
@@ -507,23 +523,25 @@ def generate_speculative(model, draft_model, tokens, max_tokens=256,
             )
             draft_pos = draft_pos + 1
 
-        # --- Phase 2: Main model verifies all draft tokens ---
-        main_probs_list = []
-        verify_logits = main_logits
-
-        for i, dt in enumerate(draft_tokens):
-            m_probs = _get_probs(verify_logits, temperature)
-            main_probs_list.append(m_probs)
-
-            # Advance main model
-            tok = _to_device(jnp.array([[dt]], dtype=jnp.int32), sharding)
-            verify_logits, main_k, main_v, main_prev = _single_step_forward(
-                model, tok, main_pos, main_k, main_v, main_prev
-            )
-            main_pos = main_pos + 1
+        # --- Phase 2: Main model verifies all draft tokens in one call ---
+        prefix_length = len(generated)
+        verification_tokens = generated + draft_tokens
+        padded = verification_tokens + [0] * (
+            model.config.sequence_len - len(verification_tokens)
+        )
+        verify_logits = model(_to_device(
+            jnp.asarray([padded], dtype=jnp.int32), sharding
+        ))
+        main_probs_list = [
+            _get_probs(verify_logits[:, prefix_length - 1 + i, :], temperature)
+            for i in range(len(draft_tokens))
+        ]
+        stats["main_model_calls"] += 1
+        stats["proposed_tokens"] += len(draft_tokens)
 
         # --- Phase 3: Accept/reject draft tokens ---
         accepted = 0
+        rejected = False
         for i in range(len(draft_tokens)):
             d_probs = draft_probs_list[i]
             m_probs = main_probs_list[i]
@@ -534,11 +552,12 @@ def generate_speculative(model, draft_model, tokens, max_tokens=256,
                 if int(jnp.argmax(m_probs)) == dt:
                     generated.append(dt)
                     accepted += 1
+                    stats["accepted_draft_tokens"] += 1
                 else:
                     # Reject: use main model's choice
                     corrected = int(jnp.argmax(m_probs))
                     generated.append(corrected)
-                    accepted += 1
+                    rejected = True
                     break
             else:
                 # Stochastic: acceptance probability = min(1, p_main / p_draft)
@@ -558,6 +577,7 @@ def generate_speculative(model, draft_model, tokens, max_tokens=256,
                 if u < accept_prob:
                     generated.append(dt)
                     accepted += 1
+                    stats["accepted_draft_tokens"] += 1
                 else:
                     # Resample from adjusted distribution: max(0, p_main - p_draft)
                     adjusted = jnp.maximum(m_probs - d_probs, 0.0)
@@ -565,47 +585,46 @@ def generate_speculative(model, draft_model, tokens, max_tokens=256,
                     adjusted = jnp.where(adj_sum > 0, adjusted / adj_sum, m_probs)
                     corrected, key = _sample_from_probs(adjusted, key)
                     generated.append(corrected)
-                    accepted += 1
+                    rejected = True
                     break
 
-        num_generated += accepted
-
-        if accepted == len(draft_tokens):
+        if not rejected and accepted == len(draft_tokens) and (
+            len(generated) - prompt_length < max_tokens
+        ):
             # All accepted: sample bonus token from main model's final logits
-            bonus_probs = _get_probs(verify_logits, temperature)
+            bonus_probs = _get_probs(
+                verify_logits[:, prefix_length + len(draft_tokens) - 1, :],
+                temperature,
+            )
             if temperature > 0:
                 bonus_token, key = _sample_from_probs(bonus_probs, key)
             else:
                 bonus_token = int(jnp.argmax(bonus_probs))
             generated.append(bonus_token)
-            num_generated += 1
 
-            # Advance both models with the bonus token
+            # Advance the draft cache with the main model's bonus token.
             tok = _to_device(jnp.array([[bonus_token]], dtype=jnp.int32), sharding)
-            main_logits, main_k, main_v, main_prev = _single_step_forward(
-                model, tok, main_pos, main_k, main_v, main_prev
-            )
-            main_pos = main_pos + 1
             draft_logits, draft_k, draft_v, draft_prev = _single_step_forward(
                 draft_model, tok, draft_pos, draft_k, draft_v, draft_prev
             )
             draft_pos = draft_pos + 1
-        else:
+            stats["draft_model_calls"] += 1
+        elif rejected:
             # Rejection occurred: resync draft model cache from scratch.
             # The draft model is small so this is fast.
+            stats["rejected_blocks"] += 1
             all_tokens_so_far = generated[:]
             draft_k, draft_v, draft_prev = _init_kv_cache(draft_model, total_len)
             draft_logits, draft_k, draft_v, draft_prev, draft_pos = _prefill(
                 draft_model, all_tokens_so_far, draft_k, draft_v, draft_prev
             )
 
-            # Resync main model cache too (corrected token may differ from draft)
-            main_k, main_v, main_prev = _init_kv_cache(model, total_len)
-            main_logits, main_k, main_v, main_prev, main_pos = _prefill(
-                model, all_tokens_so_far, main_k, main_v, main_prev
-            )
-
-    return generated[:len(tokens) + max_tokens]
+    result = generated[:prompt_length + max_tokens]
+    stats["acceptance_rate"] = (
+        stats["accepted_draft_tokens"] / stats["proposed_tokens"]
+        if stats["proposed_tokens"] else 0.0
+    )
+    return (result, stats) if return_stats else result
 
 
 # ---------------------------------------------------------------------------
@@ -899,10 +918,12 @@ class Engine:
         )
 
     def generate_speculative(self, draft_model, tokens, max_tokens=256,
-                             temperature=1.0, top_k=40, seed=42, draft_steps=4):
+                             temperature=1.0, top_k=40, seed=42, draft_steps=4,
+                             return_stats=False):
         """Speculative decoding via Engine interface. Delegates to generate_speculative()."""
         return generate_speculative(
             self.model, draft_model, tokens,
             max_tokens=max_tokens, temperature=temperature,
             top_k=top_k, seed=seed, draft_steps=draft_steps,
+            return_stats=return_stats,
         )

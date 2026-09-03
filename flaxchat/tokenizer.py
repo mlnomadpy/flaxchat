@@ -26,6 +26,70 @@ SPECIAL_TOKENS = [
 SPLIT_PATTERN = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1,2}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+"""
 
 
+def _render_conversation(tokenizer, conversation, max_tokens=2048):
+    """Backend-independent chat rendering with assistant-token supervision."""
+    ids, mask = [], []
+
+    def add_tokens(token_ids, mask_value):
+        values = [token_ids] if isinstance(token_ids, int) else token_ids
+        ids.extend(values)
+        mask.extend([mask_value] * len(values))
+
+    messages = copy.deepcopy(conversation["messages"])
+    if messages and messages[0]["role"] == "system":
+        if len(messages) < 2 or messages[1]["role"] != "user":
+            raise ValueError("A system message must be followed by a user message")
+        messages[1]["content"] = messages[0]["content"] + "\n\n" + messages[1]["content"]
+        messages = messages[1:]
+    if not messages:
+        raise ValueError("Conversation must contain at least one message")
+
+    add_tokens(tokenizer.get_bos_token_id(), 0)
+    for index, message in enumerate(messages):
+        expected_role = "user" if index % 2 == 0 else "assistant"
+        if message["role"] != expected_role:
+            raise ValueError(f"Expected {expected_role} message at index {index}")
+        content = message["content"]
+        if expected_role == "user":
+            if not isinstance(content, str):
+                raise TypeError("User message content must be text")
+            add_tokens(tokenizer.encode_special("<|user_start|>"), 0)
+            add_tokens(tokenizer.encode(content), 0)
+            add_tokens(tokenizer.encode_special("<|user_end|>"), 0)
+            continue
+
+        add_tokens(tokenizer.encode_special("<|assistant_start|>"), 0)
+        parts = [{"type": "text", "text": content}] if isinstance(content, str) else content
+        for part in parts:
+            part_type = part["type"]
+            value_ids = tokenizer.encode(part["text"])
+            if part_type == "text":
+                add_tokens(value_ids, 1)
+            elif part_type == "python":
+                add_tokens(tokenizer.encode_special("<|python_start|>"), 1)
+                add_tokens(value_ids, 1)
+                add_tokens(tokenizer.encode_special("<|python_end|>"), 1)
+            elif part_type == "python_output":
+                add_tokens(tokenizer.encode_special("<|output_start|>"), 0)
+                add_tokens(value_ids, 0)
+                add_tokens(tokenizer.encode_special("<|output_end|>"), 0)
+            else:
+                raise ValueError(f"Unsupported assistant content type: {part_type!r}")
+        add_tokens(tokenizer.encode_special("<|assistant_end|>"), 1)
+    return ids[:max_tokens], mask[:max_tokens]
+
+
+def _render_for_completion(tokenizer, conversation):
+    conversation = copy.deepcopy(conversation)
+    messages = conversation["messages"]
+    if not messages or messages[-1]["role"] != "assistant":
+        raise ValueError("Completion conversations must end with an assistant message")
+    messages.pop()
+    ids, _ = _render_conversation(tokenizer, conversation)
+    ids.append(tokenizer.encode_special("<|assistant_start|>"))
+    return ids
+
+
 # ---------------------------------------------------------------------------
 # HuggingFace Tokenizer wrapper
 # ---------------------------------------------------------------------------
@@ -121,12 +185,10 @@ class HuggingFaceTokenizer:
         print(f"Saved tokenizer to {tokenizer_path}")
 
     def render_conversation(self, conversation, max_tokens=2048):
-        """Not implemented for HuggingFaceTokenizer. Use RustBPETokenizer for SFT/RL."""
-        raise NotImplementedError("render_conversation requires RustBPETokenizer")
+        return _render_conversation(self, conversation, max_tokens)
 
     def render_for_completion(self, conversation):
-        """Not implemented for HuggingFaceTokenizer. Use RustBPETokenizer for SFT/RL."""
-        raise NotImplementedError("render_for_completion requires RustBPETokenizer")
+        return _render_for_completion(self, conversation)
 
 
 # ---------------------------------------------------------------------------
@@ -225,76 +287,11 @@ class RustBPETokenizer:
 
     def render_conversation(self, conversation, max_tokens=2048):
         """Tokenize a chat conversation, returning (ids, mask)."""
-        ids, mask = [], []
-        def add_tokens(token_ids, mask_val):
-            if isinstance(token_ids, int):
-                token_ids = [token_ids]
-            ids.extend(token_ids)
-            mask.extend([mask_val] * len(token_ids))
-
-        if conversation["messages"][0]["role"] == "system":
-            conversation = copy.deepcopy(conversation)
-            messages = conversation["messages"]
-            assert messages[1]["role"] == "user"
-            messages[1]["content"] = messages[0]["content"] + "\n\n" + messages[1]["content"]
-            messages = messages[1:]
-        else:
-            messages = conversation["messages"]
-        assert len(messages) >= 1
-
-        bos = self.get_bos_token_id()
-        user_start = self.encode_special("<|user_start|>")
-        user_end = self.encode_special("<|user_end|>")
-        assistant_start = self.encode_special("<|assistant_start|>")
-        assistant_end = self.encode_special("<|assistant_end|>")
-        python_start = self.encode_special("<|python_start|>")
-        python_end = self.encode_special("<|python_end|>")
-        output_start = self.encode_special("<|output_start|>")
-        output_end = self.encode_special("<|output_end|>")
-
-        add_tokens(bos, 0)
-        for i, message in enumerate(messages):
-            must_be_from = "user" if i % 2 == 0 else "assistant"
-            assert message["role"] == must_be_from
-
-            content = message["content"]
-            if message["role"] == "user":
-                assert isinstance(content, str)
-                add_tokens(user_start, 0)
-                add_tokens(self.encode(content), 0)
-                add_tokens(user_end, 0)
-            elif message["role"] == "assistant":
-                add_tokens(assistant_start, 0)
-                if isinstance(content, str):
-                    add_tokens(self.encode(content), 1)
-                elif isinstance(content, list):
-                    for part in content:
-                        value_ids = self.encode(part["text"])
-                        if part["type"] == "text":
-                            add_tokens(value_ids, 1)
-                        elif part["type"] == "python":
-                            add_tokens(python_start, 1)
-                            add_tokens(value_ids, 1)
-                            add_tokens(python_end, 1)
-                        elif part["type"] == "python_output":
-                            add_tokens(output_start, 0)
-                            add_tokens(value_ids, 0)
-                            add_tokens(output_end, 0)
-                add_tokens(assistant_end, 1)
-
-        ids = ids[:max_tokens]
-        mask = mask[:max_tokens]
-        return ids, mask
+        return _render_conversation(self, conversation, max_tokens)
 
     def render_for_completion(self, conversation):
         """Render conversation priming the assistant for RL completion."""
-        conversation = copy.deepcopy(conversation)
-        messages = conversation["messages"]
-        assert messages[-1]["role"] == "assistant"
-        messages.pop()
-        ids, mask = self.render_conversation(conversation)
-        ids.append(self.encode_special("<|assistant_start|>"))
-        return ids
+        return _render_for_completion(self, conversation)
 
 
 # ---------------------------------------------------------------------------

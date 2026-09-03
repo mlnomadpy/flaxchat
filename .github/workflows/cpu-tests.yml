@@ -48,11 +48,27 @@ jobs:
         with:
           cache: true
       - run: pixi run test-multidevice
+      - name: Restore an 8-device checkpoint on one device
+        run: pixi run pytest tests/test_checkpoint_topology.py -v
       - name: Public CLI smoke test
         env:
           FLAXCHAT_BASE_DIR: ${{ runner.temp }}/flaxchat
           XLA_FLAGS: --xla_force_host_platform_device_count=8
         run: pixi run python -m scripts.pretrain --cpu-smoke
+
+  end-to-end:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+      - run: pixi run test-e2e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tinystories-smoke-artifacts
+          path: artifacts/tinystories-smoke
 
   package:
     runs-on: ubuntu-latest

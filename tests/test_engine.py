@@ -149,6 +149,36 @@ class TestSpeculativeDecoding:
             f"Mismatch:\ncached:      {out_cached}\nspeculative: {out_spec}"
         )
 
+    def test_speculative_greedy_matches_after_rejection(
+        self, tiny_model, draft_model
+    ):
+        """A disagreeing draft must not leave the verifier on a stale cache."""
+        draft_model.lm_head.kernel[...] = -draft_model.lm_head.kernel[...]
+        prompt = [0, 1, 2, 3, 4]
+        expected = generate_with_cache(
+            tiny_model, prompt, max_tokens=8, temperature=0, top_k=40
+        )
+        actual, stats = generate_speculative(
+            tiny_model,
+            draft_model,
+            prompt,
+            max_tokens=8,
+            temperature=0,
+            top_k=40,
+            draft_steps=4,
+            return_stats=True,
+        )
+        assert actual == expected
+        assert stats["rejected_blocks"] > 0
+        assert stats["main_model_calls"] < stats["proposed_tokens"]
+        assert 0.0 <= stats["acceptance_rate"] <= 1.0
+
+    def test_speculative_validates_decode_window(self, tiny_model, draft_model):
+        with pytest.raises(ValueError, match="sequence length"):
+            generate_speculative(
+                tiny_model, draft_model, [0] * 60, max_tokens=8
+            )
+
 
 class TestCalculator:
     def test_basic_math(self):

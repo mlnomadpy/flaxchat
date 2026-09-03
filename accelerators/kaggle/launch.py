@@ -83,6 +83,42 @@ if install["return_code"] == 0:
         [sys.executable, "-m", "scripts.pretrain", "--cpu-smoke"],
         cwd=SOURCE,
     ))
+    checks.append(run(
+        "tinystories-e2e",
+        [
+            sys.executable, "-m", "scripts.run_tinystories",
+            "--output-dir", str(RESULTS / "tinystories"),
+            "--max-train-stories", "128",
+            "--max-validation-stories", "32",
+            "--sequence-length", "128",
+            "--embedding-dim", "32",
+            "--batch-size", "8",
+            "--pretrain-steps", "2",
+            "--sft-steps", "1",
+            "--rl-steps", "1",
+            "--max-new-tokens", "4",
+        ],
+        cwd=SOURCE,
+    ))
+    checks.append(run(
+        "attention-benchmark",
+        [
+            sys.executable, "-m", "benchmarks.attention",
+            "--backend", "splash",
+            "--sequence-lengths", "1024", "2048", "4096", "8192",
+            "--heads", "2", "--head-dim", "16",
+            "--warmup", "1", "--iterations", "3",
+        ],
+        cwd=SOURCE,
+    ))
+    checks.append(run(
+        "speculative-benchmark",
+        [
+            sys.executable, "-m", "benchmarks.speculative",
+            "--max-tokens", "16", "--draft-steps", "4", "--iterations", "3",
+        ],
+        cwd=SOURCE,
+    ))
 
 summary = {
     "source_repository": SOURCE_REPOSITORY,

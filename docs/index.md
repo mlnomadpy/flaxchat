@@ -17,8 +17,9 @@ Part of the **2026 Q1 TPU Research Sprint**, supported by the [Google AI Develop
 
 ```bash
 pixi install
-pixi run test          # 204 collected tests
-pixi run -- python -m scripts.run_tinystories --depth=8 --steps=5000
+pixi run test
+pixi run test-e2e
+pixi run -- python -m scripts.run_tinystories --layers=8 --pretrain-steps=5000
 ```
 
 ---
@@ -43,7 +44,7 @@ pixi run -- python -m scripts.run_tinystories --depth=8 --steps=5000
 | Padded | `generate()` | ~1-2 tok/s | Simple, for debugging |
 | KV-cached | `generate_with_cache()` | ~10-50 tok/s | Python loop with KV cache |
 | Fully JIT | `generate_fast()` | ~200+ tok/s | `jax.lax.while_loop`, no Python overhead |
-| Speculative | `generate_speculative()` | ~2-4x cached | Draft model proposes, main model verifies |
+| Speculative | `generate_speculative()` | Benchmark per pairing | Batched main-model verification |
 
 ### Tool Use (streaming)
 ```python
