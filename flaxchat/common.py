@@ -6,6 +6,7 @@ TPU mesh setup, distributed helpers, logging, peak FLOPS.
 import os
 import logging
 import urllib.request
+from collections.abc import Mapping
 from filelock import FileLock
 
 import jax
@@ -13,6 +14,38 @@ import jax.numpy as jnp
 import numpy as np
 from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
 from jax.experimental import mesh_utils
+
+
+# ---------------------------------------------------------------------------
+# Distributed initialization (must precede backend discovery)
+# ---------------------------------------------------------------------------
+_PROCESS_COUNT_KEYS = (
+    "JAX_PROCESS_COUNT",
+    "SLURM_NTASKS",
+    "OMPI_COMM_WORLD_SIZE",
+    "PMI_SIZE",
+)
+
+
+def _is_multi_process_environment(environment: Mapping[str, str]) -> bool:
+    """Return whether launcher metadata proves this is a multi-process job."""
+    if environment.get("JAX_COORDINATOR_ADDRESS"):
+        return True
+    for key in _PROCESS_COUNT_KEYS:
+        value = environment.get(key)
+        if value:
+            try:
+                if int(value) > 1:
+                    return True
+            except ValueError:
+                continue
+    worker_hosts = environment.get("TPU_WORKER_HOSTNAMES", "")
+    return len([host for host in worker_hosts.split(",") if host.strip()]) > 1
+
+
+def _initialize_distributed_if_needed() -> None:
+    if _is_multi_process_environment(os.environ) and not jax.distributed.is_initialized():
+        jax.distributed.initialize()
 
 
 # ---------------------------------------------------------------------------
@@ -31,7 +64,16 @@ def _detect_compute_dtype():
         return jnp.bfloat16, "auto-detected: GPU (bf16)"
     return jnp.float32, "auto-detected: CPU"
 
-COMPUTE_DTYPE, COMPUTE_DTYPE_REASON = _detect_compute_dtype()
+
+def _initialize_runtime():
+    """Initialize distributed JAX before backend discovery chooses precision."""
+    _initialize_distributed_if_needed()
+    return _detect_compute_dtype()
+
+
+# A lone TPU worker/task ID is deliberately insufficient evidence of a
+# distributed job: single-host Kaggle TPU VMs expose those markers too.
+COMPUTE_DTYPE, COMPUTE_DTYPE_REASON = _initialize_runtime()
 
 
 # ---------------------------------------------------------------------------
@@ -286,21 +328,9 @@ def compute_init():
 
     Returns the mesh after calling setup_mesh().
     """
-    # Distributed initialization must happen before *any* topology query: calls
-    # such as process_count() may initialize the backend and make a later
-    # initialize() fail. Explicit JAX coordination and Cloud TPU worker
-    # environments are both recognized. Already-initialized launchers are safe.
-    distributed_keys = (
-        "JAX_COORDINATOR_ADDRESS",
-        "JAX_PROCESS_COUNT",
-        "JAX_PROCESS_INDEX",
-        "TPU_WORKER_ID",
-        "TPU_WORKER_HOSTNAMES",
-        "CLOUD_TPU_TASK_ID",
-    )
-    distributed_environment = any(os.environ.get(key) for key in distributed_keys)
-    if distributed_environment and not jax.distributed.is_initialized():
-        jax.distributed.initialize()
+    # This is idempotent and normally already ran at module import, before dtype
+    # detection could initialize XLA. Keep it here for explicit entry-point use.
+    _initialize_distributed_if_needed()
 
     print0(f"Devices: {jax.device_count()} total, "
            f"{jax.local_device_count()} local, "

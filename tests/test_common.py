@@ -7,7 +7,8 @@ from unittest.mock import patch
 import pytest
 from flaxchat.common import (
     COMPUTE_DTYPE, COMPUTE_DTYPE_REASON,
-    compute_init, get_base_dir, get_peak_flops, DummyWandb,
+    _initialize_runtime, _is_multi_process_environment, compute_init,
+    get_base_dir, get_peak_flops, DummyWandb,
 )
 import jax.numpy as jnp
 
@@ -50,6 +51,53 @@ class TestDummyWandb:
 
 
 class TestComputeInit:
+    def test_runtime_initializes_before_backend_discovery(self, monkeypatch):
+        events = []
+        monkeypatch.setenv("JAX_COORDINATOR_ADDRESS", "coordinator:1234")
+        monkeypatch.delenv("FLAXCHAT_DTYPE", raising=False)
+        with (
+            patch("flaxchat.common.jax.distributed.is_initialized", return_value=False),
+            patch(
+                "flaxchat.common.jax.distributed.initialize",
+                side_effect=lambda: events.append("initialize"),
+            ),
+            patch(
+                "flaxchat.common.jax.default_backend",
+                side_effect=lambda: events.append("default_backend") or "tpu",
+            ),
+        ):
+            dtype, _ = _initialize_runtime()
+        assert dtype == jnp.bfloat16
+        assert events[0] == "initialize"
+
+    @pytest.mark.parametrize(
+        "environment",
+        [
+            {"JAX_COORDINATOR_ADDRESS": "coordinator:1234"},
+            {"JAX_PROCESS_COUNT": "2"},
+            {"SLURM_NTASKS": "4"},
+            {"OMPI_COMM_WORLD_SIZE": "8"},
+            {"PMI_SIZE": "2"},
+            {"TPU_WORKER_HOSTNAMES": "worker-0,worker-1"},
+        ],
+    )
+    def test_multi_process_launchers_are_detected(self, environment):
+        assert _is_multi_process_environment(environment)
+
+    @pytest.mark.parametrize(
+        "environment",
+        [
+            {},
+            {"CLOUD_TPU_TASK_ID": "0"},
+            {"TPU_WORKER_ID": "0"},
+            {"JAX_PROCESS_COUNT": "1", "JAX_PROCESS_INDEX": "0"},
+            {"TPU_WORKER_HOSTNAMES": "worker-0"},
+            {"SLURM_NTASKS": "not-an-integer"},
+        ],
+    )
+    def test_single_process_markers_are_not_distributed(self, environment):
+        assert not _is_multi_process_environment(environment)
+
     def test_distributed_initialization_precedes_topology_queries(self, monkeypatch):
         events = []
         monkeypatch.setenv("JAX_COORDINATOR_ADDRESS", "coordinator:1234")
@@ -72,7 +120,7 @@ class TestComputeInit:
         assert events[0] == "initialize"
 
     def test_initialized_launcher_is_not_initialized_twice(self, monkeypatch):
-        monkeypatch.setenv("TPU_WORKER_ID", "0")
+        monkeypatch.setenv("JAX_PROCESS_COUNT", "2")
         with (
             patch("flaxchat.common.jax.distributed.is_initialized", return_value=True),
             patch("flaxchat.common.jax.distributed.initialize") as initialize,
@@ -83,4 +131,23 @@ class TestComputeInit:
             patch("flaxchat.common.setup_mesh", return_value="mesh"),
         ):
             compute_init()
+        initialize.assert_not_called()
+
+    def test_kaggle_single_host_does_not_initialize_distributed(self, monkeypatch):
+        monkeypatch.delenv("JAX_COORDINATOR_ADDRESS", raising=False)
+        for key in ("JAX_PROCESS_COUNT", "SLURM_NTASKS", "OMPI_COMM_WORLD_SIZE", "PMI_SIZE"):
+            monkeypatch.delenv(key, raising=False)
+        monkeypatch.setenv("CLOUD_TPU_TASK_ID", "0")
+        monkeypatch.setenv("TPU_WORKER_ID", "0")
+        monkeypatch.setenv("TPU_WORKER_HOSTNAMES", "localhost")
+        with (
+            patch("flaxchat.common.jax.distributed.is_initialized", return_value=False),
+            patch("flaxchat.common.jax.distributed.initialize") as initialize,
+            patch("flaxchat.common.jax.process_count", return_value=1),
+            patch("flaxchat.common.jax.device_count", return_value=8),
+            patch("flaxchat.common.jax.local_device_count", return_value=8),
+            patch("flaxchat.common.jax.default_backend", return_value="tpu"),
+            patch("flaxchat.common.setup_mesh", return_value="mesh"),
+        ):
+            assert compute_init() == "mesh"
         initialize.assert_not_called()
