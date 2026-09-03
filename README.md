@@ -3,6 +3,8 @@
 Reproducibility and checkpoint contracts are documented in
 [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) and
 [docs/CHECKPOINT_FORMAT.md](docs/CHECKPOINT_FORMAT.md).
+Release gates and compatibility are documented in
+[docs/RELEASES.md](docs/RELEASES.md).
 
 A minimal, end-to-end LLM training harness for **Google Cloud TPU pods**, built on **JAX/Flax NNX**.
 
@@ -229,7 +231,7 @@ flaxchat/
 
 ## Test Suite
 
-**204 collected tests** across 17 test files cover model semantics, four
+The test suite covers model semantics, four
 generation modes, optimizer schedules and numerical safety, sandboxing,
 tokenizers, exact dataloader resume, checkpoint integrity, configuration,
 evaluation protocols, reports, datasets, sharding, and TPU attention parity.
@@ -238,6 +240,9 @@ evaluation protocols, reports, datasets, sharding, and TPU attention parity.
 pixi run test-quick       # deterministic CPU developer loop
 pixi run test-coverage    # branch coverage with a 65% floor
 pixi run test-multidevice # eight virtual CPU devices
+pixi run lint             # fatal Python correctness/static errors
+pixi run typecheck        # typed configuration and pipeline contracts
+pixi run audit            # declared dependency vulnerability audit
 ```
 
 ## Verified Results

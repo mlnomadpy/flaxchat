@@ -53,6 +53,8 @@ def test_complete_pipeline_emits_restorable_artifacts(tmp_path):
         "tokenizer", "pretrain", "sft", "rl", "eval", "inference"
     ]
     assert manifest["hardware"]["device_count"] >= 1
+    assert manifest["hardware"]["attention"]["selected"] in {"xla", "splash"}
+    assert "fallback_reason" in manifest["hardware"]["attention"]
     assert len(manifest["protocol_sha256"]) == 64
     assert len(manifest["checkpoint_manifest_sha256"]) == 64
     assert len(manifest["sample"]["token_ids"]) > 1

@@ -19,7 +19,7 @@ import optax
 from flaxchat.checkpoint import create_checkpoint_manager, save_checkpoint
 from flaxchat.common import compute_init, replicate_on_mesh
 from flaxchat.engine import generate_with_cache
-from flaxchat.gpt import GPT
+from flaxchat.gpt import GPT, attention_backend_metadata
 from flaxchat.config import GPTConfig
 from flaxchat.tokenizer import HuggingFaceTokenizer
 
@@ -266,7 +266,9 @@ def run_pipeline(
 
     train_tokens = _token_stream(tokenizer, train_stories)
     validation_tokens = _token_stream(tokenizer, validation_stories)
-    metrics = {"pretrain_loss": [], "sft_loss": [], "rl_loss": []}
+    pretrain_losses: list[float] = []
+    sft_losses: list[float] = []
+    rl_losses: list[float] = []
     for step in range(config.pretrain_steps):
         inputs, targets = _sample_batch(
             train_tokens, batch_size, config.sequence_length, step
@@ -277,7 +279,7 @@ def run_pipeline(
             jax.device_put(inputs, data_sharding),
             jax.device_put(targets, data_sharding),
         )
-        metrics["pretrain_loss"].append(float(loss))
+        pretrain_losses.append(float(loss))
 
     for _ in range(config.sft_steps):
         inputs, targets = _conversation_batch(
@@ -289,7 +291,7 @@ def run_pipeline(
             jax.device_put(inputs, data_sharding),
             jax.device_put(targets, data_sharding),
         )
-        metrics["sft_loss"].append(float(loss))
+        sft_losses.append(float(loss))
 
     for _ in range(config.rl_steps):
         inputs, targets, advantages = _preference_batch(
@@ -302,15 +304,20 @@ def run_pipeline(
             jax.device_put(targets, data_sharding),
             jax.device_put(advantages, NamedSharding(mesh, P("data"))),
         )
-        metrics["rl_loss"].append(float(loss))
+        rl_losses.append(float(loss))
 
     eval_inputs, eval_targets = _sample_batch(
         validation_tokens, batch_size, config.sequence_length, 0
     )
-    metrics["validation_loss"] = float(model(
-        jax.device_put(eval_inputs, data_sharding),
-        jax.device_put(eval_targets, data_sharding),
-    ))
+    metrics = {
+        "pretrain_loss": pretrain_losses,
+        "sft_loss": sft_losses,
+        "rl_loss": rl_losses,
+        "validation_loss": float(model(
+            jax.device_put(eval_inputs, data_sharding),
+            jax.device_put(eval_targets, data_sharding),
+        )),
+    }
     prompt = "Once upon a time"
     prompt_ids = tokenizer.encode(prompt, prepend=tokenizer.get_bos_token_id())
     generated_ids = generate_with_cache(
@@ -373,6 +380,9 @@ def run_pipeline(
             "backend": jax.default_backend(),
             "device_count": device_count,
             "device_kind": jax.devices()[0].device_kind,
+            "attention": attention_backend_metadata(
+                model_config.attention_backend, model_config.sequence_len
+            ),
         },
         "metrics": metrics,
         "sample": {"prompt": prompt, "text": sample, "token_ids": generated_ids},

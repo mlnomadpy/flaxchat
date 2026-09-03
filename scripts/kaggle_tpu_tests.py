@@ -1,4 +1,4 @@
-"""Submit and optionally monitor the complete suite through the Kaggle CLI."""
+"""Submit and optionally monitor the complete accelerator suite via Kaggle CLI."""
 
 from __future__ import annotations
 
@@ -78,6 +78,7 @@ def command(*args: str, capture: bool = False) -> subprocess.CompletedProcess:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--kernel-id", required=True, help="owner/kernel-slug")
+    parser.add_argument("--accelerator", choices=("tpu", "gpu"), default="tpu")
     parser.add_argument("--revision", help="git revision to test; defaults to HEAD")
     parser.add_argument("--repository", default="https://github.com/mlnomadpy/flaxchat.git")
     parser.add_argument("--wait", action="store_true", help="poll until complete or failed")
@@ -99,6 +100,14 @@ def main() -> int:
         source = TEMPLATE.read_text(encoding="utf-8")
         source = source.replace('"__SOURCE_REPOSITORY__"', json.dumps(args.repository))
         source = source.replace('"__SOURCE_REVISION__"', json.dumps(revision))
+        source = source.replace('"__ACCELERATOR__"', json.dumps(args.accelerator))
+        source = source.replace(
+            '"__JAX_REQUIREMENT__"',
+            json.dumps("jax[tpu]>=0.9.0" if args.accelerator == "tpu" else "jax[cuda12]>=0.9.0"),
+        )
+        source = source.replace(
+            "__MIN_DEVICE_COUNT__", "8" if args.accelerator == "tpu" else "1"
+        )
         (bundle / "launch.py").write_text(source, encoding="utf-8")
         metadata = {
             "id": args.kernel_id,
@@ -107,8 +116,8 @@ def main() -> int:
             "language": "python",
             "kernel_type": "script",
             "is_private": "true",
-            "enable_gpu": "false",
-            "enable_tpu": "true",
+            "enable_gpu": str(args.accelerator == "gpu").lower(),
+            "enable_tpu": str(args.accelerator == "tpu").lower(),
             "enable_internet": "true",
             "dataset_sources": [], "competition_sources": [],
             "kernel_sources": [], "model_sources": [],

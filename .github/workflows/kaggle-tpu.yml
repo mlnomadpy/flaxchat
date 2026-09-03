@@ -1,18 +1,23 @@
-name: Kaggle TPU tests
+name: Kaggle accelerator tests
 
 on:
   workflow_dispatch:
-    inputs:
-      kernel_id:
-        description: Existing private Kaggle kernel as owner/kernel-slug
-        required: true
-        default: skywolfmo/flaxchat-tpu-full-test-suite
+  schedule:
+    - cron: "0 3 1 * *"
 
 permissions:
   contents: read
 
 jobs:
-  tpu:
+  accelerator:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - accelerator: tpu
+            kernel_id: skywolfmo/flaxchat-tpu-full-test-suite
+          - accelerator: gpu
+            kernel_id: skywolfmo/flaxchat-gpu-full-test-suite
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -27,12 +32,13 @@ jobs:
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: >-
           python -m scripts.kaggle_tpu_tests
-          --kernel-id "${{ inputs.kernel_id }}"
+          --kernel-id "${{ matrix.kernel_id }}"
+          --accelerator "${{ matrix.accelerator }}"
           --revision "${{ github.sha }}"
           --wait
           --output-dir artifacts/kaggle
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: kaggle-tpu-results
+          name: kaggle-${{ matrix.accelerator }}-results
           path: artifacts/kaggle

@@ -1,4 +1,4 @@
-"""Kaggle TPU entry point generated with an exact repository revision."""
+"""Kaggle accelerator entry point generated with an exact repository revision."""
 
 from __future__ import annotations
 
@@ -12,9 +12,12 @@ import time
 
 WORK = Path("/kaggle/working")
 SOURCE = WORK / "flaxchat"
-RESULTS = WORK / "flaxchat-tpu-results"
+RESULTS = WORK / "flaxchat-accelerator-results"
 SOURCE_REPOSITORY = "__SOURCE_REPOSITORY__"
 SOURCE_REVISION = "__SOURCE_REVISION__"
+ACCELERATOR = "__ACCELERATOR__"
+JAX_REQUIREMENT = "__JAX_REQUIREMENT__"
+MIN_DEVICE_COUNT = __MIN_DEVICE_COUNT__
 
 
 def run(name: str, command: list[str], cwd: Path | None = None) -> dict[str, object]:
@@ -50,7 +53,7 @@ install = (
         [
             sys.executable, "-m", "pip", "install", "--quiet", "--find-links",
             "https://storage.googleapis.com/jax-releases/libtpu_releases.html",
-            "jax[tpu]>=0.9.0", ".[dev]",
+            JAX_REQUIREMENT, ".[dev]",
         ],
         cwd=SOURCE,
     )
@@ -64,9 +67,9 @@ if install["return_code"] == 0:
         "device-check",
         [
             sys.executable, "-c",
-            "import json,jax; d=jax.devices(); "
+            "import json,jax; d=jax.devices(); expected=" + repr(ACCELERATOR) + "; "
             "print(json.dumps({'backend':jax.default_backend(),'devices':[str(x) for x in d]},indent=2)); "
-            "assert jax.default_backend()=='tpu' and len(d)==8",
+            "assert jax.default_backend()==expected and len(d)>=" + str(MIN_DEVICE_COUNT),
         ],
         cwd=SOURCE,
     ))
@@ -100,17 +103,15 @@ if install["return_code"] == 0:
         ],
         cwd=SOURCE,
     ))
-    checks.append(run(
-        "attention-benchmark",
-        [
-            sys.executable, "-m", "benchmarks.attention",
-            "--backend", "splash",
-            "--sequence-lengths", "1024", "2048", "4096", "8192",
-            "--heads", "2", "--head-dim", "16",
-            "--warmup", "1", "--iterations", "3",
-        ],
-        cwd=SOURCE,
-    ))
+    attention_command = [
+        sys.executable, "-m", "benchmarks.attention",
+        "--backend", "splash" if ACCELERATOR == "tpu" else "xla",
+        "--sequence-lengths",
+        *(["1024", "2048", "4096", "8192"] if ACCELERATOR == "tpu" else ["1024", "2048"]),
+        "--heads", "2", "--head-dim", "16",
+        "--warmup", "1", "--iterations", "3",
+    ]
+    checks.append(run("attention-benchmark", attention_command, cwd=SOURCE))
     checks.append(run(
         "speculative-benchmark",
         [
@@ -123,6 +124,7 @@ if install["return_code"] == 0:
 summary = {
     "source_repository": SOURCE_REPOSITORY,
     "source_revision": SOURCE_REVISION,
+    "accelerator": ACCELERATOR,
     "checks": checks,
     "passed": bool(checks) and all(item["return_code"] == 0 for item in checks),
 }

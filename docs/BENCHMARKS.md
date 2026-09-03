@@ -22,3 +22,17 @@ it is a comparable XLA estimate, not a device-wide HBM watermark. Speculative
 results report exact greedy agreement, proposal acceptance, main-model call
 count, steady-state throughput, and measured speedup. Keep regressions even
 when speedup is below 1.0; hardware/model pairing determines the break-even.
+
+## Trainer comparisons
+
+`benchmarks/baselines/` defines matched flaxchat, MaxText, and nanochat run
+controls. Replace every `REQUIRED` revision, run on the same hardware, and
+capture each result with all fields enforced by `benchmarks.compare`:
+
+```bash
+python -m benchmarks.compare artifacts/flaxchat.json artifacts/maxtext.json artifacts/nanochat.json
+```
+
+The command fails closed if hardware, device count, precision, parameter count,
+sequence length, global batch size, or validation metric differs. It never
+silently presents unmatched historical numbers as an apples-to-apples result.

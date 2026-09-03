@@ -64,6 +64,42 @@ def make_fake_parquet_file(texts):
 # ---------------------------------------------------------------------------
 
 class TestDocumentBatches:
+    @patch("flaxchat.dataloader.list_parquet_files")
+    def test_two_hosts_are_disjoint_and_resume_global_order(
+        self, mock_list, tmp_path
+    ):
+        train_path = tmp_path / "train.parquet"
+        val_path = tmp_path / "val.parquet"
+        texts = [f"row-{index}" for index in range(8)]
+        parquet.write_table(
+            pa.table({"text": texts}), train_path, row_group_size=1
+        )
+        parquet.write_table(pa.table({"text": ["validation"]}), val_path)
+        mock_list.return_value = [str(train_path), str(val_path)]
+
+        def collect(host, state=None, count=4):
+            with patch("flaxchat.dataloader.jax.process_count", return_value=2), patch(
+                "flaxchat.dataloader.jax.process_index", return_value=host
+            ):
+                iterator = _document_batches("train", state, tokenizer_batch_size=1)
+                return [next(iterator) for _ in range(count)]
+
+        host_zero = collect(0)
+        host_one = collect(1)
+        zero_rows = [batch[0][0] for batch in host_zero]
+        one_rows = [batch[0][0] for batch in host_one]
+        assert set(zero_rows).isdisjoint(one_rows)
+        interleaved = [
+            row for pair in zip(zero_rows, one_rows) for row in pair
+        ]
+        assert interleaved == texts
+
+        for host, uninterrupted in ((0, host_zero), (1, host_one)):
+            cursor = uninterrupted[0][1]
+            state = {"version": 2, "document_cursor": cursor.to_dict()}
+            resumed = collect(host, state, count=1)
+            assert resumed[0][0] == uninterrupted[1][0]
+
     @patch("flaxchat.dataloader.pq.ParquetFile")
     @patch("flaxchat.dataloader.list_parquet_files")
     @patch("flaxchat.dataloader.jax")

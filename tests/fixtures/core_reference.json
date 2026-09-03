@@ -1,0 +1,14 @@
+{
+  "multiple_choice": {
+    "item": {"query": "Question?", "choices": ["A", "B"], "gold": 1},
+    "fewshot": [{"query": "Demo?", "choices": ["No", "Yes"], "gold": 1}],
+    "delimiter": "\n",
+    "expected": ["Demo?\nYes\nQuestion?\nA", "Demo?\nYes\nQuestion?\nB"]
+  },
+  "language_model": {
+    "item": {"context": "The cat", "continuation": " slept."},
+    "fewshot": [{"context": "Birds", "continuation": " fly."}],
+    "delimiter": " ",
+    "expected": ["Birds  fly.\nThe cat", "Birds  fly.\nThe cat  slept."]
+  }
+}

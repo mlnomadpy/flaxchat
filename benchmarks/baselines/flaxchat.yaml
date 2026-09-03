@@ -1,0 +1,10 @@
+framework: flaxchat
+source_revision: REQUIRED
+model_parameters: 90000000
+sequence_length: 1024
+global_batch_size: 256
+precision: bfloat16
+optimizer: adamw
+dataset: roneneldan/TinyStories
+dataset_revision: f54c09fd23315a6f9c86f9dc80f725de7d8f9c64
+measurement: post_compile_steady_state

@@ -2,13 +2,65 @@
 Tests for evaluation utilities.
 """
 
+import json
+from pathlib import Path
+
 import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
 from flax import nnx
 
-from flaxchat.eval import forward_model, find_common_length, evaluate_core
+from flaxchat.eval import (
+    evaluate_core,
+    evaluate_example_mc,
+    find_common_length,
+    forward_model,
+    render_prompts_lm,
+    render_prompts_mc,
+)
+
+
+REFERENCE = json.loads(
+    (Path(__file__).parent / "fixtures" / "core_reference.json").read_text()
+)
+
+
+def test_multiple_choice_prompt_matches_golden_reference():
+    fixture = REFERENCE["multiple_choice"]
+    assert render_prompts_mc(
+        fixture["item"], fixture["delimiter"], fixture["fewshot"]
+    ) == fixture["expected"]
+
+
+def test_language_model_prompt_matches_golden_reference():
+    fixture = REFERENCE["language_model"]
+    assert render_prompts_lm(
+        fixture["item"], fixture["delimiter"], fixture["fewshot"]
+    ) == fixture["expected"]
+
+
+def test_multiple_choice_label_and_scores_match_golden_reference(monkeypatch):
+    class ReferenceTokenizer:
+        def get_bos_token_id(self):
+            return 0
+
+        def __call__(self, prompts, prepend=None):
+            assert prompts == REFERENCE["multiple_choice"]["expected"]
+            return [[prepend, 10, 20], [prepend, 10, 21]]
+
+    losses = jax.numpy.asarray([[9.0, 2.0, jax.numpy.nan], [9.0, 1.0, jax.numpy.nan]])
+    monkeypatch.setattr(
+        "flaxchat.eval.forward_model",
+        lambda model, inputs: (losses, jax.numpy.zeros_like(inputs)),
+    )
+    fixture = REFERENCE["multiple_choice"]
+    correct, record = evaluate_example_mc(
+        object(), ReferenceTokenizer(), fixture["item"], fixture["fewshot"],
+        fixture["delimiter"], return_record=True,
+    )
+    assert correct
+    assert record == {"prediction": 1, "gold": 1, "scores": [2.0, 1.0]}
 
 
 class TestForwardModel:
