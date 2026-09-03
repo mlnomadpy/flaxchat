@@ -36,6 +36,6 @@
     "The end-to-end run is an acceptance-scale training run, not a quality-converged checkpoint.",
     "Compiled memory is argument plus output plus XLA temporary bytes, not a device-wide HBM watermark.",
     "Attention microbenchmarks are single-program measurements and do not establish multi-device scaling efficiency.",
-    "The speculative benchmark uses randomly initialized paired models and characterizes mechanism overhead, not production acceptance rates."
+    "The then-shared initialization made this an aligned synthetic upper-bound pairing; it characterizes accepted-token mechanism overhead, not production draft quality."
   ]
 }

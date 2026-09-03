@@ -11,7 +11,9 @@ TinyStories path completed tokenizer → pretrain → SFT → preference trainin
 evaluation → inference and published its complete Orbax/tokenizer/manifest
 bundle. Splash attention measured 2.81M, 4.00M, 4.08M, and 2.46M tokens/sec at
 1K, 2K, 4K, and 8K respectively. Greedy speculative output matched cached
-generation exactly and measured 1.77× speedup for that synthetic model pair.
+generation exactly and measured 1.77× speedup for that aligned synthetic
+upper-bound pair. That revision still shared initialization internally; the
+result is mechanism evidence, not a claim about an independently trained draft.
 
 The independent GPU bundle in
 [`benchmarks/results/kaggle-gpu-p100-d33726e.json`](../benchmarks/results/kaggle-gpu-p100-d33726e.json)
