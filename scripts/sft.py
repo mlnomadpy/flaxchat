@@ -9,7 +9,6 @@ Usage:
 
 import os
 import gc
-import json
 import time
 import math
 import argparse
@@ -18,7 +17,6 @@ from dataclasses import asdict
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 from flax import nnx
 
 from flaxchat.gpt import GPT
@@ -32,6 +30,7 @@ from flaxchat.optim import setup_optimizer
 from flaxchat.checkpoint import (
     create_checkpoint_manager, save_checkpoint, restore_model_from_checkpoint,
 )
+from flaxchat.sft import load_conversations, make_sft_batch, train_step
 
 print_banner()
 
@@ -73,10 +72,6 @@ base_dir = get_base_dir()
 checkpoint_dir = os.path.join(base_dir, "base_checkpoints", args.base_model)
 print0(f"Loading base model from {checkpoint_dir}")
 
-ckpt_manager = create_checkpoint_manager(checkpoint_dir, max_to_keep=999)
-# Load metadata to get model config
-_, metadata = ckpt_manager.restore(ckpt_manager.latest_step(), args=None), None
-
 # For now, reconstruct config from base model tag
 depth = int(args.base_model.replace("d", ""))
 config = FlaxChatConfig.from_depth(depth=depth, vocab_size=vocab_size)
@@ -84,56 +79,9 @@ model = GPT(config.model, rngs=nnx.Rngs(0))
 restore_model_from_checkpoint(model, checkpoint_dir)
 print0(f"Loaded base model: {model.num_params():,} params")
 
-# ---------------------------------------------------------------------------
-# Dataset loading
-# ---------------------------------------------------------------------------
-def load_conversations(dataset_name):
-    """Load conversation dataset. Supports HuggingFace datasets or local JSONL."""
-    if os.path.exists(dataset_name):
-        # Local JSONL file
-        conversations = []
-        with open(dataset_name, 'r') as f:
-            for line in f:
-                conversations.append(json.loads(line))
-        return conversations
-    else:
-        # HuggingFace dataset
-        from datasets import load_dataset
-        ds = load_dataset(dataset_name, split="train", streaming=True)
-        conversations = []
-        for item in ds:
-            if "messages" in item:
-                conversations.append(item)
-            if len(conversations) >= 100000:
-                break
-        return conversations
-
-
 print0(f"Loading dataset: {args.dataset}")
 conversations = load_conversations(args.dataset)
 print0(f"Loaded {len(conversations)} conversations")
-
-
-def make_sft_batch(conversations, tokenizer, batch_size, max_seq_len, rng_key):
-    """Create a training batch from conversations."""
-    key = rng_key
-    indices = jax.random.randint(key, (batch_size,), 0, len(conversations))
-
-    all_ids = np.zeros((batch_size, max_seq_len), dtype=np.int32)
-    all_targets = np.full((batch_size, max_seq_len), -1, dtype=np.int32)
-
-    for b in range(batch_size):
-        conv = conversations[int(indices[b])]
-        ids, mask = tokenizer.render_conversation(conv, max_tokens=max_seq_len + 1)
-
-        seq_len = min(len(ids) - 1, max_seq_len)
-        all_ids[b, :seq_len] = ids[:seq_len]
-        # Targets: only supervise assistant tokens (mask=1)
-        for t in range(seq_len):
-            if mask[t + 1] == 1:
-                all_targets[b, t] = ids[t + 1]
-
-    return jnp.array(all_ids), jnp.array(all_targets)
 
 
 # ---------------------------------------------------------------------------
@@ -155,16 +103,6 @@ optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
 # ---------------------------------------------------------------------------
 # Train step
 # ---------------------------------------------------------------------------
-@partial(nnx.jit, donate_argnames=("optimizer",))
-def train_step(model, optimizer, inputs, targets):
-    def loss_fn(model):
-        return model(inputs, targets)
-
-    loss, grads = nnx.value_and_grad(loss_fn)(model)
-    optimizer.update(model, grads)
-    return loss
-
-
 # ---------------------------------------------------------------------------
 # SFT checkpoint dir
 # ---------------------------------------------------------------------------
@@ -199,6 +137,7 @@ save_checkpoint(sft_ckpt_manager, args.num_iterations, model, optimizer, {
     "base_model": args.base_model,
     "dataset": args.dataset,
 })
+sft_ckpt_manager.close()
 
 print0("SFT complete!")
 wandb_run.finish()

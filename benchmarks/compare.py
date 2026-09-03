@@ -11,7 +11,8 @@ REQUIRED_FIELDS = {
     "framework", "source_revision", "hardware", "device_count", "precision",
     "model_parameters", "sequence_length", "global_batch_size",
     "steady_tokens_per_second", "compile_seconds", "peak_memory_bytes",
-    "validation_metric", "validation_value",
+    "model_flops_utilization", "checkpoint_seconds", "scaling_efficiency",
+    "validation_metric", "validation_value", "limitations",
 }
 
 
@@ -23,9 +24,15 @@ def load_record(path: str | Path) -> dict:
     for name in (
         "device_count", "model_parameters", "sequence_length", "global_batch_size",
         "steady_tokens_per_second", "compile_seconds", "peak_memory_bytes",
+        "checkpoint_seconds",
     ):
         if record[name] <= 0:
             raise ValueError(f"{path}: {name} must be positive")
+    for name in ("model_flops_utilization", "scaling_efficiency"):
+        if not 0 <= record[name] <= 1:
+            raise ValueError(f"{path}: {name} must be between zero and one")
+    if not isinstance(record["limitations"], str) or not record["limitations"].strip():
+        raise ValueError(f"{path}: limitations must be a non-empty string")
     return record
 
 

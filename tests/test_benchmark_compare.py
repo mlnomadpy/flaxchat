@@ -12,6 +12,8 @@ def _record(framework="flaxchat", throughput=100.0):
         "model_parameters": 90_000_000, "sequence_length": 1024,
         "global_batch_size": 256, "steady_tokens_per_second": throughput,
         "compile_seconds": 12.0, "peak_memory_bytes": 1024,
+        "model_flops_utilization": 0.3, "checkpoint_seconds": 1.5,
+        "scaling_efficiency": 0.9, "limitations": "Synthetic fixture only.",
         "validation_metric": "loss", "validation_value": 2.5,
     }
 

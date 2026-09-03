@@ -22,6 +22,7 @@ from flaxchat.engine import generate_with_cache
 from flaxchat.gpt import GPT, attention_backend_metadata
 from flaxchat.config import GPTConfig
 from flaxchat.tokenizer import HuggingFaceTokenizer
+from flaxchat.rl import train_step as preference_train_step
 
 
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
@@ -60,23 +61,6 @@ class PipelineConfig:
 @nnx.jit
 def _language_model_step(model, optimizer, inputs, targets):
     loss, gradients = nnx.value_and_grad(lambda current: current(inputs, targets))(model)
-    optimizer.update(model, gradients)
-    return loss
-
-
-@nnx.jit
-def _preference_step(model, optimizer, inputs, targets, advantages):
-    def loss_fn(current):
-        logits = current(inputs)
-        safe_targets = jnp.maximum(targets, 0)
-        token_log_probs = jnp.take_along_axis(
-            jax.nn.log_softmax(logits, axis=-1), safe_targets[..., None], axis=-1
-        )[..., 0]
-        valid = (targets >= 0).astype(jnp.float32)
-        objective = jnp.sum(token_log_probs * advantages[:, None] * valid)
-        return -objective / jnp.maximum(jnp.sum(valid), 1.0)
-
-    loss, gradients = nnx.value_and_grad(loss_fn)(model)
     optimizer.update(model, gradients)
     return loss
 
@@ -313,7 +297,7 @@ def run_pipeline(
         inputs, targets, advantages = _preference_batch(
             tokenizer, train_stories[0], batch_size, config.sequence_length
         )
-        loss = _preference_step(
+        loss = preference_train_step(
             model,
             optimizer,
             jax.device_put(inputs, data_sharding),

@@ -36,3 +36,6 @@ python -m benchmarks.compare artifacts/flaxchat.json artifacts/maxtext.json arti
 The command fails closed if hardware, device count, precision, parameter count,
 sequence length, global batch size, or validation metric differs. It never
 silently presents unmatched historical numbers as an apples-to-apples result.
+Records must include tokens/sec, model FLOPs utilization, compile time, peak
+memory, checkpoint time, scaling efficiency, validation quality, and an
+explicit limitations statement.

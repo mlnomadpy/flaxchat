@@ -39,6 +39,7 @@ from flaxchat.checkpoint import (
     create_checkpoint_manager, save_checkpoint, restore_model_from_checkpoint,
 )
 from flaxchat.report import get_report
+from flaxchat.rl import centered_advantages, train_step as rl_train_step
 
 from tasks.gsm8k import GSM8K
 
@@ -90,6 +91,10 @@ for ckpt_type in ["sft", "base"]:
         print0(f"Loading {ckpt_type} model from {ckpt_dir}")
         restore_model_from_checkpoint(model, ckpt_dir)
         break
+else:
+    raise FileNotFoundError(
+        f"No SFT or base checkpoint found for model {args.model!r} under {base_dir}"
+    )
 
 # Replicate on mesh
 state = nnx.state(model)
@@ -135,7 +140,7 @@ def get_batch(step, example_idx):
         all_rewards.append(reward)
 
     rewards = np.array(all_rewards)
-    advantages = rewards - rewards.mean()  # simple (r - mu) advantage
+    advantages = np.asarray(centered_advantages(rewards))
 
     # Pad sequences to same length
     max_len = max(len(s) for s in all_sequences)
@@ -158,33 +163,6 @@ def get_batch(step, example_idx):
 # RL train step
 # ---------------------------------------------------------------------------
 replicated = NamedSharding(mesh, P())
-
-@partial(nnx.jit, donate_argnames=("optimizer",))
-def rl_train_step(model, optimizer, inputs, targets, advantages):
-    """Policy gradient step: minimize -advantage * log_prob."""
-    def loss_fn(model):
-        logits = model(inputs)  # (B, T, V)
-        log_probs = jax.nn.log_softmax(logits, axis=-1)
-
-        # Gather log probs of target tokens
-        B, T, V = logits.shape
-        one_hot = jax.nn.one_hot(jnp.maximum(targets, 0), V)
-        token_logp = jnp.sum(log_probs * one_hot, axis=-1)  # (B, T)
-
-        # Mask invalid tokens (targets == -1)
-        valid = (targets >= 0).astype(jnp.float32)
-
-        # PG objective: sum of advantage-weighted log probs
-        pg_obj = jnp.sum(token_logp * advantages[:, None] * valid)
-        num_valid = jnp.maximum(jnp.sum(valid), 1.0)
-        pg_obj = pg_obj / num_valid
-
-        return -pg_obj  # minimize negative objective = maximize objective
-
-    loss, grads = nnx.value_and_grad(loss_fn)(model)
-    optimizer.update(model, grads)
-    return loss
-
 
 # ---------------------------------------------------------------------------
 # Optimizer
@@ -271,6 +249,7 @@ if master_process:
     save_checkpoint(rl_manager, num_steps, model, optimizer, {
         "step": num_steps, "model": args.model, "final_pass1": acc,
     })
+rl_manager.close()
 
 get_report(args.run).log("RL Training", {
     "steps": num_steps, "final_pass@1": acc,
