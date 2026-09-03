@@ -5,6 +5,8 @@ Reproducibility and checkpoint contracts are documented in
 [docs/CHECKPOINT_FORMAT.md](docs/CHECKPOINT_FORMAT.md).
 Release gates and compatibility are documented in
 [docs/RELEASES.md](docs/RELEASES.md).
+Exact accelerator measurements and their limitations are in
+[docs/RESULTS.md](docs/RESULTS.md).
 
 A minimal, end-to-end LLM training harness for **Google Cloud TPU pods**, built on **JAX/Flax NNX**.
 

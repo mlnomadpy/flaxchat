@@ -1,0 +1,41 @@
+{
+  "format_version": 1,
+  "source_revision": "cde72cd814e7504d5ca552127401ad44db84f451",
+  "kaggle_kernel": "skywolfmo/flaxchat-tpu-full-test-suite",
+  "hardware": {"backend": "tpu", "device_kind": "TPU v5 lite", "device_count": 8},
+  "suite": {"passed": true, "pytest_passed": 230, "pytest_skipped": 2},
+  "tinystories": {
+    "dataset_revision": "f54c09fd23315a6f9c86f9dc80f725de7d8f9c64",
+    "train_stories": 128,
+    "validation_stories": 32,
+    "pretrain_loss": [5.76820182800293, 5.768433570861816],
+    "sft_loss": [5.765047550201416],
+    "preference_loss": [1.7281038761138916],
+    "validation_loss": 5.763991832733154,
+    "wall_time_seconds": 18.534826614000053,
+    "attention_backend": "xla",
+    "attention_fallback_reason": "Mosaic Splash kernels cannot be automatically partitioned across the data mesh"
+  },
+  "splash_attention": [
+    {"sequence_length": 1024, "compile_seconds": 0.26959386599992285, "tokens_per_second": 2811304.8866372607, "peak_bytes_estimate": 358912},
+    {"sequence_length": 2048, "compile_seconds": 0.2607671470000241, "tokens_per_second": 4000000.000033007, "peak_bytes_estimate": 425472},
+    {"sequence_length": 4096, "compile_seconds": 0.4253893869999956, "tokens_per_second": 4076230.2831417657, "peak_bytes_estimate": 687616},
+    {"sequence_length": 8192, "compile_seconds": 0.8889220480000404, "tokens_per_second": 2463475.6357502355, "peak_bytes_estimate": 1211904}
+  ],
+  "speculative": {
+    "greedy_exact_match": true,
+    "max_tokens": 16,
+    "draft_steps": 4,
+    "acceptance_rate": 1.0,
+    "main_model_calls": 4,
+    "baseline_tokens_per_second": 14.05633346042986,
+    "speculative_tokens_per_second": 24.82900544568976,
+    "speedup": 1.7663927449918693
+  },
+  "limitations": [
+    "The end-to-end run is an acceptance-scale training run, not a quality-converged checkpoint.",
+    "Compiled memory is argument plus output plus XLA temporary bytes, not a device-wide HBM watermark.",
+    "Attention microbenchmarks are single-program measurements and do not establish multi-device scaling efficiency.",
+    "The speculative benchmark uses randomly initialized paired models and characterizes mechanism overhead, not production acceptance rates."
+  ]
+}
