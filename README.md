@@ -7,6 +7,8 @@ Release gates and compatibility are documented in
 [docs/RELEASES.md](docs/RELEASES.md).
 Exact accelerator measurements and their limitations are in
 [docs/RESULTS.md](docs/RESULTS.md).
+The current engineering risks, refactoring target, and prioritized backlog are
+in [docs/SYSTEM_AUDIT_2026-09-03.md](docs/SYSTEM_AUDIT_2026-09-03.md).
 
 A minimal, end-to-end LLM training harness for **Google Cloud TPU pods**, built on **JAX/Flax NNX**.
 
