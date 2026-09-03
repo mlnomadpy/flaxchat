@@ -41,10 +41,38 @@ def command(*args: str, capture: bool = False) -> subprocess.CompletedProcess:
     cli = kaggle_cli()
     if cli is None:
         raise RuntimeError("Kaggle CLI not found")
-    return subprocess.run(
-        [*cli, *args], check=True, text=True,
-        capture_output=capture,
-    )
+    full_command = [*cli, *args]
+    for attempt in range(3):
+        result = subprocess.run(full_command, text=True, capture_output=True)
+        combined = (result.stdout or "") + (result.stderr or "")
+        if result.returncode == 0:
+            if not capture:
+                print(combined, end="")
+            return result
+        transient = any(
+            marker in combined.lower()
+            for marker in (
+                "connecttimeout",
+                "connection timed out",
+                "connectionerror",
+                "max retries exceeded",
+                "temporarily unavailable",
+            )
+        )
+        if transient and attempt < 2:
+            delay = 2 ** attempt
+            print(f"Kaggle API transport failed; retrying in {delay}s", flush=True)
+            time.sleep(delay)
+            continue
+        if not capture:
+            print(combined, end="")
+        raise subprocess.CalledProcessError(
+            result.returncode,
+            full_command,
+            output=result.stdout,
+            stderr=result.stderr,
+        )
+    raise AssertionError("unreachable")
 
 
 def main() -> int:
