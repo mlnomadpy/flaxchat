@@ -65,6 +65,16 @@ class TestCreateCheckpointManager:
         manager = create_checkpoint_manager(ckpt_dir)
         assert manager is not None
 
+    def test_relative_directory_is_normalized_for_tensorstore(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.chdir(tmp_path)
+        manager = create_checkpoint_manager("relative/checkpoints")
+        try:
+            assert os.path.isabs(str(manager.directory))
+        finally:
+            manager.close()
+
 
 # ---------------------------------------------------------------------------
 # Tests for save + load round-trip

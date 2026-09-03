@@ -26,6 +26,7 @@ def create_checkpoint_manager(
     async_checkpointing: bool = True,
 ) -> ocp.CheckpointManager:
     """Create an atomic Orbax manager honoring the async policy."""
+    checkpoint_dir = os.path.abspath(os.path.expanduser(checkpoint_dir))
     os.makedirs(checkpoint_dir, exist_ok=True)
     options = ocp.CheckpointManagerOptions(
         max_to_keep=max_to_keep,
