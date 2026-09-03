@@ -84,15 +84,33 @@ def create_tempdir():
             os.chdir(cwd)
 
 
+def _linux_memory_baseline() -> tuple[int, int]:
+    """Return the process's current virtual and data mappings in bytes.
+
+    ``RLIMIT_AS`` and ``RLIMIT_DATA`` are absolute ceilings, not allocation
+    budgets.  A spawned interpreter can already have more than 256 MiB mapped
+    after importing JAX, so applying a raw 256 MiB ceiling can make the dynamic
+    loader abort before user code starts.  Linux exposes the two baselines in
+    ``/proc/self/statm`` without requiring psutil.
+    """
+    with open("/proc/self/statm", encoding="ascii") as statm:
+        fields = statm.read().split()
+    page_size = os.sysconf("SC_PAGE_SIZE")
+    return int(fields[0]) * page_size, int(fields[5]) * page_size
+
+
 def reliability_guard(maximum_memory_bytes: Optional[int] = None):
     """
     Disable dangerous functions. NOT a security sandbox — best-effort
     guard against accidental destructive actions from generated code.
     """
-    if maximum_memory_bytes is not None and platform.uname().system != "Darwin":
+    if maximum_memory_bytes is not None and platform.system() == "Linux":
         import resource
-        resource.setrlimit(resource.RLIMIT_AS, (maximum_memory_bytes, maximum_memory_bytes))
-        resource.setrlimit(resource.RLIMIT_DATA, (maximum_memory_bytes, maximum_memory_bytes))
+        virtual_bytes, data_bytes = _linux_memory_baseline()
+        address_limit = virtual_bytes + maximum_memory_bytes
+        data_limit = data_bytes + maximum_memory_bytes
+        resource.setrlimit(resource.RLIMIT_AS, (address_limit, address_limit))
+        resource.setrlimit(resource.RLIMIT_DATA, (data_limit, data_limit))
 
     faulthandler.disable()
 
@@ -139,11 +157,11 @@ def reliability_guard(maximum_memory_bytes: Optional[int] = None):
     __builtins__["help"] = None
 
     import sys
-    sys.modules["ipdb"] = None
-    sys.modules["joblib"] = None
-    sys.modules["resource"] = None
-    sys.modules["psutil"] = None
-    sys.modules["tkinter"] = None
+    sys.modules["ipdb"] = None  # type: ignore[assignment]
+    sys.modules["joblib"] = None  # type: ignore[assignment]
+    sys.modules["resource"] = None  # type: ignore[assignment]
+    sys.modules["psutil"] = None  # type: ignore[assignment]
+    sys.modules["tkinter"] = None  # type: ignore[assignment]
 
 
 def _unsafe_execute(code, timeout, maximum_memory_bytes, result_connection):
