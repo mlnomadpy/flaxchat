@@ -20,3 +20,9 @@ atomically. Asynchronous managers must be finalized with
 the manifest and optional expected identities before mutating the live model
 or optimizer. Partial, corrupt, schema-incompatible, or identity-mismatched
 checkpoints raise `CheckpointCompatibilityError`.
+
+Every array restore receives an explicit destination sharding. Model and
+optimizer leaves use the live object's current sharding; bookkeeping arrays in
+`training_state` are restored on a current local device. Restore never falls
+back to the writer's serialized sharding, so moving a checkpoint between
+device topologies does not silently recreate an incompatible layout.

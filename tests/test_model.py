@@ -129,6 +129,26 @@ class TestCausalSelfAttention:
             return jnp.sum(jnp.einsum('bhts,bshd->bthd', weights, value))
         assert jnp.allclose(jax.grad(fused)(q), jax.grad(dense)(q), atol=5e-5, rtol=5e-5)
 
+    def test_xla_attention_supports_padding_and_grouped_query_heads(self):
+        q = jax.random.normal(jax.random.key(20), (2, 8, 4, 8))
+        k = jax.random.normal(jax.random.key(21), (2, 8, 2, 8))
+        v = jax.random.normal(jax.random.key(22), (2, 8, 2, 8))
+        lengths = jnp.asarray([5, 7], dtype=jnp.int32)
+        output = exact_attention(
+            q, k, v, window_left=4, backend="xla", sequence_lengths=lengths
+        )
+        assert output.shape == q.shape
+        assert jnp.array_equal(output[0, 5:], jnp.zeros_like(output[0, 5:]))
+        assert jnp.array_equal(output[1, 7:], jnp.zeros_like(output[1, 7:]))
+
+    def test_attention_rejects_invalid_padding_shape(self):
+        q = jnp.ones((2, 8, 2, 4))
+        with pytest.raises(ValueError, match="sequence_lengths"):
+            exact_attention(
+                q, q, q, window_left=8, backend="xla",
+                sequence_lengths=jnp.asarray([8]),
+            )
+
     def test_splash_fails_clearly_without_tpu(self):
         if any(device.platform == 'tpu' for device in jax.devices()):
             pytest.skip('CPU/GPU fallback test')

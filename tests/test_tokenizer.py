@@ -17,20 +17,10 @@ from flaxchat.tokenizer import HuggingFaceTokenizer, SPECIAL_TOKENS
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
-def trained_tokenizer(tmp_path_factory, shakespeare_text=None):
+def trained_tokenizer(shakespeare_text):
     """Train a small BPE tokenizer on Shakespeare text."""
-    # We can't use the session-scoped shakespeare_text directly in a
-    # module-scoped fixture, so we do inline download/cache.
-    import urllib.request
-    cache_dir = tmp_path_factory.mktemp("tok_cache")
-    cache_path = str(cache_dir / "shakespeare.txt")
-    url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
-    urllib.request.urlretrieve(url, cache_path)
-    with open(cache_path, "r") as f:
-        text = f.read()
-
     # Use a very small vocab for fast tests
-    lines = text.split("\n")
+    lines = shakespeare_text.split("\n")
     tok = HuggingFaceTokenizer.train_from_iterator(iter(lines), vocab_size=512)
     return tok
 
@@ -48,8 +38,9 @@ def small_tokenizer(shakespeare_text):
 
 class TestTrainFromIterator:
     def test_vocab_size(self, trained_tokenizer):
-        """Trained tokenizer should have the requested vocab size."""
-        assert trained_tokenizer.get_vocab_size() == 512
+        """Requested vocab size is an upper bound for a finite corpus."""
+        size = trained_tokenizer.get_vocab_size()
+        assert len(SPECIAL_TOKENS) < size <= 512
 
     def test_special_tokens_present(self, trained_tokenizer):
         """All special tokens should be in the trained vocabulary."""

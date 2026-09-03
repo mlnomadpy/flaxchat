@@ -125,6 +125,24 @@ def _validate_manifest(manifest, model_state, opt_state, metadata, training_stat
         raise CheckpointCompatibilityError("Checkpoint metadata is corrupt")
 
 
+def _restore_args_on_current_topology(metadata):
+    """Build explicit restore args without trusting checkpoint sharding files.
+
+    Training state has no live target tree, so Orbax otherwise reconstructs the
+    sharding saved by the writer.  That is unsafe when a checkpoint moves from
+    one accelerator topology to another.  These small bookkeeping arrays are
+    deliberately restored onto a current local device instead.
+    """
+    devices = jax.local_devices()
+    if not devices:
+        raise CheckpointCompatibilityError("No local JAX device is available for restore")
+    current_sharding = jax.sharding.SingleDeviceSharding(devices[0])
+    sharding_tree = jax.tree.map(lambda _: current_sharding, metadata)
+    return ocp.checkpoint_utils.construct_restore_args(
+        metadata, sharding_tree=sharding_tree
+    )
+
+
 def load_checkpoint(
     manager: ocp.CheckpointManager,
     step: int | None = None,
@@ -160,9 +178,15 @@ def load_checkpoint(
             restore_args=ocp.checkpoint_utils.construct_restore_args(optimizer_abstract),
         )
     if load_training_state:
-        training_metadata = manager.item_metadata(step).training_state
+        # A freshly opened Composite manager has no item handlers registered,
+        # so ``manager.item_metadata`` cannot discover this tree reliably.
+        step_directory = manager._get_read_step_directory(step, manager.directory)
+        training_metadata = ocp.PyTreeCheckpointHandler().metadata(
+            step_directory / "training_state"
+        )
         items["training_state"] = ocp.args.PyTreeRestore(
-            restore_args=ocp.checkpoint_utils.construct_restore_args(training_metadata)
+            training_metadata,
+            restore_args=_restore_args_on_current_topology(training_metadata)
         )
     try:
         restored = manager.restore(step, args=ocp.args.Composite(**items))

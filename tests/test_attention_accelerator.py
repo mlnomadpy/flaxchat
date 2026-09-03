@@ -12,13 +12,28 @@ pytestmark = [
 
 
 @pytest.mark.parametrize("window_left", [32, 128])
-def test_splash_matches_xla_forward_and_gradient(window_left):
-    q, k, v = jax.random.normal(
-        jax.random.key(7), (3, 1, 128, 2, 16), dtype=jnp.bfloat16
+@pytest.mark.parametrize("padded", [False, True])
+def test_splash_matches_xla_forward_and_gradient(window_left, padded):
+    q = jax.random.normal(
+        jax.random.key(7), (1, 128, 4, 16), dtype=jnp.bfloat16
     )
+    k = jax.random.normal(
+        jax.random.key(8), (1, 128, 2, 16), dtype=jnp.bfloat16
+    )
+    v = jax.random.normal(
+        jax.random.key(9), (1, 128, 2, 16), dtype=jnp.bfloat16
+    )
+    sequence_lengths = jnp.asarray([93], dtype=jnp.int32) if padded else None
 
     def objective(query, backend):
-        output = exact_attention(query, k, v, window_left=window_left, backend=backend)
+        output = exact_attention(
+            query,
+            k,
+            v,
+            window_left=window_left,
+            backend=backend,
+            sequence_lengths=sequence_lengths,
+        )
         return jnp.mean(output.astype(jnp.float32) ** 2), output
 
     (xla_loss, xla_output), xla_grad = jax.value_and_grad(objective, has_aux=True)(q, "xla")

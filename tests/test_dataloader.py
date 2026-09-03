@@ -145,8 +145,11 @@ class TestDocumentBatches:
 # ---------------------------------------------------------------------------
 
 class TestDataLoaderBOSBestFit:
+    @pytest.mark.parametrize("interruption_batch", [1, 2, 5, 9])
     @patch("flaxchat.dataloader.list_parquet_files")
-    def test_resume_reproduces_exact_next_batches(self, mock_list, tmp_path):
+    def test_resume_reproduces_exact_next_batches(
+        self, mock_list, tmp_path, interruption_batch
+    ):
         train_path = tmp_path / 'train.parquet'
         val_path = tmp_path / 'val.parquet'
         texts = [f"document-{index}-" * 4 for index in range(30)]
@@ -159,7 +162,8 @@ class TestDataLoaderBOSBestFit:
             tokenizer, B=2, T=16, split='train',
             tokenizer_batch_size=3, buffer_size=5,
         )
-        _, _, state = next(uninterrupted)
+        for _ in range(interruption_batch):
+            _, _, state = next(uninterrupted)
         expected = [next(uninterrupted)[:2] for _ in range(3)]
 
         resumed = data_loader_bos_bestfit(

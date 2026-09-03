@@ -5,6 +5,7 @@ Uses tiny_model fixture from conftest.py and pytest tmp_path for isolation.
 """
 
 import os
+import shutil
 import pytest
 import jax
 import jax.numpy as jnp
@@ -167,7 +168,34 @@ class TestSaveLoadRoundTrip:
                 manifest, changed, optimizer.opt_state, metadata, training_state
             )
 
+    def test_partial_checkpoint_fails_before_mutating_model(
+        self, tiny_config, tmp_path
+    ):
+        model = GPT(tiny_config, rngs=nnx.Rngs(4))
+        optimizer = self._make_optimizer(model)
+        checkpoint_dir = str(tmp_path / "partial")
+        manager = create_checkpoint_manager(
+            checkpoint_dir, async_checkpointing=False
+        )
+        save_checkpoint(manager, 2, model, optimizer, {"step": 2})
+        manager.close()
+        shutil.rmtree(tmp_path / "partial" / "2" / "optimizer")
+
+        target = GPT(tiny_config, rngs=nnx.Rngs(9))
+        target_optimizer = self._make_optimizer(target)
+        before = nnx.to_pure_dict(nnx.state(target))
+        with pytest.raises(CheckpointCompatibilityError, match="incomplete, corrupt"):
+            restore_model_from_checkpoint(
+                target, checkpoint_dir, step=2, optimizer=target_optimizer
+            )
+        after = nnx.to_pure_dict(nnx.state(target))
+        assert all(
+            jnp.array_equal(expected, actual)
+            for expected, actual in zip(jax.tree.leaves(before), jax.tree.leaves(after))
+        )
+
     @pytest.mark.integration
+    @pytest.mark.filterwarnings("error:Sharding info not provided")
     def test_interrupted_training_matches_uninterrupted_training(self, tmp_path):
         """Five updates + restore + five updates must equal ten uninterrupted."""
         import optax

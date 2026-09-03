@@ -146,8 +146,12 @@ def reliability_guard(maximum_memory_bytes: Optional[int] = None):
     sys.modules["tkinter"] = None
 
 
-def _unsafe_execute(code, timeout, maximum_memory_bytes, result_dict):
+def _unsafe_execute(code, timeout, maximum_memory_bytes, result_connection):
     """Execute code in a subprocess with safety guards."""
+    result = {
+        "success": False, "stdout": "", "stderr": "",
+        "timeout": False, "memory_exceeded": False, "error": None,
+    }
     with create_tempdir():
         # Save functions needed for tempdir cleanup
         import os
@@ -159,33 +163,30 @@ def _unsafe_execute(code, timeout, maximum_memory_bytes, result_dict):
 
         reliability_guard(maximum_memory_bytes)
 
-        result_dict.update({
-            "success": False, "stdout": "", "stderr": "",
-            "timeout": False, "memory_exceeded": False, "error": None,
-        })
-
         try:
             exec_globals = {}
             with capture_io() as (stdout_f, stderr_f):
                 with time_limit(timeout):
                     exec(code, exec_globals)
-            result_dict.update({
+            result.update({
                 "success": True,
                 "stdout": stdout_f.getvalue(),
                 "stderr": stderr_f.getvalue(),
             })
         except TimeoutException:
-            result_dict.update({"timeout": True, "error": "Execution timed out"})
+            result.update({"timeout": True, "error": "Execution timed out"})
         except MemoryError as e:
-            result_dict.update({"memory_exceeded": True, "error": f"Memory limit exceeded: {e}"})
+            result.update({"memory_exceeded": True, "error": f"Memory limit exceeded: {e}"})
         except BaseException as e:
-            result_dict.update({"error": f"{type(e).__name__}: {e}"})
+            result.update({"error": f"{type(e).__name__}: {e}"})
 
         # Restore for cleanup
         shutil.rmtree = rmtree
         os.rmdir = rmdir
         os.chdir = chdir
         os.unlink = unlink
+    result_connection.send(result)
+    result_connection.close()
 
 
 def execute_code(
@@ -212,31 +213,38 @@ def execute_code(
     previous_platforms = os.environ.get("JAX_PLATFORMS")
     os.environ["JAX_PLATFORMS"] = "cpu"
     try:
-        with context.Manager() as manager:
-            result_dict = manager.dict()
-            process = context.Process(
-                target=_unsafe_execute,
-                args=(code, timeout, maximum_memory_bytes, result_dict),
-            )
-            process.start()
-            process.join(timeout=timeout + 1)
+        receiver, sender = context.Pipe(duplex=False)
+        process = context.Process(
+            target=_unsafe_execute,
+            args=(code, timeout, maximum_memory_bytes, sender),
+        )
+        process.start()
+        sender.close()
+        process.join(timeout=timeout + 1)
 
-            if process.is_alive():
-                process.kill()
-                process.join()
-                return ExecutionResult(timeout=True, error="Execution timed out (process killed)")
+        if process.is_alive():
+            process.kill()
+            process.join()
+            receiver.close()
+            return ExecutionResult(timeout=True, error="Execution timed out (process killed)")
 
-            if not result_dict:
-                return ExecutionResult(error="Execution failed (no result)")
+        try:
+            result = receiver.recv() if receiver.poll() else None
+        except EOFError:
+            result = None
+        finally:
+            receiver.close()
+        if result is None:
+            return ExecutionResult(error="Execution failed (no result)")
 
-            return ExecutionResult(
-                success=result_dict.get("success", False),
-                stdout=result_dict.get("stdout", ""),
-                stderr=result_dict.get("stderr", ""),
-                error=result_dict.get("error"),
-                timeout=result_dict.get("timeout", False),
-                memory_exceeded=result_dict.get("memory_exceeded", False),
-            )
+        return ExecutionResult(
+            success=result.get("success", False),
+            stdout=result.get("stdout", ""),
+            stderr=result.get("stderr", ""),
+            error=result.get("error"),
+            timeout=result.get("timeout", False),
+            memory_exceeded=result.get("memory_exceeded", False),
+        )
     finally:
         if previous_platforms is None:
             os.environ.pop("JAX_PLATFORMS", None)

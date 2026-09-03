@@ -90,13 +90,28 @@ def _make_splash_kernel(num_heads: int, seq_len: int, window_left: int):
     return splash.make_splash_mha_single_device(mask)
 
 
-def exact_attention(q, k, v, *, window_left: int, backend: str = "auto"):
+def exact_attention(
+    q,
+    k,
+    v,
+    *,
+    window_left: int,
+    backend: str = "auto",
+    sequence_lengths=None,
+):
     """Exact causal softmax attention using XLA or TPU SplashAttention.
 
     Inputs and outputs use ``(batch, sequence, heads, head_dim)`` layout.
     The XLA path relies on causal/window metadata and never materializes a
     dense sequence-by-sequence mask or additive bias.
     """
+    if q.shape[0] != k.shape[0] or k.shape != v.shape:
+        raise ValueError("q, k, and v must have matching batch and k/v shapes")
+    if q.shape[2] % k.shape[2]:
+        raise ValueError("query heads must be divisible by key/value heads for GQA")
+    if sequence_lengths is not None and sequence_lengths.shape != (q.shape[0],):
+        raise ValueError("sequence_lengths must have shape (batch,)")
+
     selected, _ = _resolve_attention_backend(backend, q.shape[1])
     if selected == "xla":
         local_window = (window_left, 0) if 0 < window_left < q.shape[1] else None
@@ -105,6 +120,8 @@ def exact_attention(q, k, v, *, window_left: int, backend: str = "auto"):
             k,
             v,
             is_causal=True,
+            query_seq_lengths=sequence_lengths,
+            key_value_seq_lengths=sequence_lengths,
             local_window_size=local_window,
             scale=1.0 / math.sqrt(q.shape[-1]),
             implementation="xla",
@@ -117,7 +134,23 @@ def exact_attention(q, k, v, *, window_left: int, backend: str = "auto"):
     q_bhtd = jnp.transpose(q * (1.0 / math.sqrt(q.shape[-1])), (0, 2, 1, 3))
     k_bhtd = jnp.transpose(k, (0, 2, 1, 3))
     v_bhtd = jnp.transpose(v, (0, 2, 1, 3))
-    output = jax.vmap(kernel)(q_bhtd, k_bhtd, v_bhtd)
+    if sequence_lengths is None:
+        output = jax.vmap(kernel)(q_bhtd, k_bhtd, v_bhtd)
+    else:
+        from jax.experimental.pallas.ops.tpu.splash_attention import (
+            splash_attention_kernel as splash,
+        )
+
+        positions = jnp.arange(q.shape[1])[None, :]
+        # Right-padding is a separate segment so valid queries never attend to
+        # it. Padded query outputs are zeroed below to match XLA semantics.
+        segment_ids = (positions >= sequence_lengths[:, None]).astype(jnp.int32)
+        output = jax.vmap(
+            lambda query, key, value, segments: kernel(
+                query, key, value, splash.SegmentIds(segments, segments)
+            )
+        )(q_bhtd, k_bhtd, v_bhtd, segment_ids)
+        output = output * (positions < sequence_lengths[:, None])[:, None, :, None]
     return jnp.transpose(output, (0, 2, 1, 3))
 
 
@@ -210,12 +243,6 @@ class CausalSelfAttention(nnx.Module):
 
         q = rms_norm(q) * 1.2
         k = rms_norm(k) * 1.2
-
-        # GQA: repeat K,V heads to match Q heads
-        if n_kv_head < n_head:
-            repeats = n_head // n_kv_head
-            k = jnp.repeat(k, repeats, axis=2)
-            v = jnp.repeat(v, repeats, axis=2)
 
         window_left = window_size[0]
         y = exact_attention(
