@@ -1,6 +1,8 @@
 from pathlib import Path
 import json
+import os
 import re
+import subprocess
 
 import yaml
 
@@ -127,3 +129,24 @@ def test_current_tpu_results_share_one_immutable_revision_and_are_linked():
     assert revision in docs
     for path in paths:
         assert path.name in docs
+
+
+def test_paid_multihost_launcher_fails_closed_and_uses_bounded_defaults():
+    path = ROOT / "infra" / "tpu" / "flexstart.sh"
+    launcher = path.read_text()
+    assert 'FLAXCHAT_ACCELERATOR:-v5litepod-16' in launcher
+    assert 'FLAXCHAT_MAX_RUN:-1h' in launcher
+    assert 'FLAXCHAT_VALID_UNTIL:-1h' in launcher
+    assert 'FLAXCHAT_APPROVE_PAID_RUN:-' in launcher
+    assert 'I_UNDERSTAND_TPU_BILLING' in launcher
+    environment = {**os.environ, "PROJECT_ID": "test-project"}
+    environment.pop("FLAXCHAT_APPROVE_PAID_RUN", None)
+    result = subprocess.run(
+        ["bash", str(path), "create"],
+        capture_output=True,
+        text=True,
+        env=environment,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert "refusing paid TPU creation" in result.stderr

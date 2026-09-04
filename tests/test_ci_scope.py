@@ -82,3 +82,6 @@ def test_ci_selector_and_artifact_verifier_have_precise_test_routes():
     assert select_scope(["scripts/verify_artifact.py"])["tests"] == [
         "tests/test_published_artifact.py"
     ]
+    assert select_scope(["infra/tpu/flexstart.sh"])["tests"] == [
+        "tests/test_quality_policy.py"
+    ]

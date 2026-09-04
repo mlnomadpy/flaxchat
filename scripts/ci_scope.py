@@ -26,6 +26,7 @@ TEST_GROUPS = {
     "scripts/kaggle_tpu_tests.py": ("tests/test_kaggle_launcher.py",),
     "scripts/kaggle_matched_benchmarks.py": ("tests/test_kaggle_launcher.py",),
     "scripts/run_matched_benchmarks.py": ("tests/test_matched_benchmark.py",),
+    "scripts/multihost_acceptance.py": ("tests/test_multihost_acceptance.py",),
     "scripts/check_docs.py": (),
     "scripts/check_coverage.py": ("tests/test_quality_policy.py",),
     "scripts/ci_scope.py": ("tests/test_ci_scope.py",),
@@ -36,6 +37,7 @@ TEST_GROUPS = {
     ".github/workflows/deploy.yaml": ("tests/test_quality_policy.py",),
     ".github/workflows/kaggle-tpu.yml": ("tests/test_quality_policy.py",),
     ".github/workflows/macos-compatibility.yml": ("tests/test_quality_policy.py",),
+    "infra/tpu/": ("tests/test_quality_policy.py",),
 }
 
 
