@@ -37,7 +37,7 @@ def render_bundle(
         raise ValueError("kernel id must use owner/kernel-slug")
     metadata = {
         "id": kernel_id,
-        "title": "Flaxchat Matched Trainer Benchmark",
+        "title": slug.replace("-", " ").title(),
         "code_file": "matched.py",
         "language": "python",
         "kernel_type": "script",

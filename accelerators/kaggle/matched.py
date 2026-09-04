@@ -83,7 +83,7 @@ if all(check["returncode"] == 0 for check in checks):
         [
             sys.executable, "-m", "pip", "install", "--quiet",
             "omegaconf", "etils", "ml-collections", "clu", "tensorboardX", "grain",
-            "jaxtyping", "qwix", "aqtp", "einops", "pathwaysutils",
+            "jaxtyping", "qwix", "aqtp", "einops", "pathwaysutils", "tokamax",
         ],
         cwd=MAXTEXT,
     ))

@@ -71,6 +71,7 @@ def main() -> None:
         "ici_fsdp_parallelism=1",
         "dcn_data_parallelism=1",
         "enable_checkpointing=false",
+        "skip_jax_distributed_system=true",
     ])
     model, _mesh = model_creation_utils.create_nnx_model(
         config, devices=[device], rng_key=jax.random.PRNGKey(SEED)

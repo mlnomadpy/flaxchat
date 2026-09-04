@@ -27,17 +27,18 @@ def main() -> None:
     from flaxchat.config import GPTConfig as FlaxConfig
     from flaxchat.gpt import GPT as FlaxGPT
 
-    common = dict(
-        sequence_len=256,
-        vocab_size=512,
-        n_layer=2,
-        n_head=4,
-        n_kv_head=4,
-        n_embd=128,
-        window_pattern="L",
-    )
     flax_model = FlaxGPT(
-        FlaxConfig(**common, attention_backend="xla"), rngs=nnx.Rngs(SEED)
+        FlaxConfig(
+            sequence_len=256,
+            vocab_size=512,
+            n_layer=2,
+            n_head=4,
+            n_kv_head=4,
+            n_embd=128,
+            window_pattern="L",
+            attention_backend="xla",
+        ),
+        rngs=nnx.Rngs(SEED),
     )
     counts = {
         "flaxchat": sum(
@@ -48,7 +49,15 @@ def main() -> None:
     from nanochat.gpt import GPT as NanoGPT  # pyright: ignore[reportMissingImports]
     from nanochat.gpt import GPTConfig as NanoConfig  # pyright: ignore[reportMissingImports]
 
-    nano_model = NanoGPT(NanoConfig(**common))
+    nano_model = NanoGPT(NanoConfig(
+        sequence_len=256,
+        vocab_size=512,
+        n_layer=2,
+        n_head=4,
+        n_kv_head=4,
+        n_embd=128,
+        window_pattern="L",
+    ))
     counts["nanochat"] = sum(parameter.numel() for parameter in nano_model.parameters())
     sys.path.insert(0, str(args.maxtext_source / "src"))
     from maxtext.configs import pyconfig  # pyright: ignore[reportMissingImports]
@@ -64,7 +73,7 @@ def main() -> None:
         "max_target_length=256", "per_device_batch_size=8", "dtype=float32",
         "weight_dtype=float32", "grad_dtype=float32", "scan_layers=false",
         "pure_nnx_decoder=false", "ici_fsdp_parallelism=1", "dcn_data_parallelism=1",
-        "enable_checkpointing=false",
+        "enable_checkpointing=false", "skip_jax_distributed_system=true",
     ])
     maxtext_model, _mesh = model_creation_utils.create_nnx_model(
         config, devices=[jax.devices()[0]], rng_key=jax.random.PRNGKey(SEED)
