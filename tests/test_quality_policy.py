@@ -27,6 +27,17 @@ def test_third_party_actions_are_immutable():
                     assert PINNED_ACTION.fullmatch(step["uses"]), (path, step["uses"])
 
 
+def test_release_publishes_and_smokes_the_checkpoint_only_on_tags():
+    release_path = WORKFLOWS / "release.yml"
+    source = release_path.read_text()
+    release = yaml.safe_load(source)
+    assert release[True] == {"push": {"tags": ["v*"]}}
+    assert "flaxchat-tinystories-v0.1.1.tar.gz" in source
+    assert "sha256sum --check" in source
+    assert "scripts.verify_artifact" in source
+    assert "scripts.checkpoint_demo" in source
+
+
 def test_expensive_workflows_are_opt_in_and_routine_ci_is_linux_only():
     mac = _workflow("macos-compatibility.yml")
     kaggle = _workflow("kaggle-tpu.yml")

@@ -5,9 +5,18 @@ import subprocess
 
 import pytest
 
-from flaxchat.launch import LaunchSpec
+from flaxchat.launch import LaunchSpec, execute_launch_spec
 from scripts.kaggle_tpu_tests import monitor_kernel, validate_revision
 from scripts.train_kaggle import build_launch_spec, render_bundle
+from scripts.train_local import (
+    build_launch_spec as build_local_launch_spec,
+    build_parser as build_local_parser,
+)
+from scripts.train_tpu import (
+    build_launch_spec as build_tpu_launch_spec,
+    build_parser as build_tpu_parser,
+    run_adapter,
+)
 
 
 def test_acceptance_bundle_installs_all_test_feature_extras():
@@ -46,6 +55,101 @@ def test_launch_spec_round_trip_and_secret_values_are_rejected():
             argv=("python",),
             secret_names=("TOKEN=secret",),
         )
+
+
+def test_launch_spec_executes_argv_without_shell(monkeypatch):
+    spec = LaunchSpec(
+        platform="local",
+        accelerator="cpu",
+        source_repository="local",
+        source_revision="a" * 40,
+        argv=("python", "-m", "scripts.run_tinystories"),
+    )
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen.update(argv=argv, kwargs=kwargs)
+        return subprocess.CompletedProcess(argv, 0)
+
+    monkeypatch.setattr("flaxchat.launch.subprocess.run", fake_run)
+    assert execute_launch_spec(spec, ("--resume-from-step=3",)).returncode == 0
+    assert seen["argv"] == (*spec.argv, "--resume-from-step=3")
+    assert "shell" not in seen["kwargs"]
+
+
+class FakeVM:
+    def __init__(self, fail_at=None):
+        self.calls = []
+        self.fail_at = fail_at
+
+    def __getattr__(self, name):
+        def call(*args, **kwargs):
+            self.calls.append((name, args, kwargs))
+            if name == self.fail_at:
+                raise RuntimeError(name)
+        return call
+
+
+def _gcp_args(*extra):
+    return build_tpu_parser().parse_args(["--name", "test", *extra])
+
+
+def _gcp_spec(args):
+    return LaunchSpec(
+        platform="gcp",
+        accelerator="v4-8",
+        source_repository="local",
+        source_revision="a" * 40,
+        argv=("python", "-m", "scripts.pretrain"),
+        teardown="always" if args.teardown else "never",
+    )
+
+
+@pytest.mark.parametrize("failure", ["up", "run"])
+def test_gcp_lifecycle_tears_down_after_failure(failure):
+    args = _gcp_args("--teardown")
+    vm = FakeVM(fail_at=failure)
+    with pytest.raises(RuntimeError, match=failure):
+        run_adapter(args, _gcp_spec(args), vm, None)
+    assert vm.calls[-1][0] == "down"
+
+
+def test_gcp_lifecycle_resume_collect_and_teardown():
+    args = _gcp_args("--teardown", "--recover", "--gcs", "gs://bucket", "--collect", "run.json")
+    vm = FakeVM()
+    assert run_adapter(args, _gcp_spec(args), vm, object()) == 0
+    names = [call[0] for call in vm.calls]
+    assert "run_with_resume" in names
+    assert "collect" in names
+    assert names[-1] == "down"
+
+
+def test_platform_dry_runs_share_one_manifest_contract():
+    revision = "c" * 40
+    local = build_local_launch_spec(
+        build_local_parser().parse_args(["--dry-run"]), revision=revision
+    )
+    gcp_args = _gcp_args("--dry-run")
+    gcp = build_tpu_launch_spec(gcp_args, revision=revision)
+    kaggle_args = argparse.Namespace(
+        revision=revision,
+        repository="https://example.invalid/flaxchat.git",
+        accelerator="tpu",
+        artifact_dir="artifacts/tinystories",
+        layers=2,
+        steps=100,
+        batch_size=4,
+        sequence_length=128,
+        secrets=[],
+        budget_hours=None,
+    )
+    kaggle = build_launch_spec(kaggle_args)
+    for spec in (local, gcp, kaggle):
+        restored = LaunchSpec.from_json(spec.to_json())
+        assert restored.source_revision == revision
+        assert restored.resolved_config
+        assert restored.argv[:3] == ("python", "-m", restored.argv[2])
+        assert restored.artifacts or restored.platform == "gcp"
 
 
 def test_training_bundle_runs_real_pipeline_at_exact_revision(tmp_path):

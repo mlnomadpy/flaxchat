@@ -18,6 +18,7 @@ import os
 import time
 import argparse
 import itertools
+from dataclasses import dataclass
 
 import jax
 import jax.numpy as jnp
@@ -39,15 +40,31 @@ from flaxchat.checkpoint import (
 )
 from flaxchat.report import get_report
 from flaxchat.rl import centered_advantages, train_step as rl_train_step
+from flaxchat.stages import RequestMixin, StageResult
 
 from tasks.gsm8k import GSM8K
 
-def run(argv: list[str] | None = None) -> int:
-    print_banner()
 
-    # ---------------------------------------------------------------------------
-    # CLI
-    # ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class RLRequest(RequestMixin):
+    resolved_config: FlaxChatConfig | None = None
+    run: str = "dummy"
+    model: str = "d12"
+    model_step: int | None = None
+    num_epochs: int = 1
+    examples_per_step: int = 16
+    num_samples: int = 8
+    max_new_tokens: int = 256
+    temperature: float = 1.0
+    top_k: int = 50
+    lr: float = 1e-5
+    init_lr_frac: float = 0.05
+    eval_every: int = 60
+    eval_examples: int = 100
+    save_every: int = 60
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="RL on GSM8K (GRPO-style)")
     parser.add_argument("--run", type=str, default="dummy")
     parser.add_argument("--model", type=str, default="d12", help="model tag")
@@ -63,7 +80,21 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument("--eval-every", type=int, default=60)
     parser.add_argument("--eval-examples", type=int, default=100)
     parser.add_argument("--save-every", type=int, default=60)
-    args = parser.parse_args(argv)
+    return parser
+
+
+def run(request: RLRequest) -> StageResult:
+    print_banner()
+    args = request
+    if min(
+        args.num_epochs,
+        args.examples_per_step,
+        args.num_samples,
+        args.eval_every,
+        args.eval_examples,
+        args.save_every,
+    ) < 1:
+        raise ValueError("epoch, batch, sample, evaluation, and save counts must be positive")
 
     # ---------------------------------------------------------------------------
     # Init
@@ -84,7 +115,9 @@ def run(argv: list[str] | None = None) -> int:
 
     # Load SFT model (or base if no SFT exists)
     depth = int(args.model.replace("d", ""))
-    config = FlaxChatConfig.from_depth(depth=depth, vocab_size=vocab_size)
+    config = args.resolved_config or FlaxChatConfig.from_depth(
+        depth=depth, vocab_size=vocab_size
+    )
     model = GPT(config.model, rngs=nnx.Rngs(0))
 
     base_dir = get_base_dir()
@@ -241,7 +274,10 @@ def run(argv: list[str] | None = None) -> int:
         # Save
         if master_process and step > 0 and step % args.save_every == 0:
             save_checkpoint(rl_manager, step, model, optimizer, {
-                "step": step, "model": args.model, "reward": mean_reward,
+                "step": step,
+                "model": args.model,
+                "reward": mean_reward,
+                "resolved_config": config.to_dict(),
             })
 
     # Final save + eval
@@ -251,7 +287,10 @@ def run(argv: list[str] | None = None) -> int:
 
     if master_process:
         save_checkpoint(rl_manager, num_steps, model, optimizer, {
-            "step": num_steps, "model": args.model, "final_pass1": acc,
+            "step": num_steps,
+            "model": args.model,
+            "final_pass1": acc,
+            "resolved_config": config.to_dict(),
         })
     rl_manager.close()
 
@@ -263,4 +302,9 @@ def run(argv: list[str] | None = None) -> int:
 
     print0("RL complete!")
     wandb_run.finish()
-    return 0
+    return StageResult(
+        stage="rl",
+        resolved_config=config.to_dict(),
+        metrics={"steps": num_steps, "final_pass1": acc},
+        artifact_paths=(rl_dir,),
+    )

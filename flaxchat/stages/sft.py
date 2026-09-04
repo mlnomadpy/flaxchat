@@ -10,6 +10,7 @@ Usage:
 import os
 import time
 import argparse
+from dataclasses import dataclass
 
 import jax
 from flax import nnx
@@ -25,13 +26,24 @@ from flaxchat.checkpoint import (
     create_checkpoint_manager, save_checkpoint, restore_model_from_checkpoint,
 )
 from flaxchat.sft import load_conversations, make_sft_batch, train_step
+from flaxchat.stages import RequestMixin, StageResult
 
-def run(argv: list[str] | None = None) -> int:
-    print_banner()
 
-    # ---------------------------------------------------------------------------
-    # CLI
-    # ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class SFTRequest(RequestMixin):
+    resolved_config: FlaxChatConfig | None = None
+    run: str = "dummy"
+    base_model: str = "d12"
+    dataset: str = "smoltalk"
+    num_iterations: int = 500
+    batch_size: int = 4
+    max_seq_len: int = 2048
+    learning_rate: float = 3e-5
+    warmup_steps: int = 20
+    save_every: int = -1
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Supervised Fine-Tuning")
     parser.add_argument("--run", type=str, default="dummy")
     parser.add_argument("--base-model", type=str, default="d12", help="base model tag (e.g. d12, d24)")
@@ -42,7 +54,14 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument("--learning-rate", type=float, default=3e-5)
     parser.add_argument("--warmup-steps", type=int, default=20)
     parser.add_argument("--save-every", type=int, default=-1)
-    args = parser.parse_args(argv)
+    return parser
+
+
+def run(request: SFTRequest) -> StageResult:
+    print_banner()
+    args = request
+    if args.num_iterations < 1:
+        raise ValueError("num_iterations must be positive")
 
     # ---------------------------------------------------------------------------
     # Init
@@ -70,7 +89,9 @@ def run(argv: list[str] | None = None) -> int:
 
     # For now, reconstruct config from base model tag
     depth = int(args.base_model.replace("d", ""))
-    config = FlaxChatConfig.from_depth(depth=depth, vocab_size=vocab_size)
+    config = args.resolved_config or FlaxChatConfig.from_depth(
+        depth=depth, vocab_size=vocab_size
+    )
     model = GPT(config.model, rngs=nnx.Rngs(0))
     restore_model_from_checkpoint(model, checkpoint_dir)
     print0(f"Loaded base model: {model.num_params():,} params")
@@ -126,16 +147,34 @@ def run(argv: list[str] | None = None) -> int:
             wandb_run.log({"step": step, "sft/loss": loss_val, "sft/dt": dt})
 
         if args.save_every > 0 and step > 0 and step % args.save_every == 0:
-            save_checkpoint(sft_ckpt_manager, step, model, optimizer, {"step": step})
+            save_checkpoint(
+                sft_ckpt_manager,
+                step,
+                model,
+                optimizer,
+                {"step": step, "resolved_config": config.to_dict()},
+            )
 
     # Final save
-    save_checkpoint(sft_ckpt_manager, args.num_iterations, model, optimizer, {
-        "step": args.num_iterations,
-        "base_model": args.base_model,
-        "dataset": args.dataset,
-    })
+    save_checkpoint(
+        sft_ckpt_manager,
+        args.num_iterations,
+        model,
+        optimizer,
+        {
+            "step": args.num_iterations,
+            "base_model": args.base_model,
+            "dataset": args.dataset,
+            "resolved_config": config.to_dict(),
+        },
+    )
     sft_ckpt_manager.close()
 
     print0("SFT complete!")
     wandb_run.finish()
-    return 0
+    return StageResult(
+        stage="sft",
+        resolved_config=config.to_dict(),
+        metrics={"iterations": args.num_iterations, "final_loss": loss_val},
+        artifact_paths=(sft_checkpoint_dir,),
+    )

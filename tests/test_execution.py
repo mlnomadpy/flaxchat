@@ -5,10 +5,15 @@ Tests run on CPU with no special permissions required.
 """
 
 import pytest
+import sys
 
 from flaxchat.execution import (
     ExecutionResult,
+    IsolatedExecutionConfig,
+    _run_bounded_process,
     execute_code,
+    execute_generated_code,
+    execute_code_isolated,
     time_limit,
     capture_io,
 )
@@ -41,6 +46,98 @@ class TestExecutionResult:
         )
         assert r.success is True
         assert r.stdout == "hello\n"
+
+
+class TestIsolatedExecution:
+    IMAGE = "python@sha256:" + "a" * 64
+
+    def test_container_contract_is_fail_closed(self):
+        config = IsolatedExecutionConfig(image=self.IMAGE)
+        command = config.command()
+        assert command[:2] == ("docker", "run")
+        for required in (
+            "--network=none",
+            "--read-only",
+            "--cap-drop=ALL",
+            "--security-opt=no-new-privileges",
+            "--user=65534:65534",
+        ):
+            assert required in command
+        assert not any(part.startswith("--volume") for part in command)
+        with pytest.raises(ValueError, match="sha256 digest"):
+            IsolatedExecutionConfig(image="python:latest")
+        with pytest.raises(ValueError, match="CPU and memory"):
+            IsolatedExecutionConfig(image=self.IMAGE, cpus=0)
+
+    def test_missing_runtime_is_structured_failure(self):
+        config = IsolatedExecutionConfig(
+            image=self.IMAGE, runtime="docker"
+        )
+        result = execute_code_isolated(
+            "print('never')", config, timeout=1, maximum_output_bytes=10
+        )
+        if result.success:
+            pytest.fail("a placeholder digest must never execute successfully")
+        assert result.error
+
+    def test_generated_code_requires_valid_operator_configuration(self, monkeypatch):
+        monkeypatch.delenv("FLAXCHAT_EXECUTION_IMAGE", raising=False)
+        assert "disabled" in execute_generated_code("pass").error
+        monkeypatch.setenv("FLAXCHAT_EXECUTION_IMAGE", "python:latest")
+        assert "sha256 digest" in execute_generated_code("pass").error
+        monkeypatch.setenv("FLAXCHAT_EXECUTION_IMAGE", self.IMAGE)
+        monkeypatch.setenv("FLAXCHAT_EXECUTION_RUNTIME", "other")
+        assert "docker or podman" in execute_generated_code("pass").error
+
+    def test_parent_bounds_untrusted_output(self):
+        result = _run_bounded_process(
+            (sys.executable, "-c", "import sys; sys.stdout.write('x' * 100000)"),
+            "",
+            2,
+            100,
+        )
+        assert not result.success
+        assert result.error == "Output limit exceeded"
+
+    def test_bounded_runner_captures_success_and_failure(self):
+        success = _run_bounded_process(
+            (sys.executable, "-c", "print('isolated')"), "", 2, 100
+        )
+        assert success.success
+        assert success.stdout == "isolated\n"
+        failure = _run_bounded_process(
+            (sys.executable, "-c", "import sys; sys.stderr.write('bad'); sys.exit(3)"),
+            "",
+            2,
+            100,
+        )
+        assert not failure.success
+        assert failure.stderr == "bad"
+        assert failure.error == "Isolated process exited 3"
+
+    def test_bounded_runner_kills_timeout(self):
+        result = _run_bounded_process(
+            (sys.executable, "-c", "while True: pass"), "", 0.1, 100
+        )
+        assert result.timeout
+
+    def test_isolated_runtime_launch_error_is_structured(self, monkeypatch):
+        config = IsolatedExecutionConfig(image=self.IMAGE)
+
+        def missing(*_args, **_kwargs):
+            raise FileNotFoundError
+
+        monkeypatch.setattr("flaxchat.execution._run_bounded_process", missing)
+        result = execute_code_isolated("pass", config)
+        assert result.error == "isolation runtime 'docker' not found"
+
+    def test_humaneval_is_disabled_without_pinned_backend(self, monkeypatch):
+        from tasks import humaneval
+
+        monkeypatch.delenv("FLAXCHAT_EXECUTION_IMAGE", raising=False)
+        assert humaneval.execute_code("print('must not run')") is False
+        monkeypatch.setenv("FLAXCHAT_EXECUTION_IMAGE", "python:latest")
+        assert humaneval.execute_code("print('must not run')") is False
 
 
 # ---------------------------------------------------------------------------

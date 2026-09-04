@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from flaxchat.stages.sft import run
+from flaxchat.stages.sft import SFTRequest, build_parser, run
 
 
 def main(argv: list[str] | None = None) -> int:
-    return run(argv)
+    request = SFTRequest.from_namespace(build_parser().parse_args(argv))
+    return run(request).exit_code
 
 
 if __name__ == "__main__":

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+import argparse
 import json
 from pathlib import Path
 import re
+import subprocess
 from typing import Literal
 
 
@@ -69,3 +71,22 @@ class LaunchSpec:
         if not isinstance(decoded, dict):
             raise TypeError("launch specification must be a JSON object")
         return cls.from_dict(decoded)
+
+
+def execute_launch_spec(
+    spec: LaunchSpec, extra_argv: tuple[str, ...] = ()
+) -> subprocess.CompletedProcess[str]:
+    """Execute the structured argv without introducing a shell boundary."""
+    return subprocess.run((*spec.argv, *extra_argv), check=False, text=True)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Execute a serialized launch spec")
+    parser.add_argument("--manifest", type=Path, required=True)
+    args, extra = parser.parse_known_args(argv)
+    spec = LaunchSpec.from_json(args.manifest.read_text(encoding="utf-8"))
+    return execute_launch_spec(spec, tuple(extra)).returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -22,3 +22,7 @@ python -m scripts.checkpoint_demo --artifact-dir examples/tinystories-v0.1.1
 
 The repository is MIT licensed. The included tokenizer/checkpoint are derived
 from the TinyStories acceptance subset under the dataset license stated above.
+The `v0.1.1` GitHub release attaches this directory as
+`flaxchat-tinystories-v0.1.1.tar.gz` beside a release-wide `SHA256SUMS`; the
+tag and release asset provide the immutable public location. Mutable branch
+archives are development previews and must not be treated as released models.

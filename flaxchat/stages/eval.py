@@ -8,6 +8,7 @@ Usage:
 
 import argparse
 import json
+from dataclasses import dataclass
 
 from flax import nnx
 
@@ -18,10 +19,22 @@ from flaxchat.tokenizer import get_tokenizer
 from flaxchat.eval import evaluate_core
 from flaxchat.engine import generate_with_cache
 from flaxchat.checkpoint import restore_model_from_checkpoint
+from flaxchat.stages import RequestMixin, StageResult
 
-def run(argv: list[str] | None = None) -> int:
-    print_banner()
 
+@dataclass(frozen=True)
+class EvalRequest(RequestMixin):
+    resolved_config: FlaxChatConfig | None = None
+    model: str = "d12"
+    checkpoint_type: str = "base"
+    tasks: str = "core"
+    max_per_task: int = 0
+    manifest_path: str = "core_eval_manifest.json"
+    temperature: float = 0.0
+    max_tokens: int = 512
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Evaluate model")
     parser.add_argument("--model", type=str, default="d12")
     parser.add_argument("--checkpoint-type", type=str, default="base", choices=["base", "sft", "rl"])
@@ -30,7 +43,14 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest-path", type=str, default="core_eval_manifest.json")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=512)
-    args = parser.parse_args(argv)
+    return parser
+
+
+def run(request: EvalRequest) -> StageResult:
+    print_banner()
+    args = request
+    if args.max_per_task < 0 or args.max_tokens < 1:
+        raise ValueError("max_per_task must be non-negative and max_tokens positive")
 
     # Init
     compute_init()
@@ -39,7 +59,9 @@ def run(argv: list[str] | None = None) -> int:
 
     # Load model
     depth = int(args.model.replace("d", ""))
-    config = FlaxChatConfig.from_depth(depth=depth, vocab_size=vocab_size)
+    config = args.resolved_config or FlaxChatConfig.from_depth(
+        depth=depth, vocab_size=vocab_size
+    )
     model = GPT(config.model, rngs=nnx.Rngs(0))
 
     base_dir = get_base_dir()
@@ -127,4 +149,9 @@ def run(argv: list[str] | None = None) -> int:
     # Summary
     print0("\n=== Summary ===")
     print0(json.dumps(results, indent=2, default=str))
-    return 0
+    return StageResult(
+        stage="eval",
+        resolved_config=config.to_dict(),
+        metrics=results,
+        artifact_paths=(args.manifest_path,),
+    )

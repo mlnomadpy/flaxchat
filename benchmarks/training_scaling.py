@@ -7,6 +7,7 @@ from dataclasses import asdict
 from functools import partial
 import json
 import statistics
+import platform
 from pathlib import Path
 import subprocess
 import tempfile
@@ -18,6 +19,8 @@ import jax.numpy as jnp
 from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
 import numpy as np
 import optax
+import flax
+import jaxlib
 
 from flaxchat.checkpoint import create_checkpoint_manager, save_checkpoint
 from flaxchat.common import (
@@ -44,6 +47,17 @@ def _source_revision() -> str:
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         return "unavailable"
+
+
+def software_metadata() -> dict[str, str]:
+    """Capture compiler-facing package versions in every benchmark record."""
+    return {
+        "python": platform.python_version(),
+        "jax": jax.__version__,
+        "jaxlib": jaxlib.__version__,
+        "flax": flax.__version__,
+        "optax": optax.__version__,
+    }
 
 
 def validate_device_counts(requested: list[int], available: int) -> list[int]:
@@ -166,6 +180,7 @@ def _benchmark_count(
         "device_count": device_count,
         "model_parameters": parameters,
         "global_batch_size": global_batch_size,
+        "input_shape": [global_batch_size, config.sequence_len],
         "tokens_per_step": tokens_per_step,
         "compile_seconds": compile_seconds,
         "steady_step_seconds": steady_seconds,
@@ -253,8 +268,11 @@ def main() -> None:
             "backend": jax.default_backend(),
             "device_kind": jax.devices()[0].device_kind,
             "available_device_count": jax.device_count(),
+            "local_device_count": jax.local_device_count(),
             "host_count": jax.process_count(),
+            "topology": [str(device) for device in jax.devices()],
         },
+        "software": software_metadata(),
         "model_config": asdict(config),
         "controls": {
             "global_batch_size": args.global_batch_size,
@@ -267,6 +285,7 @@ def main() -> None:
             "seed": args.seed,
             "precision": jnp.dtype(COMPUTE_DTYPE).name,
             "minimum_efficiency": args.minimum_efficiency,
+            "synchronization": "jax.block_until_ready after every measured step",
         },
         "measurements": measurements,
         "efficiency_regressions": [

@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 
 from flaxchat.gpt import rms_norm, apply_rotary_emb, COMPUTE_DTYPE
-from flaxchat.execution import execute_code
+from flaxchat.execution import execute_generated_code
 
 
 # ---------------------------------------------------------------------------
@@ -830,7 +830,7 @@ class Engine:
                         result = use_calculator(expr)
                         if result is None:
                             # Generated Python is fail-closed without a real isolation backend.
-                            exec_result = execute_code(expr)
+                            exec_result = execute_generated_code(expr)
                             if exec_result.success:
                                 result = exec_result.stdout.rstrip("\n")
                             else:

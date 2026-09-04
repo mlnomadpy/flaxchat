@@ -33,13 +33,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    if args.export_tflite:
-        raise SystemExit(
-            "--export-tflite is no longer coupled to training; run "
-            "`python -m scripts.convert_to_tflite` on the checkpoint"
-        )
+def build_launch_spec(
+    args: argparse.Namespace, *, revision: str | None = None
+) -> LaunchSpec:
     heads = max(1, args.n_embd // 32)
     command = [
         "--output-dir", str(args.export_dir),
@@ -55,14 +51,14 @@ def main(argv: list[str] | None = None) -> int:
     ]
     if args.smoke:
         command.append("--smoke")
-    revision = subprocess.check_output(
+    resolved_revision = revision or subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
     ).strip()
-    spec = LaunchSpec(
+    return LaunchSpec(
         platform="local",
         accelerator="auto",
         source_repository="local-worktree",
-        source_revision=revision,
+        source_revision=resolved_revision,
         argv=("python", "-m", "scripts.run_tinystories", *command),
         resolved_config={
             "layers": args.layers,
@@ -75,11 +71,21 @@ def main(argv: list[str] | None = None) -> int:
         },
         artifacts=(str(args.export_dir),),
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.export_tflite:
+        raise SystemExit(
+            "--export-tflite is no longer coupled to training; run "
+            "`python -m scripts.convert_to_tflite` on the checkpoint"
+        )
+    spec = build_launch_spec(args)
     spec.write(args.manifest)
     if args.dry_run:
         print(spec.to_json())
         return 0
-    return run_tinystories(command)
+    return run_tinystories(list(spec.argv[3:]))
 
 
 if __name__ == "__main__":

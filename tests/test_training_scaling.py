@@ -1,6 +1,10 @@
 import pytest
 
-from benchmarks.training_scaling import add_scaling_efficiency, validate_device_counts
+from benchmarks.training_scaling import (
+    add_scaling_efficiency,
+    software_metadata,
+    validate_device_counts,
+)
 
 
 def test_device_counts_are_sorted_unique_and_bounded():
@@ -39,3 +43,9 @@ def test_efficiency_rejects_invalid_threshold():
             [{"device_count": 1, "steady_tokens_per_second": 100.0}],
             minimum_efficiency=1.1,
         )
+
+
+def test_software_metadata_is_explicit_and_versioned():
+    metadata = software_metadata()
+    assert set(metadata) == {"python", "jax", "jaxlib", "flax", "optax"}
+    assert all(metadata.values())

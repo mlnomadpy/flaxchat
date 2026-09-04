@@ -7,6 +7,15 @@ import pytest
 
 from flaxchat.rl import centered_advantages, preference_loss
 from flaxchat.sft import load_conversations, make_sft_batch
+from flaxchat.config import FlaxChatConfig
+from flaxchat.stages import StageResult
+from flaxchat.stages.eval import EvalRequest, build_parser as build_eval_parser
+from flaxchat.stages.pretrain import (
+    PretrainRequest,
+    build_parser as build_pretrain_parser,
+)
+from flaxchat.stages.rl import RLRequest, build_parser as build_rl_parser
+from flaxchat.stages.sft import SFTRequest, build_parser as build_sft_parser
 
 
 class ConversationTokenizer:
@@ -69,3 +78,40 @@ def test_cli_modules_are_import_safe_and_expose_main(monkeypatch):
     )
     for name in modules:
         assert callable(importlib.reload(importlib.import_module(name)).main)
+
+
+@pytest.mark.parametrize(
+    ("request_type", "parser", "argv", "field", "expected"),
+    (
+        (PretrainRequest, build_pretrain_parser, ["--depth", "3"], "depth", 3),
+        (SFTRequest, build_sft_parser, ["--batch-size", "2"], "batch_size", 2),
+        (RLRequest, build_rl_parser, ["--num-samples", "4"], "num_samples", 4),
+        (EvalRequest, build_eval_parser, ["--tasks", "core,mmlu"], "tasks", "core,mmlu"),
+    ),
+)
+def test_stage_cli_options_resolve_to_typed_requests(
+    request_type, parser, argv, field, expected
+):
+    request = request_type.from_namespace(parser().parse_args(argv))
+    assert isinstance(request, request_type)
+    assert getattr(request, field) == expected
+
+
+def test_stage_result_is_machine_readable():
+    result = StageResult(
+        stage="eval",
+        resolved_config={"model": {"n_layer": 1}},
+        metrics={"loss": 1.0},
+        artifact_paths=("manifest.json",),
+    )
+    assert result.exit_code == 0
+    assert result.metrics["loss"] == 1.0
+
+
+def test_all_stage_requests_accept_one_validated_resolved_config():
+    config = FlaxChatConfig.from_depth(
+        depth=1, aspect_ratio=16, head_dim=16, max_seq_len=16, vocab_size=256
+    )
+    for request_type in (PretrainRequest, SFTRequest, RLRequest, EvalRequest):
+        request = request_type(resolved_config=config)
+        assert request.resolved_config is config

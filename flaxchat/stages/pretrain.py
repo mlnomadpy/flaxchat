@@ -20,7 +20,7 @@ import math
 import argparse
 import subprocess
 from functools import partial
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 
 import jax
 import jax.numpy as jnp
@@ -51,13 +51,42 @@ from flaxchat.training import (
     gradients_for_microbatches,
     tree_all_finite,
 )
+from flaxchat.stages import RequestMixin, StageResult
 
-def run(argv: list[str] | None = None) -> int:
-    print_banner()
 
-    # ---------------------------------------------------------------------------
-    # CLI arguments (mirrors nanochat)
-    # ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class PretrainRequest(RequestMixin):
+    resolved_config: FlaxChatConfig | None = None
+    run: str = "dummy"
+    depth: int = 20
+    aspect_ratio: int = 64
+    head_dim: int = 128
+    max_seq_len: int = 2048
+    window_pattern: str = "SSSL"
+    num_iterations: int = -1
+    target_flops: float = -1.0
+    target_param_data_ratio: float = 12
+    device_batch_size: int = 32
+    total_batch_size: int = -1
+    embedding_lr: float = 0.3
+    unembedding_lr: float = 0.008
+    weight_decay: float = 0.28
+    matrix_lr: float = 0.02
+    scalar_lr: float = 0.5
+    warmup_steps: int = 40
+    warmdown_ratio: float = 0.65
+    final_lr_frac: float = 0.05
+    gradient_accumulation_dtype: str = "float32"
+    resume_from_step: int = -1
+    eval_every: int = 250
+    eval_tokens: int = 80 * 524288
+    sample_every: int = 2000
+    save_every: int = -1
+    model_tag: str | None = None
+    cpu_smoke: bool = False
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Pretrain base model on TPU")
     parser.add_argument("--run", type=str, default="dummy", help="wandb run name ('dummy' disables)")
     parser.add_argument("--depth", type=int, default=20, help="Transformer depth")
@@ -92,7 +121,12 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument("--model-tag", type=str, default=None)
     parser.add_argument("--cpu-smoke", action="store_true",
                         help="run two deterministic optimizer steps without external data")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def run(request: PretrainRequest) -> StageResult:
+    print_banner()
+    args = argparse.Namespace(**request.to_dict())
     if args.cpu_smoke:
         args.depth = 2
         args.aspect_ratio = 16
@@ -106,6 +140,8 @@ def run(argv: list[str] | None = None) -> int:
         args.save_every = -1
         args.model_tag = args.model_tag or "cpu-smoke"
     user_config = vars(args).copy()
+    if args.resolved_config is not None:
+        user_config["resolved_config"] = args.resolved_config.to_dict()
     try:
         source_revision = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
@@ -160,7 +196,7 @@ def run(argv: list[str] | None = None) -> int:
     # ---------------------------------------------------------------------------
     # Build Model
     # ---------------------------------------------------------------------------
-    config = FlaxChatConfig.from_depth(
+    config = args.resolved_config or FlaxChatConfig.from_depth(
         depth=args.depth,
         aspect_ratio=args.aspect_ratio,
         head_dim=args.head_dim,
@@ -565,4 +601,14 @@ def run(argv: list[str] | None = None) -> int:
     ckpt_manager.wait_until_finished()
     ckpt_manager.close()
     wandb_run.finish()
-    return 0
+    return StageResult(
+        stage="pretrain",
+        resolved_config=config.to_dict(),
+        metrics={
+            "iterations": num_iterations,
+            "successful_updates": successful_updates,
+            "skipped_updates": skipped_updates,
+            "training_seconds": total_training_time,
+        },
+        artifact_paths=(checkpoint_dir,),
+    )

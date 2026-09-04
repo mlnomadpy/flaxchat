@@ -52,16 +52,21 @@ jobs:
       - run: pixi run test-e2e
       - run: pixi run audit
       - run: pixi run build-package
-      - name: Generate checksums and SBOM
+      - name: Package checkpoint, generate SBOM, and verify checksums
         run: |
-          sha256sum dist/* > dist/SHA256SUMS
           python -m pip install cyclonedx-bom
           cyclonedx-py environment --output-file dist/flaxchat.cdx.json
+          tar -czf dist/flaxchat-tinystories-v0.1.1.tar.gz examples/tinystories-v0.1.1
+          sha256sum dist/* > /tmp/flaxchat-SHA256SUMS
+          mv /tmp/flaxchat-SHA256SUMS dist/SHA256SUMS
+          sha256sum --check dist/SHA256SUMS
       - name: Install-smoke the built wheel
         run: |
           python -m venv /tmp/flaxchat-release-smoke
           /tmp/flaxchat-release-smoke/bin/pip install dist/*.whl
           /tmp/flaxchat-release-smoke/bin/python -c "import flaxchat; print(flaxchat.__version__)"
+          pixi run python -m scripts.verify_artifact examples/tinystories-v0.1.1
+          pixi run python -m scripts.checkpoint_demo --artifact-dir examples/tinystories-v0.1.1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-evidence
