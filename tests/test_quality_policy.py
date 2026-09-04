@@ -37,6 +37,8 @@ def test_expensive_workflows_are_opt_in_and_routine_ci_is_linux_only():
     assert all(job["runs-on"] == "ubuntu-latest" for job in cpu["jobs"].values())
     assert cpu["concurrency"]["cancel-in-progress"] is True
     assert ".github/**" not in cpu[True]["push"]["paths"]
+    assert "!benchmarks/results/**" in cpu[True]["pull_request"]["paths"]
+    assert "!benchmarks/results/**" in cpu[True]["push"]["paths"]
 
 
 def test_pages_uses_default_branch_and_pr_builds_without_deploying():
@@ -61,16 +63,20 @@ def test_module_coverage_floor_reports_missing_and_low_files():
 
 def test_current_tpu_results_share_one_immutable_revision_and_are_linked():
     results = ROOT / "benchmarks" / "results"
-    paths = sorted(results.glob("kaggle-tpu-v5e-8-97ba133-*.json"))
-    assert {path.name.rsplit("-", 1)[-1] for path in paths} == {
-        "pipeline.json", "scaling.json", "summary.json"
+    paths = sorted(results.glob("kaggle-tpu-v5e-8-7df9fe8-*.json"))
+    assert {path.name.removeprefix("kaggle-tpu-v5e-8-7df9fe8-") for path in paths} == {
+        "pipeline.json",
+        "scaling-overhead.json",
+        "scaling-strong.json",
+        "scaling-weak.json",
+        "summary.json",
     }
     records = [json.loads(path.read_text()) for path in paths]
     revisions = {record["source_revision"] for record in records}
     assert len(revisions) == 1
     revision = revisions.pop()
     assert re.fullmatch(r"[0-9a-f]{40}", revision)
-    assert revision.startswith("97ba133")
+    assert revision.startswith("7df9fe8")
     docs = (ROOT / "docs" / "RESULTS.md").read_text()
     assert revision in docs
     for path in paths:

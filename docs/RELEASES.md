@@ -4,10 +4,12 @@
 
 This patch release carries the [TPU initialization fix from issue
 #8](https://github.com/mlnomadpy/flaxchat/issues/8), first verified at
-[commit `97ba1333bf46b51f85ca3d9099c8c2717438ce91`](https://github.com/mlnomadpy/flaxchat/commit/97ba1333bf46b51f85ca3d9099c8c2717438ce91).
+[commit `97ba1333bf46b51f85ca3d9099c8c2717438ce91`](https://github.com/mlnomadpy/flaxchat/commit/97ba1333bf46b51f85ca3d9099c8c2717438ce91),
+with the complete release-candidate suite subsequently verified at
+[`7df9fe85817acf27fa61f5feb46e7f2a0774a3b1`](https://github.com/mlnomadpy/flaxchat/commit/7df9fe85817acf27fa61f5feb46e7f2a0774a3b1).
 The evidence consists of the repository's [GitHub Actions
 runs](https://github.com/mlnomadpy/flaxchat/actions), [Kaggle TPU acceptance
-kernel version 6](https://www.kaggle.com/code/skywolfmo/flaxchat-tpu-full-test-suite),
+kernel version 10](https://www.kaggle.com/code/skywolfmo/flaxchat-tpu-full-test-suite),
 and the machine-readable records in [RESULTS.md](RESULTS.md). Checkpoint format
 2 and the public configuration keys used by v0.1.0 remain compatible; the
 cross-topology restore tests and tracked TinyStories checkpoint exercise that

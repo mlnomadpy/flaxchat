@@ -1,19 +1,37 @@
 # Verified accelerator results
 
-## Current acceptance record (`97ba1333bf46b51f85ca3d9099c8c2717438ce91`)
+## Current acceptance record (`7df9fe85817acf27fa61f5feb46e7f2a0774a3b1`)
 
-The latest single-host TPU v5e-8 run is archived as three immutable records:
+Kaggle kernel version 10 checked out the exact revision above and passed every
+stage on one TPU v5 Lite host with eight devices. The compact evidence is
+archived as five immutable records:
+
+- [suite summary](../benchmarks/results/kaggle-tpu-v5e-8-7df9fe8-summary.json)
+- [TinyStories stage metrics and manifest](../benchmarks/results/kaggle-tpu-v5e-8-7df9fe8-pipeline.json)
+- [small-model overhead scaling](../benchmarks/results/kaggle-tpu-v5e-8-7df9fe8-scaling-overhead.json)
+- [representative strong scaling](../benchmarks/results/kaggle-tpu-v5e-8-7df9fe8-scaling-strong.json)
+- [representative weak scaling](../benchmarks/results/kaggle-tpu-v5e-8-7df9fe8-scaling-weak.json)
+
+The suite passed all eleven stages, including 298 tests with two skips, the
+complete tokenizer → pretrain → SFT → preference → evaluation → inference
+pipeline, checkpointing, attention/speculative benchmarks, and device scaling.
+This is one physical host with eight devices; it is not multi-host evidence.
+The 589,902-parameter case remains an overhead regression test. The
+29,360,454-parameter representative case reached 1.125M tokens/sec at eight
+devices under fixed global work and 1.146M tokens/sec under fixed per-device
+work. Against a predeclared 0.50 floor, eight-device strong-scaling efficiency
+was 0.4964 and is explicitly flagged as below threshold; weak-scaling
+efficiency was 0.7030 and passed. Timing dispersion, compile time, checkpoint
+latency, MFU estimate, and compiled-memory semantics are retained in the
+records. These are device-scaling measurements, not multi-host claims.
+
+## Previous acceptance record (`97ba1333bf46b51f85ca3d9099c8c2717438ce91`)
+
+The previous three-file record remains available for historical comparison:
 
 - [suite summary](../benchmarks/results/kaggle-tpu-v5e-8-97ba133-summary.json)
 - [TinyStories stage metrics and manifest](../benchmarks/results/kaggle-tpu-v5e-8-97ba133-pipeline.json)
 - [1/2/4/8-device strong-scaling record](../benchmarks/results/kaggle-tpu-v5e-8-97ba133-scaling.json)
-
-The suite passed all nine stages, including 273 tests with two skips, the
-complete tokenizer → pretrain → SFT → preference → evaluation → inference
-pipeline, checkpointing, attention/speculative benchmarks, and device scaling.
-This is one physical host with eight devices; it is not multi-host evidence.
-The scaling model has only 589,902 parameters and is intentionally retained as
-an overhead regression case, not representative accelerator efficiency.
 
 ## Earlier characterization records
 

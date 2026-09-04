@@ -55,7 +55,11 @@ def validate_device_counts(requested: list[int], available: int) -> list[int]:
     return counts
 
 
-def add_scaling_efficiency(measurements: list[dict]) -> list[dict]:
+def add_scaling_efficiency(
+    measurements: list[dict], *, minimum_efficiency: float = 0.5
+) -> list[dict]:
+    if not 0.0 <= minimum_efficiency <= 1.0:
+        raise ValueError("minimum efficiency must be between 0 and 1")
     baseline = measurements[0]
     if baseline["device_count"] != 1:
         raise ValueError("first measurement must be the one-device baseline")
@@ -64,6 +68,9 @@ def add_scaling_efficiency(measurements: list[dict]) -> list[dict]:
         ideal = baseline_throughput * measurement["device_count"]
         measurement["scaling_efficiency"] = (
             measurement["steady_tokens_per_second"] / ideal
+        )
+        measurement["meets_efficiency_threshold"] = (
+            measurement["scaling_efficiency"] >= minimum_efficiency
         )
     return measurements
 
@@ -189,6 +196,12 @@ def main() -> None:
     parser.add_argument("--warmup", type=int, default=2)
     parser.add_argument("--iterations", type=int, default=5)
     parser.add_argument("--trials", type=int, default=3)
+    parser.add_argument(
+        "--minimum-efficiency",
+        type=float,
+        default=0.5,
+        help="flag non-baseline points below this scaling-efficiency threshold",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -198,6 +211,7 @@ def main() -> None:
         or args.warmup < 0
         or args.iterations < 1
         or args.trials < 2
+        or not 0.0 <= args.minimum_efficiency <= 1.0
     ):
         parser.error("batch size and iterations must be positive; warmup cannot be negative")
 
@@ -230,7 +244,7 @@ def main() -> None:
             mode=args.mode,
         )
         for count in counts
-    ])
+    ], minimum_efficiency=args.minimum_efficiency)
     result = {
         "format_version": 1,
         "benchmark": f"single-host-{args.mode}-scaling",
@@ -252,8 +266,14 @@ def main() -> None:
             "trials": args.trials,
             "seed": args.seed,
             "precision": jnp.dtype(COMPUTE_DTYPE).name,
+            "minimum_efficiency": args.minimum_efficiency,
         },
         "measurements": measurements,
+        "efficiency_regressions": [
+            measurement["device_count"]
+            for measurement in measurements[1:]
+            if not measurement["meets_efficiency_threshold"]
+        ],
         "limitations": [
             "The MFU value uses the conventional 6*N*tokens approximation.",
             "Compiled memory is argument plus output plus temporary bytes minus "

@@ -36,6 +36,10 @@ compile time, steady tokens/sec, a conventional `6*N*tokens` MFU estimate,
 compiled memory, synchronous Orbax checkpoint latency, loss samples, and
 efficiency relative to the one-device result. This does not substitute for a
 physical multi-host run; the output labels that limitation explicitly.
+The default declared efficiency floor is 0.50. Every point includes a
+`meets_efficiency_threshold` boolean and the top-level record lists device
+counts below the floor in `efficiency_regressions`; use
+`--minimum-efficiency` to change the predeclared floor.
 
 ## Trainer comparisons
 
