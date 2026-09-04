@@ -71,10 +71,13 @@ def run(argv: list[str] | None = None) -> int:
     mesh = compute_init()
     master_process = jax.process_index() == 0
 
-    import wandb
-    wandb_run = DummyWandb() if args.run == "dummy" or not master_process else wandb.init(
-        project="flaxchat-rl", name=args.run, config=vars(args)
-    )
+    if args.run == "dummy" or not master_process:
+        wandb_run = DummyWandb()
+    else:
+        import wandb
+        wandb_run = wandb.init(
+            project="flaxchat-rl", name=args.run, config=vars(args)
+        )
 
     tokenizer = get_tokenizer()
     vocab_size = tokenizer.get_vocab_size()

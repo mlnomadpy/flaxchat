@@ -53,7 +53,7 @@ install = (
         [
             sys.executable, "-m", "pip", "install", "--quiet", "--find-links",
             "https://storage.googleapis.com/jax-releases/libtpu_releases.html",
-            JAX_REQUIREMENT, ".[dev]",
+            JAX_REQUIREMENT, ".[dev,web,logging,data]",
         ],
         cwd=SOURCE,
     )

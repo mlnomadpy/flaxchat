@@ -1,5 +1,6 @@
 import argparse
 import json
+from pathlib import Path
 import subprocess
 
 import pytest
@@ -7,6 +8,14 @@ import pytest
 from flaxchat.launch import LaunchSpec
 from scripts.kaggle_tpu_tests import monitor_kernel, validate_revision
 from scripts.train_kaggle import build_launch_spec, render_bundle
+
+
+def test_acceptance_bundle_installs_all_test_feature_extras():
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "accelerators" / "kaggle" / "launch.py"
+    ).read_text()
+    assert '".[dev,web,logging,data]"' in source
 
 
 def test_kaggle_launcher_requires_immutable_full_revision():

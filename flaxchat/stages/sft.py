@@ -51,10 +51,11 @@ def run(argv: list[str] | None = None) -> int:
     master_process = jax.process_index() == 0
 
     # wandb
-    import wandb
-    wandb_run = DummyWandb() if args.run == "dummy" or not master_process else wandb.init(
-        project="flaxchat-sft", name=args.run
-    )
+    if args.run == "dummy" or not master_process:
+        wandb_run = DummyWandb()
+    else:
+        import wandb
+        wandb_run = wandb.init(project="flaxchat-sft", name=args.run)
 
     # Tokenizer
     tokenizer = get_tokenizer()

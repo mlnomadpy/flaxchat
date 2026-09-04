@@ -133,9 +133,12 @@ def run(argv: list[str] | None = None) -> int:
     print0(f"Peak FLOPS (BF16) per device: {peak_flops:.2e}")
 
     # wandb
-    import wandb
     use_dummy_wandb = args.run == "dummy" or not master_process
-    wandb_run = DummyWandb() if use_dummy_wandb else wandb.init(project="flaxchat", name=args.run, config=user_config)
+    if use_dummy_wandb:
+        wandb_run = DummyWandb()
+    else:
+        import wandb
+        wandb_run = wandb.init(project="flaxchat", name=args.run, config=user_config)
 
     # ---------------------------------------------------------------------------
     # Tokenizer
