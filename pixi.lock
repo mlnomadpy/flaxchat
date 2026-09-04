@@ -1169,7 +1169,7 @@ packages:
 - pypi: ./
   name: flaxchat
   version: 0.1.1
-  sha256: b9e883aab730d36fcb553249057d11c166b08c76a1d1b3d2458d2070158370e7
+  sha256: 9efa26d8ef6ee319f948f08a23bac52c79dc7eb35bbae5200ab2521f629f8979
   requires_dist:
   - jax>=0.9.0
   - flax>=0.12.0

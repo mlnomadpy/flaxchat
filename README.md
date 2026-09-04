@@ -255,7 +255,9 @@ pixi run audit            # declared dependency vulnerability audit
 ## Verified Results
 
 The canonical, machine-readable acceptance records are indexed in
-[`docs/RESULTS.md`](docs/RESULTS.md). The latest verified TPU bundle is tied to
+[`benchmarks/results/provenance-index.json`](benchmarks/results/provenance-index.json),
+with a readable summary in [`docs/RESULTS.md`](docs/RESULTS.md). The latest
+verified TPU bundle is tied to
 the full source SHA and distinguishes acceptance tests from scaling or quality claims.
 Matched nanochat/MaxText measurements remain explicitly pending; no comparison is
 presented as apples-to-apples until every protocol record validates.

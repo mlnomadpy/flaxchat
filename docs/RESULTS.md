@@ -1,5 +1,9 @@
 # Verified accelerator results
 
+The [machine-readable provenance index](../benchmarks/results/provenance-index.json)
+pins the current record digests, source revision, identity evidence, and exact
+values used by public summaries. Tests validate it against the committed files.
+
 ## Current acceptance record (`12bfd8522f9a4dff46f05157108eb63159240882`)
 
 Kaggle kernel version 12 checked out the exact revision above and passed every

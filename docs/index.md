@@ -136,7 +136,9 @@ tpu.run("python -m scripts.pretrain --depth=12", sync=".")
 
 ## Verified Results
 
-See [Verified accelerator results](RESULTS.md) for the canonical records.
+See [Verified accelerator results](RESULTS.md) and its
+[machine-readable provenance index](../benchmarks/results/provenance-index.json)
+for the canonical records.
 Only measurements linked there to immutable source, data, configuration, and
 hardware identities are treated as published flaxchat results.
 
