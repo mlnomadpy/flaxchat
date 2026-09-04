@@ -76,17 +76,17 @@ and no nanochat/MaxText result is presented until the controlled fields in
 
 ## Matched trainer comparison
 
-Before spending GPU quota, Kaggle CPU kernel version 3 checked out all three
+Before spending GPU quota, Kaggle CPU kernel version 4 checked out all three
 pinned sources, installed the isolated adapter dependencies, constructed each
 native model, and verified trainable counts of 589,902 (flaxchat), 589,902
 (nanochat), and 606,848 (MaxText). The [machine-readable preflight
-record](../benchmarks/results/kaggle-cpu-matched-preflight-248b1fa.json) passed
-the 600,000 ±5% gate without enabling a GPU or TPU. Comparative performance is
-still withheld: bundled P100 versions 2 and 3 each completed flaxchat and
-MaxText but exposed successive nanochat runtime-compatibility and adapter-dtype
-failures. Both [negative](../benchmarks/results/kaggle-gpu-p100-matched-248b1fa-failure.json)
+record](../benchmarks/results/kaggle-cpu-matched-preflight-08f21ea.json) passed
+the 600,000 ±5% gate and a native nanochat forward/backward AdamW update without
+enabling a GPU or TPU. Comparative performance is still withheld: bundled P100
+versions 2 and 3 each completed flaxchat and MaxText but exposed successive
+nanochat runtime-compatibility and adapter-dtype failures. Both
+[negative](../benchmarks/results/kaggle-gpu-p100-matched-248b1fa-failure.json)
 [records](../benchmarks/results/kaggle-gpu-p100-matched-32351d4-failure.json) are
 retained rather than selectively publishing the two successful framework
-measurements. The corrected free CPU preflight now includes a native nanochat
-forward/backward optimizer update; another GPU measurement should only be run
-after that gate passes and with an explicit quota decision.
+measurements. The dtype correction is CPU-validated; another GPU measurement
+should only be run with an explicit quota decision.
