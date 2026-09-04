@@ -8,7 +8,10 @@ import os
 from pathlib import Path
 import sys
 
+import numpy as np
+
 from benchmarks.matched.common import PARAMETER_TOLERANCE, SEED, TARGET_PARAMETERS
+from benchmarks.matched.nanochat_runner import token_tensor
 
 
 def within_budget(parameters: int) -> bool:
@@ -59,6 +62,18 @@ def main() -> None:
         window_pattern="L",
     ))
     counts["nanochat"] = sum(parameter.numel() for parameter in nano_model.parameters())
+    import torch
+
+    nano_model.init_weights()
+    nano_optimizer = torch.optim.AdamW(nano_model.parameters(), lr=3e-4)
+    nano_inputs = token_tensor(np.zeros((1, 256), dtype=np.int32), torch.device("cpu"))
+    nano_targets = token_tensor(np.ones((1, 256), dtype=np.int32), torch.device("cpu"))
+    nano_optimizer.zero_grad(set_to_none=True)
+    nano_loss = nano_model(nano_inputs, nano_targets)
+    nano_loss.backward()
+    nano_optimizer.step()
+    if not torch.isfinite(nano_loss):
+        raise RuntimeError("nanochat CPU smoke update produced a non-finite loss")
     sys.path.insert(0, str(args.maxtext_source / "src"))
     from maxtext.configs import pyconfig  # pyright: ignore[reportMissingImports]
     from maxtext.utils import model_creation_utils  # pyright: ignore[reportMissingImports]
@@ -86,7 +101,15 @@ def main() -> None:
         raise RuntimeError(f"models outside parameter budget: {outside}")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
-        json.dumps({"parameter_counts": counts, "passed": True}, indent=2, sort_keys=True) + "\n",
+        json.dumps(
+            {
+                "parameter_counts": counts,
+                "smoke_updates": {"nanochat": True},
+                "passed": True,
+            },
+            indent=2,
+            sort_keys=True,
+        ) + "\n",
         encoding="utf-8",
     )
 

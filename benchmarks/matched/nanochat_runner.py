@@ -26,6 +26,11 @@ from benchmarks.matched.common import (
 )
 
 
+def token_tensor(values: np.ndarray, device: torch.device) -> torch.Tensor:
+    """Convert shared integer batches to PyTorch's required token-index dtype."""
+    return torch.as_tensor(np.asarray(values), dtype=torch.long, device=device)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", required=True, type=Path)
@@ -72,8 +77,8 @@ def main() -> None:
 
     def tensors(index: int) -> tuple[torch.Tensor, torch.Tensor]:
         return (
-            torch.as_tensor(np.asarray(batches["train_inputs"][index]), device=device),
-            torch.as_tensor(np.asarray(batches["train_targets"][index]), device=device),
+            token_tensor(batches["train_inputs"][index], device),
+            token_tensor(batches["train_targets"][index], device),
         )
 
     torch.cuda.reset_peak_memory_stats()
@@ -98,8 +103,8 @@ def main() -> None:
     model.eval()
     with torch.no_grad():
         validation_value = float(model(
-            torch.as_tensor(batches["validation_inputs"], device=device),
-            torch.as_tensor(batches["validation_targets"], device=device),
+            token_tensor(batches["validation_inputs"], device),
+            token_tensor(batches["validation_targets"], device),
         ).item())
     args.checkpoint_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = args.checkpoint_dir / "matched.pt"
