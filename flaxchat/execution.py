@@ -155,8 +155,9 @@ def reliability_guard(maximum_memory_bytes: Optional[int] = None):
     os.chmod = None
     os.chown = None
     os.chroot = None
-    os.lchflags = None
-    os.lchmod = None
+    # These APIs are platform-dependent, so avoid static attribute assumptions.
+    setattr(os, "lchflags", None)
+    setattr(os, "lchmod", None)
     os.lchown = None
     os.getcwd = None
     os.chdir = None
