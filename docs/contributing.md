@@ -74,8 +74,17 @@ Well tested:
 - Calculator and guarded-execution behavior
 
 Risk-based per-module coverage floors are enforced by
-`scripts/check_coverage.py`; accelerator-only behavior is covered by the
-on-demand bundled Kaggle workflow.
+`scripts/check_coverage.py`. The coverage job prints each protected module's
+signed distance from its floor, and a low protected module fails even when the
+global percentage passes, so unrelated covered code cannot mask a regression.
+Accelerator-only behavior is covered by the on-demand bundled Kaggle workflow.
+
+Ruff enables Pyflakes, fatal pycodestyle checks, and Bugbear correctness rules.
+The documented per-file Bugbear exceptions in `pyproject.toml` are the deferred
+legacy baseline; new files receive every selected rule. Pyright checks the full
+`flaxchat` and `scripts` trees, with its remaining JAX-heavy modules listed in
+the adjacent explicit migration baseline rather than silently excluded by a
+narrow include list.
 
 ## Dependency and CI policy
 

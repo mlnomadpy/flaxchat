@@ -4,9 +4,10 @@ import os
 import re
 import subprocess
 
+import pytest
 import yaml
 
-from scripts.check_coverage import check_coverage
+from scripts.check_coverage import FLOORS, check_coverage, main, module_coverage_deltas
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -91,6 +92,7 @@ def test_release_reuses_default_branch_validation_instead_of_retesting():
 
 def test_pages_uses_default_branch_and_pr_builds_without_deploying():
     pages = _workflow("deploy.yaml")
+    source = (WORKFLOWS / "deploy.yaml").read_text(encoding="utf-8")
     assert pages[True]["push"]["branches"] == ["master"]
     assert "pull_request" in pages[True]
     assert pages["jobs"]["deploy"]["if"] == "github.event_name != 'pull_request'"
@@ -99,6 +101,12 @@ def test_pages_uses_default_branch_and_pr_builds_without_deploying():
         if step.get("name") == "Upload artifact"
     )
     assert upload["if"] == "github.event_name != 'pull_request'"
+    assert "mermaid@11.12.0" in source
+    assert "jsdom@26.1.0" in source
+    assert "scripts/check_mermaid.mjs" in source
+    assert 'echo "$GITHUB_SHA" > _site/revision.txt' in source
+    assert '"${PAGE_URL%/}/revision.txt?' in source
+    assert 'if [ "$actual" = "$expected" ]' in source
 
 
 def test_module_coverage_floor_reports_missing_and_low_files():
@@ -107,6 +115,34 @@ def test_module_coverage_floor_reports_missing_and_low_files():
         "flaxchat/a.py: 49.00% is below 50.00%",
         "flaxchat/b.py: missing from coverage report",
     ]
+
+
+def test_module_coverage_deltas_are_signed_and_risk_scoped():
+    report = {
+        "files": {
+            "flaxchat/a.py": {"summary": {"percent_covered": 52.5}},
+            "flaxchat/unrelated.py": {"summary": {"percent_covered": 100}},
+        }
+    }
+    assert module_coverage_deltas(report, {"flaxchat/a.py": 50}) == [
+        ("flaxchat/a.py", 52.5, 50, 2.5)
+    ]
+
+
+def test_module_coverage_cli_reports_delta_and_fails_low_module(tmp_path, capsys):
+    report_path = tmp_path / "coverage.json"
+    files = {
+        module: {"summary": {"percent_covered": 100}}
+        for module in FLOORS
+    }
+    files["flaxchat/execution.py"]["summary"]["percent_covered"] = 44
+    report_path.write_text(json.dumps({"files": files}), encoding="utf-8")
+    with pytest.raises(SystemExit) as caught:
+        main([str(report_path)])
+    assert caught.value.code == 1
+    captured = capsys.readouterr()
+    assert "flaxchat/execution.py: 44.00% (floor 45.00%, delta -1.00pp)" in captured.out
+    assert "flaxchat/execution.py: 44.00% is below 45.00%" in captured.err
 
 
 def test_current_tpu_results_share_one_immutable_revision_and_are_linked():

@@ -21,12 +21,26 @@ FLOORS = {
 }
 
 
+def module_coverage_deltas(
+    report: dict, floors: dict[str, float] = FLOORS
+) -> list[tuple[str, float, float, float]]:
+    """Return module, actual, floor, and signed headroom for reported modules."""
+    files = report.get("files", {})
+    deltas = []
+    for module, floor in floors.items():
+        summary = files.get(module, {}).get("summary")
+        if summary and "percent_covered" in summary:
+            actual = float(summary["percent_covered"])
+            deltas.append((module, actual, floor, actual - floor))
+    return deltas
+
+
 def check_coverage(report: dict, floors: dict[str, float] = FLOORS) -> list[str]:
     failures = []
     files = report.get("files", {})
     for module, floor in floors.items():
         summary = files.get(module, {}).get("summary")
-        if not summary:
+        if not summary or "percent_covered" not in summary:
             failures.append(f"{module}: missing from coverage report")
             continue
         actual = float(summary["percent_covered"])
@@ -39,7 +53,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", type=Path, nargs="?", default=Path("coverage.json"))
     args = parser.parse_args(argv)
-    failures = check_coverage(json.loads(args.report.read_text(encoding="utf-8")))
+    report = json.loads(args.report.read_text(encoding="utf-8"))
+    for module, actual, floor, delta in module_coverage_deltas(report):
+        print(
+            f"{module}: {actual:.2f}% (floor {floor:.2f}%, "
+            f"delta {delta:+.2f}pp)"
+        )
+    failures = check_coverage(report)
     if failures:
         parser.exit(1, "\n".join(failures) + "\n")
     print("Risk-based module coverage floors passed")
