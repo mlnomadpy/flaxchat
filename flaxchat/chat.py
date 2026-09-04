@@ -13,7 +13,7 @@ from flaxchat.common import get_base_dir
 from flaxchat.config import FlaxChatConfig, GenerationConfig
 from flaxchat.engine import generate_with_cache
 from flaxchat.gpt import GPT
-from flaxchat.tokenizer import get_tokenizer, HuggingFaceTokenizer
+from flaxchat.tokenizer import get_tokenizer, load_tokenizer, tokenizer_artifact_path
 
 
 class ChatService:
@@ -59,11 +59,22 @@ class ChatService:
         cancelled: Callable[[], bool] | None = None,
     ) -> Iterator[str]:
         assistant_end = self.tokenizer.encode_special("<|assistant_end|>")
-        for token in self.generate_tokens(user_text, config):
-            if cancelled is not None and cancelled():
-                return
-            if token == assistant_end:
-                return
+
+        def active_tokens():
+            for token in self.generate_tokens(user_text, config):
+                if cancelled is not None and cancelled():
+                    return
+                if token == assistant_end:
+                    return
+                yield token
+
+        decode_stream = getattr(self.tokenizer, "decode_stream", None)
+        if decode_stream is not None:
+            for chunk in decode_stream(active_tokens()):
+                if chunk:
+                    yield chunk
+            return
+        for token in active_tokens():
             yield self.tokenizer.decode([token])
 
     def generate_text(self, user_text: str, config: GenerationConfig) -> str:
@@ -80,11 +91,7 @@ def load_chat_service(
     """Load a manifest-bound checkpoint/tokenizer pair for thin UI adapters."""
     if checkpoint_type not in {"base", "sft", "rl"}:
         raise ValueError("checkpoint_type must be base, sft, or rl")
-    tokenizer = (
-        HuggingFaceTokenizer.from_directory(tokenizer_path)
-        if tokenizer_path
-        else get_tokenizer()
-    )
+    tokenizer = load_tokenizer(tokenizer_path) if tokenizer_path else get_tokenizer()
     checkpoint_dir = checkpoint_path or os.path.join(
         get_base_dir(), f"{checkpoint_type}_checkpoints", model_tag
     )
@@ -103,7 +110,7 @@ def load_chat_service(
             f"runtime={tokenizer.get_vocab_size()}"
         )
     if isinstance(identity, str) and tokenizer_path:
-        tokenizer_file = os.path.join(tokenizer_path, "tokenizer.json")
+        tokenizer_file = tokenizer_artifact_path(tokenizer_path)
         with open(tokenizer_file, "rb") as handle:
             actual_hash = hashlib.sha256(handle.read()).hexdigest()
         if actual_hash != identity:

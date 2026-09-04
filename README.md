@@ -32,7 +32,7 @@ flaxchat is the complete LLM pipeline running natively on TPUs and GPUs with aut
 
 | Stage | Script | Description |
 |-------|--------|-------------|
-| Tokenizer | `scripts/tok_train.py` | Train BPE tokenizer (rustbpe + tiktoken) |
+| Tokenizer | `scripts/tok_train.py` | Train BPE, or select training-free ByT5/MrT5 bytes |
 | Pretrain | `scripts/pretrain.py` | Pretrain GPT on ClimbMix-400B or TinyStories |
 | SFT | `scripts/sft.py` | Supervised fine-tuning on conversations |
 | RL | `scripts/rl.py` | GRPO/REINFORCE on GSM8K with tool use |
@@ -222,7 +222,7 @@ flaxchat/
 │   ├── execution.py           # Sandboxed Python code execution
 │   ├── eval.py                # CORE metric + BPB evaluation
 │   ├── dataloader.py          # BOS-aligned best-fit packing
-│   ├── tokenizer.py           # BPE tokenizer (rustbpe + tiktoken + HF)
+│   ├── tokenizer.py           # BPE (rustbpe/HF) + ByT5-compatible UTF-8 bytes
 │   ├── config.py              # Depth-based auto-config
 │   ├── common.py              # Mesh, distributed, logging
 │   ├── checkpoint.py          # Orbax checkpoint manager

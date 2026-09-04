@@ -1,6 +1,7 @@
 import pytest
 
 from flaxchat.chat import ChatService, GenerationConfig, load_chat_service
+from flaxchat.tokenizer import ByteTokenizer
 
 
 class TinyTokenizer:
@@ -51,6 +52,16 @@ def test_stream_honors_cancellation(tiny_model):
         cancelled=lambda: next(calls),
     ))
     assert len(chunks) == 1
+
+
+def test_stream_preserves_byte_tokenizer_unicode(tiny_model, monkeypatch):
+    tokenizer = ByteTokenizer()
+    service = ChatService(tiny_model, tokenizer)
+    tokens = tokenizer.encode("Hi 👋") + [tokenizer.encode_special("<|assistant_end|>")]
+    monkeypatch.setattr(service, "generate_tokens", lambda *_: tokens)
+    assert "".join(service.stream_text(
+        "hello", GenerationConfig(max_tokens=len(tokens), temperature=0)
+    )) == "Hi 👋"
 
 
 def test_loader_rejects_unknown_checkpoint_type_before_io():

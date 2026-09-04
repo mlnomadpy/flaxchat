@@ -12,13 +12,17 @@ import pyarrow.parquet as pq
 
 from flaxchat.common import get_base_dir, print0
 from flaxchat.dataset import list_parquet_files, download_shards
-from flaxchat.tokenizer import RustBPETokenizer, HuggingFaceTokenizer
+from flaxchat.tokenizer import ByteTokenizer, RustBPETokenizer, HuggingFaceTokenizer
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Train BPE tokenizer")
     parser.add_argument("--vocab-size", type=int, default=32768, help="vocabulary size")
     parser.add_argument("--num-shards", type=int, default=8, help="number of data shards to train on")
-    parser.add_argument("--backend", type=str, default="rustbpe", choices=["rustbpe", "huggingface"])
+    parser.add_argument(
+        "--backend", type=str, default="rustbpe",
+        choices=["rustbpe", "huggingface", "byte"],
+        help="byte uses the training-free ByT5/MrT5 UTF-8 mapping",
+    )
     args = parser.parse_args(argv)
 
 
@@ -37,20 +41,18 @@ def main(argv: list[str] | None = None) -> int:
                         return
 
 
-    # Download data if needed
-    print0(f"Downloading {args.num_shards} data shards for tokenizer training...")
-    download_shards(0, args.num_shards)
-
-    parquet_paths = list_parquet_files()[:args.num_shards]
-    print0(f"Training tokenizer on {len(parquet_paths)} shards")
-
-    # Train
-    if args.backend == "rustbpe":
-        tokenizer = RustBPETokenizer.train_from_iterator(
-            text_iterator(parquet_paths), args.vocab_size
-        )
+    if args.backend == "byte":
+        print0("Using training-free ByT5/MrT5-compatible UTF-8 byte mapping")
+        tokenizer = ByteTokenizer()
     else:
-        tokenizer = HuggingFaceTokenizer.train_from_iterator(
+        print0(f"Downloading {args.num_shards} data shards for tokenizer training...")
+        download_shards(0, args.num_shards)
+        parquet_paths = list_parquet_files()[:args.num_shards]
+        print0(f"Training tokenizer on {len(parquet_paths)} shards")
+        tokenizer_cls = (
+            RustBPETokenizer if args.backend == "rustbpe" else HuggingFaceTokenizer
+        )
+        tokenizer = tokenizer_cls.train_from_iterator(
             text_iterator(parquet_paths), args.vocab_size
         )
 
