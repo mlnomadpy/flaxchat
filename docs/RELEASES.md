@@ -6,23 +6,21 @@ This patch release carries the [TPU initialization fix from issue
 #8](https://github.com/mlnomadpy/flaxchat/issues/8), first verified at
 [commit `97ba1333bf46b51f85ca3d9099c8c2717438ce91`](https://github.com/mlnomadpy/flaxchat/commit/97ba1333bf46b51f85ca3d9099c8c2717438ce91),
 with the complete release-candidate suite subsequently verified at
-[`7df9fe85817acf27fa61f5feb46e7f2a0774a3b1`](https://github.com/mlnomadpy/flaxchat/commit/7df9fe85817acf27fa61f5feb46e7f2a0774a3b1).
+[`12bfd8522f9a4dff46f05157108eb63159240882`](https://github.com/mlnomadpy/flaxchat/commit/12bfd8522f9a4dff46f05157108eb63159240882).
 The evidence consists of the repository's [GitHub Actions
 runs](https://github.com/mlnomadpy/flaxchat/actions), [Kaggle TPU acceptance
-kernel version 10](https://www.kaggle.com/code/skywolfmo/flaxchat-tpu-full-test-suite),
+kernel version 12](https://www.kaggle.com/code/skywolfmo/flaxchat-tpu-full-test-suite),
 and the machine-readable records in [RESULTS.md](RESULTS.md). Checkpoint format
 2 and the public configuration keys used by v0.1.0 remain compatible; the
 cross-topology restore tests and tracked TinyStories checkpoint exercise that
 contract before release.
 
 flaxchat uses semantic version tags (`vMAJOR.MINOR.PATCH`). The tag must match
-the package version or the release workflow fails. Every release reruns lint,
-type checking, dependency audit, the complete CPU suite, the offline
-end-to-end pipeline, and package construction. Wheels and source archives are
-published with GitHub artifact attestations; the pipeline manifest is retained
-as release evidence. Release assets also include SHA-256 checksums and a
-CycloneDX SBOM. Supported Python versions are install-smoke-tested only on tag
-builds, avoiding repeated matrix cost on ordinary pushes.
+the package version or the release workflow fails. A release accepts only a
+tagged commit already present on `master` with a successful Linux-validation
+run, avoiding a duplicate full suite. Tag builds retain the three supported
+Python install-smokes, package construction, checkpoint/demo verification,
+SHA-256 checksums, a CycloneDX SBOM, and GitHub artifact attestations.
 
 Checkpoint format compatibility is independent of the package version and is
 defined in [CHECKPOINT_FORMAT.md](CHECKPOINT_FORMAT.md). A format change must

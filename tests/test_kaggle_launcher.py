@@ -224,6 +224,10 @@ def test_matched_gpu_bundle_pins_all_three_repositories(tmp_path):
     assert NANOCHAT_REVISION in source
     assert MAXTEXT_REVISION in source
     assert "__FLAXCHAT_REVISION__" not in source
+    assert 'PYTORCH_REQUIREMENT = "torch==2.5.1+cu118"' in source
+    assert 'PYTORCH_INDEX_URL = "https://download.pytorch.org/whl/cu118"' in source
+    assert '"install-p100-pytorch-runtime"' in source
+    assert "'sm_60' in torch.cuda.get_arch_list()" in source
     assert metadata["enable_gpu"] == "true"
     assert metadata["enable_tpu"] == "false"
 
@@ -234,5 +238,6 @@ def test_matched_preflight_uses_cpu_before_spending_gpu_quota(tmp_path):
     metadata = json.loads((tmp_path / "kernel-metadata.json").read_text())
     assert 'MODE = "preflight"' in source
     assert "benchmarks.matched.preflight" in source
+    assert 'if MODE == "gpu"' in source
     assert metadata["enable_gpu"] == "false"
     assert metadata["enable_tpu"] == "false"

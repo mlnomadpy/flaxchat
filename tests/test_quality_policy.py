@@ -82,8 +82,8 @@ def test_module_coverage_floor_reports_missing_and_low_files():
 
 def test_current_tpu_results_share_one_immutable_revision_and_are_linked():
     results = ROOT / "benchmarks" / "results"
-    paths = sorted(results.glob("kaggle-tpu-v5e-8-7df9fe8-*.json"))
-    assert {path.name.removeprefix("kaggle-tpu-v5e-8-7df9fe8-") for path in paths} == {
+    paths = sorted(results.glob("kaggle-tpu-v5e-8-12bfd85-*.json"))
+    assert {path.name.removeprefix("kaggle-tpu-v5e-8-12bfd85-") for path in paths} == {
         "pipeline.json",
         "scaling-overhead.json",
         "scaling-strong.json",
@@ -95,7 +95,7 @@ def test_current_tpu_results_share_one_immutable_revision_and_are_linked():
     assert len(revisions) == 1
     revision = revisions.pop()
     assert re.fullmatch(r"[0-9a-f]{40}", revision)
-    assert revision.startswith("7df9fe8")
+    assert revision.startswith("12bfd85")
     docs = (ROOT / "docs" / "RESULTS.md").read_text()
     assert revision in docs
     for path in paths:

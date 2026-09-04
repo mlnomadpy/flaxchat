@@ -121,7 +121,11 @@ def main() -> None:
         protocol_sha256=protocol_sha256(args.protocol),
         data_sha256=file_sha256(args.data),
         software={"python": platform.python_version(), "torch": torch.__version__},
-        limitations="PyTorch compile timing is the synchronized first compiled update; peak memory uses CUDA allocator telemetry.",
+        limitations=(
+            "PyTorch compile timing is the synchronized first compiled update; peak memory uses CUDA allocator "
+            "telemetry. The pinned nanochat source declares a newer PyTorch release, but the Kaggle P100 "
+            "comparison uses PyTorch 2.5.1+cu118 because newer official wheels no longer include sm_60 kernels."
+        ),
     )
     write_record(args.output, record)
 

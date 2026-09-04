@@ -20,6 +20,8 @@ NANOCHAT_REVISION = "__NANOCHAT_REVISION__"
 MAXTEXT_REVISION = "__MAXTEXT_REVISION__"
 MODE = "__MODE__"
 JAX_REQUIREMENT = "__JAX_REQUIREMENT__"
+PYTORCH_REQUIREMENT = "torch==2.5.1+cu118"
+PYTORCH_INDEX_URL = "https://download.pytorch.org/whl/cu118"
 
 
 def run(name: str, argv: list[str], cwd: Path | None = None) -> dict[str, object]:
@@ -89,10 +91,21 @@ if all(check["returncode"] == 0 for check in checks):
     ))
 if MODE == "gpu" and all(check["returncode"] == 0 for check in checks):
     checks.append(run(
+        "install-p100-pytorch-runtime",
+        [
+            sys.executable, "-m", "pip", "install", "--quiet", "--force-reinstall",
+            "--index-url", PYTORCH_INDEX_URL, PYTORCH_REQUIREMENT,
+        ],
+        cwd=NANOCHAT,
+    ))
+if MODE == "gpu" and all(check["returncode"] == 0 for check in checks):
+    checks.append(run(
         "device-check",
         [
             sys.executable, "-c",
-            "import jax; d=jax.devices(); print(d); assert jax.default_backend()=='gpu' and len(d)==1 and 'P100' in d[0].device_kind.upper()",
+            "import jax, torch; d=jax.devices(); print(d); print(torch.__version__, torch.cuda.get_arch_list()); "
+            "assert jax.default_backend()=='gpu' and len(d)==1 and 'P100' in d[0].device_kind.upper(); "
+            "assert torch.cuda.is_available() and 'sm_60' in torch.cuda.get_arch_list()",
         ],
         cwd=FLAXCHAT,
     ))
