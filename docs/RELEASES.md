@@ -19,8 +19,16 @@ flaxchat uses semantic version tags (`vMAJOR.MINOR.PATCH`). The tag must match
 the package version or the release workflow fails. A release accepts only a
 tagged commit already present on `master` with a successful Linux-validation
 run, avoiding a duplicate full suite. Tag builds retain the three supported
-Python install-smokes, package construction, checkpoint/demo verification,
-SHA-256 checksums, a CycloneDX SBOM, and GitHub artifact attestations.
+Python install-smokes on one Ubuntu runner and reuse one package build rather
+than allocating a three-runner matrix. The extracted release checkpoint is
+verified and exercised from an installed wheel in a clean temporary working
+directory. Tag builds also retain deterministic checkpoint packaging, SHA-256
+checksums, a CycloneDX SBOM, and GitHub artifact attestations.
+The workflow uploads a draft first, downloads the published asset bytes into a
+fresh directory, verifies their release-wide checksums, installs the downloaded
+wheel in a clean Python 3.13 environment, and runs deterministic inference from
+the downloaded checkpoint archive. The draft becomes public only after those
+checks pass.
 
 Checkpoint format compatibility is independent of the package version and is
 defined in [CHECKPOINT_FORMAT.md](CHECKPOINT_FORMAT.md). A format change must

@@ -13,7 +13,6 @@ FULL_TRIGGERS = {
     "pixi.toml",
     "pixi.lock",
     ".github/workflows/cpu-tests.yml",
-    ".github/workflows/release.yml",
 }
 
 TEST_GROUPS = {
@@ -29,8 +28,14 @@ TEST_GROUPS = {
     "scripts/run_matched_benchmarks.py": ("tests/test_matched_benchmark.py",),
     "scripts/check_docs.py": (),
     "scripts/check_coverage.py": ("tests/test_quality_policy.py",),
+    "scripts/ci_scope.py": ("tests/test_ci_scope.py",),
     "scripts/checkpoint_demo.py": ("tests/test_published_artifact.py",),
     "scripts/checkpoint_portability.py": ("tests/test_checkpoint_topology.py",),
+    "scripts/verify_artifact.py": ("tests/test_published_artifact.py",),
+    ".github/workflows/release.yml": ("tests/test_quality_policy.py",),
+    ".github/workflows/deploy.yaml": ("tests/test_quality_policy.py",),
+    ".github/workflows/kaggle-tpu.yml": ("tests/test_quality_policy.py",),
+    ".github/workflows/macos-compatibility.yml": ("tests/test_quality_policy.py",),
 }
 
 

@@ -15,6 +15,9 @@ on:
       - "pixi.lock"
       - ".github/workflows/cpu-tests.yml"
       - ".github/workflows/release.yml"
+      - ".github/workflows/deploy.yaml"
+      - ".github/workflows/kaggle-tpu.yml"
+      - ".github/workflows/macos-compatibility.yml"
   push:
     branches: [master]
     paths:
@@ -30,6 +33,9 @@ on:
       - "pixi.lock"
       - ".github/workflows/cpu-tests.yml"
       - ".github/workflows/release.yml"
+      - ".github/workflows/deploy.yaml"
+      - ".github/workflows/kaggle-tpu.yml"
+      - ".github/workflows/macos-compatibility.yml"
   workflow_dispatch:
 
 concurrency:

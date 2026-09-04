@@ -15,25 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  compatibility:
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ["3.11", "3.12", "3.13"]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-        with:
-          python-version: ${{ matrix.python }}
-      - run: python -m pip install build
-      - run: python -m build
-      - run: python -m pip install dist/*.whl
-      - run: python -c "import flaxchat; print(flaxchat.__version__)"
-
   release:
-    needs: compatibility
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -57,31 +39,77 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/master
           test "$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/cpu-tests.yml/runs?head_sha=$GITHUB_SHA&status=success&per_page=1" --jq '.total_count')" -gt 0
       - run: pixi run build-package
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m venv /tmp/flaxchat-release-311
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m venv /tmp/flaxchat-release-312
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m venv /tmp/flaxchat-release-313
+      - name: Install-smoke one wheel on every supported Python
+        run: |
+          for environment in /tmp/flaxchat-release-311 /tmp/flaxchat-release-312 /tmp/flaxchat-release-313; do
+            "$environment/bin/pip" install dist/*.whl
+            "$environment/bin/python" -c "import flaxchat; assert flaxchat.__version__ == '0.1.1'"
+          done
       - name: Package checkpoint, generate SBOM, and verify checksums
         run: |
-          python -m pip install cyclonedx-bom
-          cyclonedx-py environment --output-file dist/flaxchat.cdx.json
-          tar -czf dist/flaxchat-tinystories-v0.1.1.tar.gz examples/tinystories-v0.1.1
-          sha256sum dist/* > /tmp/flaxchat-SHA256SUMS
-          mv /tmp/flaxchat-SHA256SUMS dist/SHA256SUMS
-          sha256sum --check dist/SHA256SUMS
-      - name: Install-smoke the built wheel
-        run: |
-          python -m venv /tmp/flaxchat-release-smoke
-          /tmp/flaxchat-release-smoke/bin/pip install dist/*.whl
-          /tmp/flaxchat-release-smoke/bin/python -c "import flaxchat; print(flaxchat.__version__)"
-          pixi run python -m scripts.verify_artifact examples/tinystories-v0.1.1
-          pixi run python -m scripts.checkpoint_demo --artifact-dir examples/tinystories-v0.1.1
+          python -m pip install cyclonedx-bom==7.3.1
+          env -u PYTHONPATH python -m cyclonedx_py environment \
+            /tmp/flaxchat-release-313/bin/python \
+            --output-reproducible --output-file dist/flaxchat.cdx.json
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -cf dist/flaxchat-tinystories-v0.1.1.tar examples/tinystories-v0.1.1
+          gzip -n dist/flaxchat-tinystories-v0.1.1.tar
+          cd dist
+          sha256sum * > ../SHA256SUMS
+          mv ../SHA256SUMS .
+          sha256sum --check SHA256SUMS
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-evidence
           path: |
             dist/
-            artifacts/tinystories-smoke/run_manifest.json
+            examples/tinystories-v0.1.1/run_manifest.json
       - uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
         with:
           subject-path: "dist/*"
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
+          body_path: docs/RELEASES.md
+          draft: true
           generate_release_notes: true
           files: dist/*
+      - name: Verify downloaded assets before publishing the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          repository="$PWD"
+          download="$(mktemp -d)"
+          extraction="$(mktemp -d)"
+          runtime="$(mktemp -d)"
+          gh release download "$GITHUB_REF_NAME" --dir "$download"
+          cd "$download"
+          sha256sum --check SHA256SUMS
+          tar -xzf flaxchat-tinystories-v0.1.1.tar.gz -C "$extraction"
+          python -m venv "$runtime"
+          "$runtime/bin/pip" install "$download"/*.whl
+          cd /tmp
+          "$runtime/bin/python" "$repository/scripts/verify_artifact.py" \
+            "$extraction/examples/tinystories-v0.1.1"
+          output="$("$runtime/bin/python" "$repository/scripts/checkpoint_demo.py" \
+            --artifact-dir "$extraction/examples/tinystories-v0.1.1")"
+          test "$output" = " he4it("
+          cd "$repository"
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest

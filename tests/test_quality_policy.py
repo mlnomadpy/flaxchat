@@ -34,8 +34,27 @@ def test_release_publishes_and_smokes_the_checkpoint_only_on_tags():
     assert release[True] == {"push": {"tags": ["v*"]}}
     assert "flaxchat-tinystories-v0.1.1.tar.gz" in source
     assert "sha256sum --check" in source
-    assert "scripts.verify_artifact" in source
-    assert "scripts.checkpoint_demo" in source
+    assert "scripts/verify_artifact.py" in source
+    assert "scripts/checkpoint_demo.py" in source
+    assert len(release["jobs"]) == 1
+    assert "matrix" not in source
+    assert source.count("pixi run build-package") == 1
+    for suffix in ("311", "312", "313"):
+        assert f"/tmp/flaxchat-release-{suffix}" in source
+    assert "mktemp -d" in source
+    assert 'test "$output" = " he4it("' in source
+    assert "artifacts/tinystories-smoke/run_manifest.json" not in source
+    assert "examples/tinystories-v0.1.1/run_manifest.json" in source
+    assert "body_path: docs/RELEASES.md" in source
+    assert "cyclonedx-bom==7.3.1" in source
+    assert "python -m cyclonedx_py environment" in source
+    assert "/tmp/flaxchat-release-313/bin/python" in source
+    assert "--output-reproducible" in source
+    assert "sha256sum * > ../SHA256SUMS" in source
+    assert 'draft: true' in source
+    assert 'gh release download "$GITHUB_REF_NAME"' in source
+    assert '"$runtime/bin/pip" install "$download"/*.whl' in source
+    assert 'gh release edit "$GITHUB_REF_NAME" --draft=false --latest' in source
 
 
 def test_expensive_workflows_are_opt_in_and_routine_ci_is_linux_only():
@@ -48,6 +67,14 @@ def test_expensive_workflows_are_opt_in_and_routine_ci_is_linux_only():
     assert all(job["runs-on"] == "ubuntu-latest" for job in cpu["jobs"].values())
     assert cpu["concurrency"]["cancel-in-progress"] is True
     assert ".github/**" not in cpu[True]["push"]["paths"]
+    for workflow in (
+        ".github/workflows/deploy.yaml",
+        ".github/workflows/kaggle-tpu.yml",
+        ".github/workflows/macos-compatibility.yml",
+        ".github/workflows/release.yml",
+    ):
+        assert workflow in cpu[True]["pull_request"]["paths"]
+        assert workflow in cpu[True]["push"]["paths"]
     assert "!benchmarks/results/**" in cpu[True]["pull_request"]["paths"]
     assert "!benchmarks/results/**" in cpu[True]["push"]["paths"]
 

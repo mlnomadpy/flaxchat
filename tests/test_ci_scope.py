@@ -52,3 +52,33 @@ def test_accelerator_template_change_runs_launcher_contract_only():
     scope = select_scope(["accelerators/kaggle/matched.py"])
     assert scope["mode"] == "targeted"
     assert scope["tests"] == ["tests/test_kaggle_launcher.py"]
+
+
+def test_release_workflow_change_runs_policy_tests_without_full_suite():
+    scope = select_scope([".github/workflows/release.yml"])
+    assert scope == {
+        "mode": "targeted",
+        "tests": ["tests/test_quality_policy.py"],
+        "run_audit": False,
+        "run_build": False,
+        "run_multidevice": False,
+        "run_e2e": False,
+    }
+
+
+def test_non_cpu_workflow_changes_run_only_policy_tests():
+    for path in (
+        ".github/workflows/deploy.yaml",
+        ".github/workflows/kaggle-tpu.yml",
+        ".github/workflows/macos-compatibility.yml",
+    ):
+        scope = select_scope([path])
+        assert scope["mode"] == "targeted"
+        assert scope["tests"] == ["tests/test_quality_policy.py"]
+
+
+def test_ci_selector_and_artifact_verifier_have_precise_test_routes():
+    assert select_scope(["scripts/ci_scope.py"])["tests"] == ["tests/test_ci_scope.py"]
+    assert select_scope(["scripts/verify_artifact.py"])["tests"] == [
+        "tests/test_published_artifact.py"
+    ]
