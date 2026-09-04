@@ -7,7 +7,14 @@ from flax import nnx
 
 from flaxchat.gpt import GPT
 from flaxchat.config import GPTConfig
-from flaxchat.engine import generate, generate_with_cache, generate_fast, generate_speculative, use_calculator
+from flaxchat.engine import (
+    _get_model_sharding,
+    generate,
+    generate_fast,
+    generate_speculative,
+    generate_with_cache,
+    use_calculator,
+)
 from flaxchat.execution import execute_code
 
 
@@ -42,6 +49,9 @@ class TestGenerate:
 
 
 class TestGenerateWithCache:
+    def test_cache_uses_model_placement(self, tiny_model):
+        assert _get_model_sharding(tiny_model) == tiny_model.wte.embedding[...].sharding
+
     def test_basic_cached_generation(self, tiny_model, tiny_config):
         prompt = [0, 1, 2, 3]
         output = generate_with_cache(tiny_model, prompt, max_tokens=8, temperature=1.0, seed=42)

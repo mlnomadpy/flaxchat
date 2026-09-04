@@ -36,6 +36,14 @@ def _get_replicated_sharding():
         return None
 
 
+def _get_model_sharding(model):
+    """Use the model's real placement instead of an unrelated global mesh."""
+    try:
+        return model.wte.embedding[...].sharding
+    except (AttributeError, TypeError):
+        return _get_replicated_sharding()
+
+
 def _to_device(arr, sharding=None):
     if sharding is not None:
         return jax.device_put(arr, sharding)
@@ -207,7 +215,7 @@ def generate(model, tokens, max_tokens=256, temperature=1.0, top_k=None, seed=42
 def generate_with_cache(model, tokens, max_tokens=256, temperature=1.0, top_k=40, seed=42):
     """KV-cached with Python loop. Faster than padded, slower than while_loop."""
     config = model.config
-    sharding = _get_replicated_sharding()
+    sharding = _get_model_sharding(model)
     key = jax.random.key(seed)
     total_len = len(tokens) + max_tokens
     n_layer = config.n_layer
