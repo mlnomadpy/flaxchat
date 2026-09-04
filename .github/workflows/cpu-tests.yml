@@ -8,6 +8,7 @@ on:
       - "tasks/**"
       - "benchmarks/**"
       - "!benchmarks/results/**"
+      - "accelerators/**"
       - "tests/**"
       - "pyproject.toml"
       - "pixi.toml"
@@ -22,6 +23,7 @@ on:
       - "tasks/**"
       - "benchmarks/**"
       - "!benchmarks/results/**"
+      - "accelerators/**"
       - "tests/**"
       - "pyproject.toml"
       - "pixi.toml"
@@ -52,7 +54,7 @@ jobs:
         id: scope
         env:
           EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE_SHA: ${{ github.event.action == 'synchronize' && github.event.before || github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.sha }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ -z "$BASE_SHA" ] || [[ "$BASE_SHA" =~ ^0+$ ]]; then

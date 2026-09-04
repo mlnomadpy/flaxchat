@@ -6,7 +6,12 @@ import subprocess
 import pytest
 
 from flaxchat.launch import LaunchSpec, execute_launch_spec
-from scripts.kaggle_tpu_tests import monitor_kernel, validate_revision
+from scripts.kaggle_tpu_tests import command, monitor_kernel, validate_revision
+from scripts.kaggle_matched_benchmarks import (
+    MAXTEXT_REVISION,
+    NANOCHAT_REVISION,
+    render_bundle as render_matched_bundle,
+)
 from scripts.train_kaggle import build_launch_spec, render_bundle
 from scripts.train_local import (
     build_launch_spec as build_local_launch_spec,
@@ -193,3 +198,41 @@ def test_monitor_recovers_after_transport_reset(monkeypatch, tmp_path):
     assert monitor_kernel("owner/kernel", tmp_path, poll_seconds=0) == 0
     state = json.loads((tmp_path / "monitor_state.json").read_text())
     assert state["last_status"] == "complete:artifacts-downloaded"
+
+
+def test_kaggle_command_bounds_a_hung_cli(monkeypatch):
+    monkeypatch.setattr("scripts.kaggle_tpu_tests.kaggle_cli", lambda: ["kaggle"])
+    monkeypatch.setattr("scripts.kaggle_tpu_tests.time.sleep", lambda _: None)
+    monkeypatch.setattr("scripts.kaggle_tpu_tests.random.uniform", lambda *_: 0.0)
+
+    def timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+    monkeypatch.setattr("scripts.kaggle_tpu_tests.subprocess.run", timeout)
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        command("kernels", "status", "owner/kernel", retries=1, timeout_seconds=7)
+    assert error.value.returncode == 124
+    assert "timed out after 7s" in error.value.stderr
+
+
+def test_matched_gpu_bundle_pins_all_three_repositories(tmp_path):
+    revision = "d" * 40
+    render_matched_bundle("owner/matched", revision, tmp_path)
+    source = (tmp_path / "matched.py").read_text()
+    metadata = json.loads((tmp_path / "kernel-metadata.json").read_text())
+    assert revision in source
+    assert NANOCHAT_REVISION in source
+    assert MAXTEXT_REVISION in source
+    assert "__FLAXCHAT_REVISION__" not in source
+    assert metadata["enable_gpu"] == "true"
+    assert metadata["enable_tpu"] == "false"
+
+
+def test_matched_preflight_uses_cpu_before_spending_gpu_quota(tmp_path):
+    render_matched_bundle("owner/preflight", "e" * 40, tmp_path, preflight=True)
+    source = (tmp_path / "matched.py").read_text()
+    metadata = json.loads((tmp_path / "kernel-metadata.json").read_text())
+    assert 'MODE = "preflight"' in source
+    assert "benchmarks.matched.preflight" in source
+    assert metadata["enable_gpu"] == "false"
+    assert metadata["enable_tpu"] == "false"

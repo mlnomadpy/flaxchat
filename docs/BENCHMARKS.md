@@ -53,6 +53,27 @@ python -m benchmarks.compare --protocol benchmarks/protocol.yaml \
   artifacts/flaxchat.json artifacts/maxtext.json artifacts/nanochat.json
 ```
 
+The executable matched suite creates one byte-tokenized TinyStories batch
+artifact and passes its SHA-256-bound arrays to all three native models. Submit
+all adapters together in one P100 kernel (never three separate quota jobs):
+
+```bash
+# First validate dependencies and exact parameter counts without GPU quota.
+python -m scripts.kaggle_matched_benchmarks \
+  --revision "$(git rev-parse HEAD)" --preflight --wait \
+  --output-dir artifacts/kaggle-matched-preflight
+
+# Submit the single bundled GPU measurement only after preflight succeeds.
+python -m scripts.kaggle_matched_benchmarks \
+  --revision "$(git rev-parse HEAD)" --wait \
+  --output-dir artifacts/kaggle-matched
+```
+
+The launcher checks out all three full revisions, retains each adapter's raw
+log and durable checkpoint, and runs `benchmarks.compare` only if every native
+trainer succeeds. A failed or disappointing run is retained rather than
+silently replaced.
+
 The command fails closed if the protocol hash, dataset revision, optimizer,
 seed, warmup/measurement counts, hardware, device count, precision, parameter
 target/tolerance, sequence length, global batch size, or validation metric differs.

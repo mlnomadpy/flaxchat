@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
   id-token: write
   attestations: write
 
@@ -49,9 +50,12 @@ jobs:
           pixi run python -c
           "import os,tomllib,pathlib; v=tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version']; assert os.environ['RELEASE_TAG']==f'v{v}', (os.environ['RELEASE_TAG'],v)"
       - name: Verify tag commit is already on the validated default branch
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git fetch origin master --depth=1
           git merge-base --is-ancestor "$GITHUB_SHA" origin/master
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/cpu-tests.yml/runs?head_sha=$GITHUB_SHA&status=success&per_page=1" --jq '.total_count')" -gt 0
       - run: pixi run build-package
       - name: Package checkpoint, generate SBOM, and verify checksums
         run: |

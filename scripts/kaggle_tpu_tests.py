@@ -51,13 +51,32 @@ def command(
     *args: str,
     capture: bool = False,
     retries: int = 3,
+    timeout_seconds: int = 120,
 ) -> subprocess.CompletedProcess:
     cli = kaggle_cli()
     if cli is None:
         raise RuntimeError("Kaggle CLI not found")
     full_command = [*cli, *args]
     for attempt in range(retries):
-        result = subprocess.run(full_command, text=True, capture_output=True)
+        try:
+            result = subprocess.run(
+                full_command,
+                text=True,
+                capture_output=True,
+                timeout=timeout_seconds,
+            )
+        except subprocess.TimeoutExpired as error:
+            stdout = (
+                error.stdout.decode(errors="replace")
+                if isinstance(error.stdout, bytes)
+                else error.stdout or ""
+            )
+            result = subprocess.CompletedProcess(
+                full_command,
+                124,
+                stdout=stdout,
+                stderr=f"Kaggle CLI connection timed out after {timeout_seconds}s",
+            )
         combined = (result.stdout or "") + (result.stderr or "")
         if result.returncode == 0:
             if not capture:

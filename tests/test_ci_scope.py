@@ -16,6 +16,7 @@ def test_benchmark_change_only_selects_benchmark_tests():
         "tests": [
             "tests/test_benchmark_compare.py",
             "tests/test_benchmark_protocol.py",
+            "tests/test_matched_benchmark.py",
             "tests/test_training_scaling.py",
         ],
         "run_audit": False,
@@ -39,3 +40,15 @@ def test_dependency_change_runs_full_audit():
 
 def test_manual_dispatch_forces_full_validation():
     assert select_scope([], force_full=True)["mode"] == "full"
+
+
+def test_kaggle_monitor_change_only_runs_its_contract_tests():
+    scope = select_scope(["scripts/kaggle_tpu_tests.py", "tests/test_kaggle_launcher.py"])
+    assert scope["mode"] == "targeted"
+    assert scope["tests"] == ["tests/test_kaggle_launcher.py"]
+
+
+def test_accelerator_template_change_runs_launcher_contract_only():
+    scope = select_scope(["accelerators/kaggle/matched.py"])
+    assert scope["mode"] == "targeted"
+    assert scope["tests"] == ["tests/test_kaggle_launcher.py"]

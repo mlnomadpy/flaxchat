@@ -17,7 +17,7 @@ SOURCE_REPOSITORY = "__SOURCE_REPOSITORY__"
 SOURCE_REVISION = "__SOURCE_REVISION__"
 ACCELERATOR = "__ACCELERATOR__"
 JAX_REQUIREMENT = "__JAX_REQUIREMENT__"
-MIN_DEVICE_COUNT = __MIN_DEVICE_COUNT__
+MIN_DEVICE_COUNT = __MIN_DEVICE_COUNT__  # noqa: F821 - replaced by the launcher
 
 
 def run(name: str, command: list[str], cwd: Path | None = None) -> dict[str, object]:

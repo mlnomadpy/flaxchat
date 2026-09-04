@@ -20,9 +20,13 @@ TEST_GROUPS = {
     "benchmarks/": (
         "tests/test_benchmark_compare.py",
         "tests/test_benchmark_protocol.py",
+        "tests/test_matched_benchmark.py",
         "tests/test_training_scaling.py",
     ),
+    "accelerators/kaggle/": ("tests/test_kaggle_launcher.py",),
     "scripts/kaggle_tpu_tests.py": ("tests/test_kaggle_launcher.py",),
+    "scripts/kaggle_matched_benchmarks.py": ("tests/test_kaggle_launcher.py",),
+    "scripts/run_matched_benchmarks.py": ("tests/test_matched_benchmark.py",),
     "scripts/check_docs.py": (),
     "scripts/check_coverage.py": ("tests/test_quality_policy.py",),
     "scripts/checkpoint_demo.py": ("tests/test_published_artifact.py",),
