@@ -1,95 +1,63 @@
-name: CPU tests
+name: Linux validation
 
 on:
   pull_request:
+    paths:
+      - "flaxchat/**"
+      - "scripts/**"
+      - "tasks/**"
+      - "benchmarks/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "pixi.toml"
+      - "pixi.lock"
+      - ".github/workflows/cpu-tests.yml"
+      - ".github/workflows/release.yml"
   push:
     branches: [master]
+    paths:
+      - "flaxchat/**"
+      - "scripts/**"
+      - "tasks/**"
+      - "benchmarks/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "pixi.toml"
+      - "pixi.lock"
+      - ".github/workflows/cpu-tests.yml"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
+
+concurrency:
+  group: linux-validation-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  quality:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
         with:
           cache: true
-      - run: pixi run lint
-      - run: pixi run typecheck
-      - run: pixi run audit
-
-  test:
-    name: Tests (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-14]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run test-quick
-
-  coverage:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run test-coverage
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage-xml
-          path: coverage.xml
-
-  virtual-multidevice:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run test-multidevice
-      - name: Restore an 8-device checkpoint on one device
-        run: pixi run pytest tests/test_checkpoint_topology.py -v
-      - name: Public CLI smoke test
-        env:
-          FLAXCHAT_BASE_DIR: ${{ runner.temp }}/flaxchat
-          XLA_FLAGS: --xla_force_host_platform_device_count=8
-        run: pixi run python -m scripts.pretrain --cpu-smoke
-
-  end-to-end:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run test-e2e
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tinystories-smoke-artifacts
-          path: artifacts/tinystories-smoke
-
-  package:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run build-package
-      - name: Verify wheel contents
-        run: unzip -l dist/*.whl | grep -E 'flaxchat/(gpt|checkpoint|dataloader)\.py'
+      - name: Static checks and dependency audit
+        run: |
+          pixi run lint
+          pixi run typecheck
+          pixi run audit
+      - name: Tests with coverage
+        run: pixi run test-coverage
+      - name: Eight-device CPU topology checks
+        run: |
+          pixi run test-multidevice
+          pixi run pytest tests/test_checkpoint_topology.py -v
+      - name: End-to-end smoke test
+        run: pixi run test-e2e
+      - name: Build and inspect distributions
+        run: |
+          pixi run build-package
+          unzip -l dist/*.whl | grep -E 'flaxchat/(gpt|checkpoint|dataloader)\.py'

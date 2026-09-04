@@ -1,0 +1,77 @@
+from pathlib import Path
+import json
+import re
+
+import yaml
+
+from scripts.check_coverage import check_coverage
+
+
+ROOT = Path(__file__).resolve().parents[1]
+WORKFLOWS = ROOT / ".github" / "workflows"
+PINNED_ACTION = re.compile(r"^[^@]+@[0-9a-f]{40}$")
+
+
+def _workflow(name):
+    return yaml.safe_load((WORKFLOWS / name).read_text())
+
+
+def test_third_party_actions_are_immutable():
+    for path in WORKFLOWS.iterdir():
+        if path.suffix not in {".yml", ".yaml"}:
+            continue
+        workflow = yaml.safe_load(path.read_text())
+        for job in workflow.get("jobs", {}).values():
+            for step in job.get("steps", []):
+                if "uses" in step:
+                    assert PINNED_ACTION.fullmatch(step["uses"]), (path, step["uses"])
+
+
+def test_expensive_workflows_are_opt_in_and_routine_ci_is_linux_only():
+    mac = _workflow("macos-compatibility.yml")
+    kaggle = _workflow("kaggle-tpu.yml")
+    cpu = _workflow("cpu-tests.yml")
+    assert set(mac[True]) == {"workflow_dispatch"}
+    assert set(kaggle[True]) == {"workflow_dispatch"}
+    assert len(cpu["jobs"]) == 1
+    assert all(job["runs-on"] == "ubuntu-latest" for job in cpu["jobs"].values())
+    assert cpu["concurrency"]["cancel-in-progress"] is True
+    assert ".github/**" not in cpu[True]["push"]["paths"]
+
+
+def test_pages_uses_default_branch_and_pr_builds_without_deploying():
+    pages = _workflow("deploy.yaml")
+    assert pages[True]["push"]["branches"] == ["master"]
+    assert "pull_request" in pages[True]
+    assert pages["jobs"]["deploy"]["if"] == "github.event_name != 'pull_request'"
+    upload = next(
+        step for step in pages["jobs"]["build"]["steps"]
+        if step.get("name") == "Upload artifact"
+    )
+    assert upload["if"] == "github.event_name != 'pull_request'"
+
+
+def test_module_coverage_floor_reports_missing_and_low_files():
+    report = {"files": {"flaxchat/a.py": {"summary": {"percent_covered": 49}}}}
+    assert check_coverage(report, {"flaxchat/a.py": 50, "flaxchat/b.py": 1}) == [
+        "flaxchat/a.py: 49.00% is below 50.00%",
+        "flaxchat/b.py: missing from coverage report",
+    ]
+
+
+def test_current_tpu_results_share_one_immutable_revision_and_are_linked():
+    results = ROOT / "benchmarks" / "results"
+    paths = sorted(results.glob("kaggle-tpu-v5e-8-97ba133-*.json"))
+    assert {path.name.rsplit("-", 1)[-1] for path in paths} == {
+        "pipeline.json", "scaling.json", "summary.json"
+    }
+    records = [json.loads(path.read_text()) for path in paths]
+    revisions = {record["source_revision"] for record in records}
+    assert len(revisions) == 1
+    revision = revisions.pop()
+    assert re.fullmatch(r"[0-9a-f]{40}", revision)
+    assert revision.startswith("97ba133")
+    docs = (ROOT / "docs" / "RESULTS.md").read_text()
+    assert revision in docs
+    for path in paths:
+        assert path.name in docs

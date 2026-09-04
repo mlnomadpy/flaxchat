@@ -409,8 +409,7 @@ class GPT(nnx.Module):
         self.x0_lambdas[...] = x0_vals
 
         # Value embeddings: uniform like c_v
-        for key_str, ve in self.value_embeds.items():
-            i = int(key_str)
+        for _key_str, ve in self.value_embeds.items():
             ve.embedding[...] = jax.random.uniform(
                 rngs.params(), ve.embedding[...].shape, minval=-s, maxval=s
             )
@@ -454,9 +453,6 @@ class GPT(nnx.Module):
         """
         resid_lambdas = self.resid_lambdas[...]
         x0_lambdas = self.x0_lambdas[...]
-
-        # Stack window sizes: (n_layer, 2)
-        window_sizes = jnp.array(self.window_sizes, dtype=jnp.int32)
 
         # Precompute ALL value embeddings stacked: (n_layer, B, T, kv_dim).
         # Non-VE layers get zeros; the block's _has_ve guard skips them.

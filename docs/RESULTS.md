@@ -1,5 +1,22 @@
 # Verified accelerator results
 
+## Current acceptance record (`97ba1333bf46b51f85ca3d9099c8c2717438ce91`)
+
+The latest single-host TPU v5e-8 run is archived as three immutable records:
+
+- [suite summary](../benchmarks/results/kaggle-tpu-v5e-8-97ba133-summary.json)
+- [TinyStories stage metrics and manifest](../benchmarks/results/kaggle-tpu-v5e-8-97ba133-pipeline.json)
+- [1/2/4/8-device strong-scaling record](../benchmarks/results/kaggle-tpu-v5e-8-97ba133-scaling.json)
+
+The suite passed all nine stages, including 273 tests with two skips, the
+complete tokenizer → pretrain → SFT → preference → evaluation → inference
+pipeline, checkpointing, attention/speculative benchmarks, and device scaling.
+This is one physical host with eight devices; it is not multi-host evidence.
+The scaling model has only 589,902 parameters and is intentionally retained as
+an overhead regression case, not representative accelerator efficiency.
+
+## Earlier characterization records
+
 The raw structured record for the successful acceptance bundle is
 [`benchmarks/results/kaggle-tpu-v5e-8-cde72cd.json`](../benchmarks/results/kaggle-tpu-v5e-8-cde72cd.json).
 It identifies the exact source and TinyStories revisions, TPU kind/count,

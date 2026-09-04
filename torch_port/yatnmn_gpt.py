@@ -18,8 +18,8 @@ sliding-window, tied embeddings, no biases in Linear) match `torch_gpt.py` exact
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Optional, Tuple, List
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn

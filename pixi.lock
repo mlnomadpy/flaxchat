@@ -1168,26 +1168,26 @@ packages:
   requires_python: '>=3.12'
 - pypi: ./
   name: flaxchat
-  version: 0.1.0
-  sha256: 277537da24ea485f7a3a32a5b3dbc1f6bb90e09da6eae190b9300b44d3a30173
+  version: 0.1.1
+  sha256: b9e883aab730d36fcb553249057d11c166b08c76a1d1b3d2458d2070158370e7
   requires_dist:
   - jax>=0.9.0
   - flax>=0.12.0
   - optax>=0.2.4
   - orbax-checkpoint>=0.12.0
-  - datasets>=5.0.1
   - tokenizers>=0.22.0
-  - tiktoken>=0.11.0
-  - rustbpe>=0.1.0
-  - fastapi>=0.117.1
-  - uvicorn>=0.36.0
-  - wandb>=0.21.3
-  - pyarrow>=18.0.0
+  - tiktoken>=0.11.0,<0.13
+  - rustbpe>=0.1.0,<0.2
   - pyyaml>=6.0
   - filelock>=3.0
-  - jax[tpu]>=0.6.0 ; extra == 'tpu'
+  - jax[tpu]>=0.9.0 ; extra == 'tpu'
   - tpuz>=0.1.0 ; extra == 'tpu'
-  - kgz>=0.1.0 ; extra == 'kaggle'
+  - kaggle>=2.0.0 ; extra == 'kaggle'
+  - datasets>=5.0.1,<6 ; extra == 'data'
+  - pyarrow>=18.0.0 ; extra == 'data'
+  - fastapi>=0.117.1 ; extra == 'web'
+  - uvicorn>=0.36.0 ; extra == 'web'
+  - wandb>=0.21.3 ; extra == 'logging'
   - pytest>=8.0.0 ; extra == 'dev'
   - pytest-cov>=6.0.0 ; extra == 'dev'
   - build>=1.2.0 ; extra == 'dev'
@@ -1195,7 +1195,7 @@ packages:
   - ruff>=0.12.0 ; extra == 'dev'
   - pyright>=1.1.0 ; extra == 'dev'
   - pip-audit>=2.9.0 ; extra == 'dev'
-  requires_python: '>=3.11'
+  requires_python: '>=3.11,<3.14'
 - pypi: https://files.pythonhosted.org/packages/44/7b/49b0054a79b9ed918c018e70e09b56eb5678ee8b44e59e126c79de4d8d73/fonttools-4.64.0-cp313-cp313-macosx_10_13_universal2.whl
   name: fonttools
   version: 4.64.0

@@ -44,6 +44,7 @@ wandb/
 tensorboard/
 .coverage
 coverage.xml
+coverage.json
 artifacts/
 
 # Jekyll build

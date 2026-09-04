@@ -25,10 +25,10 @@ from transformers.generation import GenerationMixin
 
 try:
     from .configuration_gelu_gpt import GeluGPTConfig
-    from .torch_gpt import GELU_GPT, GPTConfig, rms_norm, apply_rotary_emb, has_ve, compute_window_sizes
+    from .torch_gpt import GELU_GPT, GPTConfig, rms_norm, apply_rotary_emb
 except ImportError:  # when loaded as flat files via trust_remote_code
     from configuration_gelu_gpt import GeluGPTConfig
-    from torch_gpt import GELU_GPT, GPTConfig, rms_norm, apply_rotary_emb, has_ve, compute_window_sizes
+    from torch_gpt import GELU_GPT, GPTConfig, rms_norm, apply_rotary_emb
 
 
 def _kvcache_attn(

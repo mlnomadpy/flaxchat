@@ -114,13 +114,47 @@ if install["return_code"] == 0:
     checks.append(run("attention-benchmark", attention_command, cwd=SOURCE))
     if ACCELERATOR == "tpu":
         checks.append(run(
-            "training-scaling",
+            "training-scaling-overhead",
             [
                 sys.executable, "-m", "benchmarks.training_scaling",
                 "--device-counts", "1", "2", "4", "8",
                 "--global-batch-size", "32",
                 "--warmup", "2", "--iterations", "5",
-                "--output", str(RESULTS / "training-scaling.json"),
+                "--trials", "3", "--mode", "strong",
+                "--output", str(RESULTS / "training-scaling-overhead.json"),
+            ],
+            cwd=SOURCE,
+        ))
+        representative = [
+            "--device-counts", "1", "2", "4", "8",
+            "--sequence-length", "512",
+            "--embedding-dim", "512",
+            "--layers", "6",
+            "--heads", "8",
+            "--vocab-size", "4096",
+            "--warmup", "2",
+            "--iterations", "5",
+            "--trials", "3",
+        ]
+        checks.append(run(
+            "training-scaling-representative-strong",
+            [
+                sys.executable, "-m", "benchmarks.training_scaling",
+                *representative,
+                "--mode", "strong",
+                "--global-batch-size", "32",
+                "--output", str(RESULTS / "training-scaling-representative-strong.json"),
+            ],
+            cwd=SOURCE,
+        ))
+        checks.append(run(
+            "training-scaling-representative-weak",
+            [
+                sys.executable, "-m", "benchmarks.training_scaling",
+                *representative,
+                "--mode", "weak",
+                "--per-device-batch-size", "4",
+                "--output", str(RESULTS / "training-scaling-representative-weak.json"),
             ],
             cwd=SOURCE,
         ))

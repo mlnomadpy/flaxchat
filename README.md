@@ -9,6 +9,8 @@ Exact accelerator measurements and their limitations are in
 [docs/RESULTS.md](docs/RESULTS.md).
 The current engineering risks, refactoring target, and prioritized backlog are
 in [docs/SYSTEM_AUDIT_2026-09-03.md](docs/SYSTEM_AUDIT_2026-09-03.md).
+Supported Python and accelerator combinations are in
+[docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 A minimal, end-to-end LLM training harness for **Google Cloud TPU pods**, built on **JAX/Flax NNX**.
 
@@ -79,9 +81,9 @@ Four generation modes with increasing performance:
 
 | Mode | Function | Speed | Use Case |
 |------|----------|-------|----------|
-| Padded | `generate()` | ~1-2 tok/s | Testing, debugging |
-| KV-cached | `generate_with_cache()` | ~10-50 tok/s | Production, Python loop |
-| Fully JIT | `generate_fast()` | ~200+ tok/s | TPU inference via `jax.lax.while_loop` |
+| Padded | `generate()` | Measured per run | Testing, debugging |
+| KV-cached | `generate_with_cache()` | Measured per run | Production, Python loop |
+| Fully JIT | `generate_fast()` | Measured per run | TPU inference via `jax.lax.while_loop` |
 | Speculative | `generate_speculative()` | Measured per pairing | Large model + small draft model |
 
 ### Tool Use
@@ -96,7 +98,8 @@ for token_column, masks in engine.generate(prompt_ids, num_samples=3, max_tokens
 
 When the model outputs `<|python_start|>2+2<|python_end|>`, the engine:
 1. Tries the safe calculator (`use_calculator`) for math and `string.count()`
-2. Falls back to sandboxed Python execution (`execute_code`) for general code
+2. Keeps generated Python disabled by default; reviewed code can opt into the
+   best-effort reliability guard (`execute_code(..., trusted=True)`)
 3. Injects `<|output_start|>4<|output_end|>` tokens back into the stream
 
 ### Speculative Decoding
@@ -117,7 +120,7 @@ For HumanEval evaluation and RL tool use:
 ```python
 from flaxchat.execution import execute_code
 
-result = execute_code("print(sum(range(10)))", timeout=5.0)
+result = execute_code("print(sum(range(10)))", timeout=5.0, trusted=True)
 # ExecutionResult(success=True, stdout="45\n", stderr="", error=None)
 ```
 
@@ -155,7 +158,7 @@ config = FlaxChatConfig.from_depth(
 | MMLU | Categorical (4-choice) | `cais/mmlu` |
 | ARC-Challenge | Categorical | `allenai/ai2_arc` |
 | GSM8K | Generative (math + calculator) | `openai/gsm8k` |
-| HumanEval | Generative (code + sandbox) | `openai/humaneval` |
+| HumanEval | Generative (code execution disabled by default) | `openai/humaneval` |
 | SpellingBee | Generative (tool use) | Built-in (30+ templates) |
 | SmolTalk | Conversation quality | `HuggingFaceTB/smol-smoltalk` |
 | CORE | ICL benchmark (DCLM paper) | Hellaswag, ARC, PIQA, Winogrande |
@@ -236,7 +239,7 @@ flaxchat/
 ## Test Suite
 
 The test suite covers model semantics, four
-generation modes, optimizer schedules and numerical safety, sandboxing,
+generation modes, optimizer schedules and numerical safety, guarded execution,
 tokenizers, exact dataloader resume, checkpoint integrity, configuration,
 evaluation protocols, reports, datasets, sharding, and TPU attention parity.
 
@@ -251,77 +254,11 @@ pixi run audit            # declared dependency vulnerability audit
 
 ## Verified Results
 
-### Full Pipeline: Pretrain -> SFT -> RL (Kaggle TPU v5e-8)
-
-End-to-end training pipeline completed on a single Kaggle TPU v5e-8 session:
-
-| Stage | Dataset | Steps | Loss | Throughput | Time |
-|-------|---------|-------|------|------------|------|
-| **Pretrain** | FineWeb-Edu (2B tokens) | 15,258 | 10.4 -> **2.94** | 379K tok/s | ~1.5h |
-| **SFT** | SmolTalk (50K conversations) | 2,000 | 2.94 -> **1.82** | — | ~7 min |
-| **GRPO** | GSM8K (math + calculator) | 500 | RL training | — | running |
-
-- **Model**: 12L/768d/6h (GQA: 3kv) = 203.7M params
-- **Hardware**: Kaggle TPU v5e-8 (8 chips, bf16)
-- **W&B**: [irf-sic/flaxchat](https://wandb.ai/irf-sic/flaxchat)
-
-### Chinchilla Scaling Law (TRC TPU v6e-8)
-
-Nanochat architecture (value embeddings, sliding window, tied embeddings) trained at Chinchilla-optimal token budgets (20× params) on C4 with plain AdamW:
-
-| Depth | Params | Tokens | Final Loss | Throughput |
-|-------|--------|--------|-----------|------------|
-| 2 | 9M | 0.18B | 7.28 | 1.4M tok/s |
-| 4 | 28M | 0.56B | 5.79 | 1.1M tok/s |
-| 6 | 61M | 1.22B | 4.24 | 800K tok/s |
-| 8 | 109M | 2.18B | 3.95 | 600K tok/s |
-| 12 | 261M | 5.22B | **3.42** | 500K tok/s |
-| 16 | 503M | 10.06B | **3.39** | 290K tok/s |
-
-![Scaling Law](docs/scaling_law.png)
-
-### GELU MLP Ablation — d=12 Chinchilla (TRC TPU v6e-8)
-
-The nanochat architecture at d=12 with **GELU** replacing the default ReLU² in the MLP (`Linear → gelu → Linear`), trained on C4 to Chinchilla 20× (5.22B tokens) with plain AdamW. 3 seeds for variance estimation.
-
-| | Seed 0 | Seed 1 | Seed 2 | **Mean ± Std** |
-|---|---|---|---|---|
-| **C4 smooth loss** | 3.1106 | 3.1097 | 3.1261 | **3.1155 ± 0.008** |
-| **Throughput** | 703K tok/s | 717K tok/s | 717K tok/s | 712 ± 7 K tok/s |
-| **Wall time** | 2.06 h | 2.02 h | 2.02 h | 2.03 h |
-
-**Downstream evaluation (seed 0):**
-
-| Benchmark | Score |
-|---|---|
-| Wikitext-103 PPL | **46.52** |
-| LAMBADA accuracy | 18.4% |
-| LAMBADA PPL | 42.0 |
-| HellaSwag | 31.4% |
-| ARC-Easy | 34.5% |
-
-Config: d=12, n_embd=768, n_head=12, n_kv_head=12, seq_len=1024, tied embeddings, SSSL sliding window, batch 256, LR 0.01 warmup-cosine-decay. Hardware: single TPU v6e-8 (TRC, europe-west4-a).
-
-**Pretrained weights**: [`mlnomad/gelu-d12-chinchilla-261M`](https://huggingface.co/mlnomad/gelu-d12-chinchilla-261M) (Flax/Orbax) · [`mlnomad/gelu-d12-chinchilla-261M-pytorch`](https://huggingface.co/mlnomad/gelu-d12-chinchilla-261M-pytorch) (PyTorch, `AutoModelForCausalLM` compatible)
-
-```python
-# Load and generate with 3 lines:
-from transformers import AutoModelForCausalLM, AutoTokenizer
-model = AutoModelForCausalLM.from_pretrained("mlnomad/gelu-d12-chinchilla-261M-pytorch", trust_remote_code=True)
-tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
-```
-
-### TinyStories Baselines
-
-| Hardware | Model | Throughput | Loss | Time |
-|----------|-------|------------|------|------|
-| Kaggle 2xT4 GPU | 8L/256d (18.9M) | 55K tok/s | 2.20 | 50 min |
-| Kaggle TPU v5e-8 | 8L/512d (90.2M) | 149K tok/s | 2.79 | 109s |
-
-The suite is exercised on macOS and Linux CPUs, eight virtual JAX devices,
-and a Kaggle TPU workflow. The accelerator bundle runs all tests, the pinned
-TinyStories pipeline, 1K–8K Splash attention measurements, and speculative
-decoding characterization in one queued job.
+The canonical, machine-readable acceptance records are indexed in
+[`docs/RESULTS.md`](docs/RESULTS.md). The latest verified TPU bundle is tied to
+the full source SHA and distinguishes acceptance tests from scaling or quality claims.
+Matched nanochat/MaxText measurements remain explicitly pending; no comparison is
+presented as apples-to-apples until every protocol record validates.
 
 ## Comparison with nanochat
 
@@ -336,8 +273,8 @@ decoding characterization in one queued job.
 | Optimizer | Custom MuonAdamW | Custom optax Muon+AdamW |
 | Checkpointing | Pickle-based | Orbax (async, cloud-friendly) |
 | Generation | KV-cache + Python loop | 4 modes: padded, cached, JIT, speculative |
-| Tool use | Calculator + Python REPL | Calculator + sandboxed REPL |
-| Remote execution | N/A | Kaggle (kgz) + TPU (tpuz) |
+| Tool use | Calculator + Python REPL | Calculator + opt-in guarded REPL |
+| Remote execution | N/A | Kaggle CLI + TPU (tpuz) |
 | Config | Manual | Depth-based auto-scaling |
 
 ## Acknowledgments
@@ -353,7 +290,7 @@ Built on:
 - [nanochat](https://github.com/karpathy/nanochat) by Andrej Karpathy
 - [JAX](https://github.com/jax-ml/jax), [Flax](https://github.com/google/flax), [Optax](https://github.com/google-deepmind/optax), [Orbax](https://github.com/google/orbax)
 - [tpuz](https://github.com/mlnomadpy/tpuz) for TPU VM management
-- [kgz](https://github.com/mlnomadpy/kgz) for Kaggle kernel execution
+- [Kaggle CLI](https://github.com/Kaggle/kaggle-api) for headless accelerator execution
 
 ## License
 

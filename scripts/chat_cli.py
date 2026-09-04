@@ -1,48 +1,54 @@
-"""
-CLI chat interface.
+"""CLI adapter for the manifest-validated chat service."""
 
-Usage:
-    python -m scripts.chat_cli --model=d12
-    python -m scripts.chat_cli --model=d12 -p "Why is the sky blue?"
-"""
+from __future__ import annotations
 
 import argparse
 
 from flaxchat.chat import GenerationConfig, load_chat_service
 from flaxchat.common import print0
 
-parser = argparse.ArgumentParser(description="CLI Chat")
-parser.add_argument("--model", type=str, default="d12", help="model tag")
-parser.add_argument("-p", "--prompt", type=str, default=None, help="single prompt (non-interactive)")
-parser.add_argument("--temperature", type=float, default=0.8)
-parser.add_argument("--top-k", type=int, default=50)
-parser.add_argument("--max-tokens", type=int, default=512)
-parser.add_argument("--checkpoint-type", type=str, default="sft", choices=["base", "sft"])
-args = parser.parse_args()
 
-service = load_chat_service(args.model, args.checkpoint_type)
-generation = GenerationConfig(
-    max_tokens=args.max_tokens, temperature=args.temperature, top_k=args.top_k
-)
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--model", default="d12")
+    parser.add_argument("--checkpoint-path")
+    parser.add_argument("--tokenizer-path")
+    parser.add_argument("-p", "--prompt")
+    parser.add_argument("--temperature", type=float, default=0.8)
+    parser.add_argument("--top-k", type=int, default=50)
+    parser.add_argument("--max-tokens", type=int, default=512)
+    parser.add_argument("--checkpoint-type", choices=("base", "sft", "rl"), default="sft")
+    return parser
 
-if args.prompt is not None:
-    # Single prompt mode
-    print(service.generate_text(args.prompt, generation))
-else:
-    # Interactive chat
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    service = load_chat_service(
+        args.model,
+        args.checkpoint_type,
+        checkpoint_path=args.checkpoint_path,
+        tokenizer_path=args.tokenizer_path,
+    )
+    generation = GenerationConfig(
+        max_tokens=args.max_tokens,
+        temperature=args.temperature,
+        top_k=args.top_k,
+    )
+    if args.prompt is not None:
+        print(service.generate_text(args.prompt, generation))
+        return 0
     print0("flaxchat CLI - type 'quit' to exit")
-    print0("-" * 40)
-
     while True:
         try:
             user_input = input("\nYou: ").strip()
         except (EOFError, KeyboardInterrupt):
             print0("\nBye!")
-            break
-
+            return 0
         if user_input.lower() in ("quit", "exit", "q"):
-            break
-        if not user_input:
-            continue
+            return 0
+        if user_input:
+            print(f"\nAssistant: {service.generate_text(user_input, generation).strip()}")
 
-        print(f"\nAssistant: {service.generate_text(user_input, generation).strip()}")
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -41,23 +41,23 @@ pixi run -- python -m scripts.run_tinystories --layers=8 --pretrain-steps=5000
 
 | Mode | Function | Speed | Description |
 |------|----------|-------|-------------|
-| Padded | `generate()` | ~1-2 tok/s | Simple, for debugging |
-| KV-cached | `generate_with_cache()` | ~10-50 tok/s | Python loop with KV cache |
-| Fully JIT | `generate_fast()` | ~200+ tok/s | `jax.lax.while_loop`, no Python overhead |
+| Padded | `generate()` | Measured per run | Simple, for debugging |
+| KV-cached | `generate_with_cache()` | Measured per run | Python loop with KV cache |
+| Fully JIT | `generate_fast()` | Measured per run | `jax.lax.while_loop`, no Python overhead |
 | Speculative | `generate_speculative()` | Benchmark per pairing | Batched main-model verification |
 
 ### Tool Use (streaming)
 ```python
 engine = Engine(model, tokenizer)
 for tokens, masks in engine.generate(prompt_ids, num_samples=3):
-    # Automatic: calculator for math, sandboxed Python for code
+    # Automatic calculator; generated Python is disabled by default
     pass
 ```
 
 ### Sandboxed Code Execution
 ```python
 from flaxchat.execution import execute_code
-result = execute_code("print(sum(range(10)))", timeout=5.0)
+result = execute_code("print(sum(range(10)))", timeout=5.0, trusted=True)
 # ExecutionResult(success=True, stdout="45\n")
 ```
 
@@ -96,7 +96,7 @@ config = FlaxChatConfig.from_depth(depth=12)
 | MMLU | 4-choice | `cais/mmlu` |
 | ARC-Challenge | Categorical | `allenai/ai2_arc` |
 | GSM8K | Math + calculator | `openai/gsm8k` |
-| HumanEval | Code + sandbox | `openai/humaneval` |
+| HumanEval | Code execution disabled by default | `openai/humaneval` |
 | SpellingBee | Tool use | Built-in templates |
 | SmolTalk | Conversation | `HuggingFaceTB/smol-smoltalk` |
 | CORE | ICL (DCLM) | Hellaswag, ARC, PIQA, Winogrande |
@@ -106,7 +106,7 @@ config = FlaxChatConfig.from_depth(depth=12)
 ## Test Suite
 
 **204 collected tests** across 17 files cover model and attention semantics,
-all generation modes, optimizer safety, exact resume, evaluation, sandboxing,
+all generation modes, optimizer safety, exact resume, evaluation, guarded execution,
 tokenizers, data/report utilities, sharding, and accelerator parity.
 
 ```bash
@@ -136,41 +136,9 @@ tpu.run("python -m scripts.pretrain --depth=12", sync=".")
 
 ## Verified Results
 
-### Full Pipeline: Pretrain -> SFT -> RL (Kaggle TPU v5e-8)
-
-| Stage | Dataset | Steps | Loss | Throughput | Time |
-|-------|---------|-------|------|------------|------|
-| **Pretrain** | FineWeb-Edu (2B tokens) | 15,258 | 10.4 -> **2.94** | 379K tok/s | ~1.5h |
-| **SFT** | SmolTalk (50K conversations) | 2,000 | 2.94 -> **1.82** | — | ~7 min |
-| **GRPO** | GSM8K (math + calculator) | 500 | RL training | — | — |
-
-Model: 12L/768d/6h (GQA: 3kv) = 203.7M params
-
-### Chinchilla Scaling Law (TRC TPU v6e-8)
-
-Nanochat architecture trained at Chinchilla-optimal budgets (20x params) on C4:
-
-| Depth | Params | Tokens | Final Loss | Throughput |
-|-------|--------|--------|-----------|------------|
-| 2 | 9M | 0.18B | 7.28 | 1.4M tok/s |
-| 4 | 28M | 0.56B | 5.79 | 1.1M tok/s |
-| 6 | 61M | 1.22B | 4.24 | 800K tok/s |
-| 8 | 109M | 2.18B | 3.95 | 600K tok/s |
-| 12 | 261M | 5.22B | **3.42** | 500K tok/s |
-| 16 | 503M | 10.06B | **3.39** | 290K tok/s |
-
-![Scaling Law](scaling_law.png)
-
-### Baselines
-
-| Hardware | Model | Throughput | Loss | Time |
-|----------|-------|------------|------|------|
-| Kaggle 2xT4 | 8L/256d (18.9M) | 55K tok/s | 2.20 | 50 min |
-| Kaggle TPU v5e-8 | 8L/512d (90.2M) | 149K tok/s | 2.79 | 109s |
-
-W&B: [irf-sic/flaxchat](https://wandb.ai/irf-sic/flaxchat)
-
----
+See [Verified accelerator results](RESULTS.md) for the canonical records.
+Only measurements linked there to immutable source, data, configuration, and
+hardware identities are treated as published flaxchat results.
 
 ## Acknowledgments
 
@@ -180,7 +148,7 @@ This project is part of the **2026 Q1 TPU Sprint**, supported by the [Google AI 
 - **[TPU Research Cloud (TRC)](https://sites.research.google/trc/about/)** for providing free access to Cloud TPU v4, v5e, and v6e
 - **Kaggle** for free TPU v5e access for prototyping
 
-Built on [nanochat](https://github.com/karpathy/nanochat), [JAX](https://github.com/jax-ml/jax), [Flax](https://github.com/google/flax), [Optax](https://github.com/google-deepmind/optax), [Orbax](https://github.com/google/orbax), [tpuz](https://github.com/mlnomadpy/tpuz), [kgz](https://github.com/mlnomadpy/kgz).
+Built on [nanochat](https://github.com/karpathy/nanochat), [JAX](https://github.com/jax-ml/jax), [Flax](https://github.com/google/flax), [Optax](https://github.com/google-deepmind/optax), [Orbax](https://github.com/google/orbax), [tpuz](https://github.com/mlnomadpy/tpuz), and the [Kaggle CLI](https://github.com/Kaggle/kaggle-api).
 
 [View on GitHub](https://github.com/mlnomadpy/flaxchat) | [Documentation](https://www.tahabouhsine.com/flaxchat/)
 

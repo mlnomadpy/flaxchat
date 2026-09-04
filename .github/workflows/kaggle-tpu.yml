@@ -2,27 +2,28 @@ name: Kaggle accelerator tests
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 3 1 * *"
+    inputs:
+      accelerator:
+        description: Accelerator to spend quota on
+        required: true
+        type: choice
+        options: [tpu, gpu]
+        default: tpu
+
+concurrency:
+  group: kaggle-${{ inputs.accelerator }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   accelerator:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - accelerator: tpu
-            kernel_id: skywolfmo/flaxchat-tpu-full-test-suite
-          - accelerator: gpu
-            kernel_id: skywolfmo/flaxchat-gpu-full-test-suite
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       - run: python -m pip install kaggle
@@ -30,15 +31,16 @@ jobs:
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
-        run: >-
-          python -m scripts.kaggle_tpu_tests
-          --kernel-id "${{ matrix.kernel_id }}"
-          --accelerator "${{ matrix.accelerator }}"
-          --revision "${{ github.sha }}"
-          --wait
-          --output-dir artifacts/kaggle
-      - uses: actions/upload-artifact@v4
+        run: |
+          kernel_id="skywolfmo/flaxchat-${{ inputs.accelerator }}-full-test-suite"
+          python -m scripts.kaggle_tpu_tests \
+            --kernel-id "$kernel_id" \
+            --accelerator "${{ inputs.accelerator }}" \
+            --revision "${{ github.sha }}" \
+            --wait \
+            --output-dir artifacts/kaggle
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
-          name: kaggle-${{ matrix.accelerator }}-results
+          name: kaggle-${{ inputs.accelerator }}-results
           path: artifacts/kaggle

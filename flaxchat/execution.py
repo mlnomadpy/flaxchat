@@ -1,9 +1,8 @@
-"""
-Sandboxed Python code execution for flaxchat evaluation.
+"""Opt-in, best-effort Python reliability guard for trusted evaluation code.
 
-Ported from nanochat's execution.py. Uses multiprocessing for isolation
-with signal-based timeouts, IO capture, and a reliability guard that
-disables dangerous builtins and modules.
+This module is deliberately not a security sandbox. User-facing deployments
+must keep generated-code execution disabled unless they supply an independently
+reviewed container/VM isolation backend.
 """
 
 import contextlib
@@ -20,7 +19,7 @@ from typing import Optional
 
 @dataclass
 class ExecutionResult:
-    """Result of a sandboxed code execution."""
+    """Result of an attempted guarded code execution."""
     success: bool = False
     stdout: str = ""
     stderr: str = ""
@@ -38,6 +37,19 @@ class WriteOnlyStringIO(io.StringIO):
     def readline(self, *a, **kw): raise IOError
     def readlines(self, *a, **kw): raise IOError
     def readable(self, *a, **kw): return False
+
+
+class BoundedStringIO(io.StringIO):
+    """Capture at most ``limit`` characters and reject output floods."""
+
+    def __init__(self, limit: int):
+        super().__init__()
+        self.limit = limit
+
+    def write(self, value: str) -> int:
+        if self.tell() + len(value) > self.limit:
+            raise RuntimeError("Output limit exceeded")
+        return super().write(value)
 
 
 class _RedirectStdin(contextlib._RedirectStream):
@@ -62,10 +74,10 @@ def time_limit(seconds: float):
 
 
 @contextlib.contextmanager
-def capture_io():
+def capture_io(maximum_output_chars: int = 1_000_000):
     """Capture stdout/stderr, block stdin."""
-    f_out = io.StringIO()
-    f_err = io.StringIO()
+    f_out = BoundedStringIO(maximum_output_chars)
+    f_err = BoundedStringIO(maximum_output_chars)
     f_in = WriteOnlyStringIO()
     with contextlib.redirect_stdout(f_out):
         with contextlib.redirect_stderr(f_err):
@@ -111,6 +123,9 @@ def reliability_guard(maximum_memory_bytes: Optional[int] = None):
         data_limit = data_bytes + maximum_memory_bytes
         resource.setrlimit(resource.RLIMIT_AS, (address_limit, address_limit))
         resource.setrlimit(resource.RLIMIT_DATA, (data_limit, data_limit))
+        resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
+        resource.setrlimit(resource.RLIMIT_NPROC, (1, 1))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))
 
     faulthandler.disable()
 
@@ -164,7 +179,9 @@ def reliability_guard(maximum_memory_bytes: Optional[int] = None):
     sys.modules["tkinter"] = None  # type: ignore[assignment]
 
 
-def _unsafe_execute(code, timeout, maximum_memory_bytes, result_connection):
+def _unsafe_execute(
+    code, timeout, maximum_memory_bytes, maximum_output_chars, result_connection
+):
     """Execute code in a subprocess with safety guards."""
     result = {
         "success": False, "stdout": "", "stderr": "",
@@ -179,11 +196,15 @@ def _unsafe_execute(code, timeout, maximum_memory_bytes, result_connection):
         chdir = os.chdir
         unlink = os.unlink
 
+        # Never expose parent credentials to evaluated code. This process still
+        # is not a sandbox; clearing the environment is defense in depth only.
+        os.environ.clear()
+        os.environ.update({"PATH": "/usr/bin:/bin", "JAX_PLATFORMS": "cpu"})
         reliability_guard(maximum_memory_bytes)
 
         try:
             exec_globals = {}
-            with capture_io() as (stdout_f, stderr_f):
+            with capture_io(maximum_output_chars) as (stdout_f, stderr_f):
                 with time_limit(timeout):
                     exec(code, exec_globals)
             result.update({
@@ -211,18 +232,35 @@ def execute_code(
     code: str,
     timeout: float = 5.0,
     maximum_memory_bytes: Optional[int] = 256 * 1024 * 1024,
+    maximum_output_chars: int = 1_000_000,
+    *,
+    trusted: bool = False,
 ) -> ExecutionResult:
     """
-    Execute Python code in a sandboxed subprocess.
+    Execute explicitly trusted Python code behind a reliability guard.
 
     Args:
         code: Python source to execute.
         timeout: Max seconds before kill.
-        maximum_memory_bytes: Memory limit (None to disable).
+        maximum_memory_bytes: Additional memory budget (None to disable).
+        maximum_output_chars: Combined per-stream output bound.
+        trusted: Explicit acknowledgement that code is trusted. Untrusted code
+            is disabled by default because a subprocess and denylist are not a
+            security boundary.
 
     Returns:
         ExecutionResult with success, stdout, stderr, error, timeout, memory_exceeded.
     """
+    if not trusted:
+        return ExecutionResult(
+            error=(
+                "Untrusted Python execution is disabled. Configure an isolated "
+                "container/VM backend or pass trusted=True only for reviewed code."
+            )
+        )
+    if timeout <= 0 or maximum_output_chars <= 0:
+        raise ValueError("timeout and maximum_output_chars must be positive")
+
     # JAX owns background threads, so forking the parent process can deadlock.
     # A fresh interpreter is slower to start but safe on every supported OS.
     # On an accelerator host the isolated child must not reacquire the parent's
@@ -234,7 +272,7 @@ def execute_code(
         receiver, sender = context.Pipe(duplex=False)
         process = context.Process(
             target=_unsafe_execute,
-            args=(code, timeout, maximum_memory_bytes, sender),
+            args=(code, timeout, maximum_memory_bytes, maximum_output_chars, sender),
         )
         process.start()
         sender.close()

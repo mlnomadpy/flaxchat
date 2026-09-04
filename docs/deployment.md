@@ -17,7 +17,8 @@ graph TD
     USER --> |"tpuz CLI/API"| GCP[GCP TPU Pod]
 ```
 
-All backends implement the same `RemoteRunner` interface.
+All backends emit the same serializable `flaxchat.launch.LaunchSpec`; adapters
+handle provisioning and transport while training stays in shared services.
 
 ## 1. Local (laptop/workstation)
 
@@ -26,18 +27,29 @@ pixi install
 python -m scripts.run_tinystories --layers=4 --pretrain-steps=1000
 ```
 
-## 2. Kaggle TPU test bundle
+## 2. Kaggle training and accelerator validation
 
 ```bash
 python -m pip install kaggle
+python -m scripts.train_kaggle \
+  --kernel-id OWNER/flaxchat-training --accelerator tpu --steps 100 --no-wait
+
+# Resume monitoring later without submitting another paid/quota-consuming run.
 python -m scripts.kaggle_tpu_tests \
-  --kernel-id OWNER/flaxchat-tpu-tests --wait
+  --kernel-id OWNER/flaxchat-training --resume-monitor
+
+# Full acceptance bundle (run only for release candidates or accelerator changes).
+python -m scripts.kaggle_tpu_tests \
+  --kernel-id OWNER/flaxchat-tpu-tests --accelerator tpu --wait
 ```
 
-The generated private kernel checks out the exact current Git revision, installs
+Both generated private kernels check out an exact 40-character Git revision.
+The acceptance kernel installs
 TPU JAX, verifies eight devices, runs the entire suite once, executes the pinned
 TinyStories end-to-end pipeline, and records attention/speculative benchmarks.
 Logs, artifacts, JUnit XML, and a JSON summary are downloaded together.
+Transient Kaggle API outages are persisted locally and retried; `--resume-monitor`
+reconnects without creating a duplicate kernel version.
 
 ## 3. GCP TPU Pod
 

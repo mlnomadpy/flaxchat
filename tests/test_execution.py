@@ -1,5 +1,5 @@
 """
-Tests for flaxchat/execution.py — sandboxed code execution.
+Tests for flaxchat/execution.py — opt-in guarded code execution.
 
 Tests run on CPU with no special permissions required.
 """
@@ -12,6 +12,10 @@ from flaxchat.execution import (
     time_limit,
     capture_io,
 )
+
+
+def execute_code_trusted(code, *args, **kwargs):
+    return execute_code(code, *args, trusted=True, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -44,9 +48,14 @@ class TestExecutionResult:
 # ---------------------------------------------------------------------------
 
 class TestExecuteCodeSuccess:
+    def test_untrusted_execution_is_disabled_by_default(self):
+        result = execute_code("print('must not run')")
+        assert not result.success
+        assert "disabled" in result.error.lower()
+
     def test_simple_print(self):
         """Executing print('hello') should succeed and capture stdout."""
-        result = execute_code("print('hello')")
+        result = execute_code_trusted("print('hello')")
         assert result.success is True
         assert "hello" in result.stdout
         assert result.error is None
@@ -54,7 +63,7 @@ class TestExecuteCodeSuccess:
 
     def test_arithmetic(self):
         """Pure computation should succeed silently."""
-        result = execute_code("x = 2 + 3\nprint(x)")
+        result = execute_code_trusted("x = 2 + 3\nprint(x)")
         assert result.success is True
         assert "5" in result.stdout
 
@@ -65,7 +74,7 @@ def greet(name):
     return f"Hello, {name}!"
 print(greet("World"))
 """
-        result = execute_code(code)
+        result = execute_code_trusted(code)
         assert result.success is True
         assert "Hello, World!" in result.stdout
 
@@ -76,14 +85,19 @@ print(greet("World"))
         # before the guard fires. The guard runs *before* exec, so actually
         # imports are disabled. We test that the guard works correctly.
         code = "print(2 + 2)"
-        result = execute_code(code)
+        result = execute_code_trusted(code)
         assert result.success is True
         assert "4" in result.stdout
 
     def test_empty_code(self):
         """Empty code string should succeed with no output."""
-        result = execute_code("")
+        result = execute_code_trusted("")
         assert result.success is True
+
+    def test_output_flood_is_bounded(self):
+        result = execute_code_trusted("print('x' * 100)", maximum_output_chars=10)
+        assert not result.success
+        assert "Output limit exceeded" in result.error
         assert result.stdout == ""
 
 
@@ -92,29 +106,36 @@ print(greet("World"))
 # ---------------------------------------------------------------------------
 
 class TestExecuteCodeErrors:
+    @pytest.mark.parametrize(
+        "kwargs", ({"timeout": 0}, {"maximum_output_chars": 0})
+    )
+    def test_invalid_resource_limits_fail_closed(self, kwargs):
+        with pytest.raises(ValueError, match="must be positive"):
+            execute_code_trusted("pass", **kwargs)
+
     def test_syntax_error(self):
         """Code with syntax errors should fail gracefully."""
-        result = execute_code("def f(\n")
+        result = execute_code_trusted("def f(\n")
         assert result.success is False
         assert result.error is not None
         assert "SyntaxError" in result.error
 
     def test_runtime_error(self):
         """Runtime errors should be caught and reported."""
-        result = execute_code("x = 1 / 0")
+        result = execute_code_trusted("x = 1 / 0")
         assert result.success is False
         assert result.error is not None
         assert "ZeroDivisionError" in result.error
 
     def test_name_error(self):
         """Referencing undefined variables should fail."""
-        result = execute_code("print(undefined_variable)")
+        result = execute_code_trusted("print(undefined_variable)")
         assert result.success is False
         assert "NameError" in result.error
 
     def test_assertion_error(self):
         """Failed assertions should be reported."""
-        result = execute_code("assert False, 'test failure'")
+        result = execute_code_trusted("assert False, 'test failure'")
         assert result.success is False
         assert "AssertionError" in result.error
 
@@ -126,14 +147,14 @@ class TestExecuteCodeErrors:
 class TestExecuteCodeTimeout:
     def test_infinite_loop_times_out(self):
         """An infinite loop should be killed after the timeout."""
-        result = execute_code("while True: pass", timeout=1.0)
+        result = execute_code_trusted("while True: pass", timeout=1.0)
         assert result.timeout is True
         assert result.success is False
 
     def test_sleep_within_timeout_succeeds(self):
         """Code that finishes within timeout should succeed."""
         code = "import time; time.sleep(0.1); print('done')"
-        result = execute_code(code, timeout=5.0)
+        result = execute_code_trusted(code, timeout=5.0)
         # This may fail because reliability_guard disables __import__
         # before exec runs. If so, we just check it doesn't hang.
         assert result.timeout is False
@@ -141,7 +162,7 @@ class TestExecuteCodeTimeout:
     def test_short_timeout(self):
         """Very short timeout should kill even fast code... or it finishes."""
         # This tests that the timeout mechanism doesn't crash
-        result = execute_code("print('fast')", timeout=0.5)
+        result = execute_code_trusted("print('fast')", timeout=0.5)
         # Either it succeeds quickly or times out; both are valid
         assert isinstance(result, ExecutionResult)
 
@@ -153,27 +174,27 @@ class TestExecuteCodeTimeout:
 class TestExecuteCodeSandbox:
     def test_os_system_disabled(self):
         """os.system should be disabled by reliability_guard."""
-        result = execute_code("import os; os.system('echo pwned')")
+        result = execute_code_trusted("import os; os.system('echo pwned')")
         assert result.success is False
 
     def test_os_remove_disabled(self):
         """os.remove should be disabled by reliability_guard."""
-        result = execute_code("import os; os.remove('/tmp/nonexistent')")
+        result = execute_code_trusted("import os; os.remove('/tmp/nonexistent')")
         assert result.success is False
 
     def test_subprocess_disabled(self):
         """subprocess.Popen should be disabled by reliability_guard."""
-        result = execute_code("import subprocess; subprocess.Popen(['ls'])")
+        result = execute_code_trusted("import subprocess; subprocess.Popen(['ls'])")
         assert result.success is False
 
     def test_exit_disabled(self):
         """exit() should be disabled by reliability_guard."""
-        result = execute_code("exit(0)")
+        result = execute_code_trusted("exit(0)")
         assert result.success is False
 
     def test_fork_disabled(self):
         """os.fork should be disabled by reliability_guard."""
-        result = execute_code("import os; os.fork()")
+        result = execute_code_trusted("import os; os.fork()")
         assert result.success is False
 
 

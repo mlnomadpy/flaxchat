@@ -2,8 +2,6 @@
 Tests for the inference engine (both simple and KV-cached).
 """
 
-import jax
-import jax.numpy as jnp
 import pytest
 from flax import nnx
 
@@ -203,6 +201,6 @@ class TestCalculator:
 
 class TestExecuteCode:
     def test_execute_code_tool(self):
-        result = execute_code("print(2+2)")
+        result = execute_code("print(2+2)", trusted=True)
         assert result.success is True
         assert result.stdout == "4\n"

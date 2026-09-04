@@ -11,7 +11,11 @@ python -m benchmarks.attention --backend=xla --sequence-length=2048
 python -m benchmarks.attention --backend=splash --sequence-lengths 1024 2048 4096 8192
 python -m benchmarks.speculative --max-tokens=16 --draft-steps=4
 python -m benchmarks.training_scaling --device-counts 1 2 4 8 \
-  --global-batch-size 32 --output artifacts/training-scaling.json
+  --mode strong --global-batch-size 32 --trials 3 \
+  --output artifacts/training-scaling.json
+python -m benchmarks.training_scaling --device-counts 1 2 4 8 \
+  --mode weak --per-device-batch-size 8 --trials 3 \
+  --output artifacts/training-weak-scaling.json
 ```
 
 Do not compare compile-inclusive first-call latency with warmed execution.
@@ -25,8 +29,9 @@ results report exact greedy agreement, proposal acceptance, main-model call
 count, steady-state throughput, and measured speedup. Keep regressions even
 when speedup is below 1.0; hardware/model pairing determines the break-even.
 
-The training-scaling command performs single-host strong scaling: model shape
-and global batch remain fixed while the data mesh grows. Each point records
+The training-scaling command reports strong scaling (fixed global work) and
+weak scaling (fixed per-device work) separately. Each point records repeated
+trial timings with median and population dispersion, alongside
 compile time, steady tokens/sec, a conventional `6*N*tokens` MFU estimate,
 compiled memory, synchronous Orbax checkpoint latency, loss samples, and
 efficiency relative to the one-device result. This does not substitute for a

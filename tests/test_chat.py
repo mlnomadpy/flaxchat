@@ -1,6 +1,6 @@
 import pytest
 
-from flaxchat.chat import ChatService, GenerationConfig
+from flaxchat.chat import ChatService, GenerationConfig, load_chat_service
 
 
 class TinyTokenizer:
@@ -31,6 +31,18 @@ def test_context_limit_fails_before_generation(tiny_model):
         service.generate_tokens("x" * 60, GenerationConfig(max_tokens=8))
 
 
+def test_empty_prompt_is_rejected(tiny_model):
+    service = ChatService(tiny_model, TinyTokenizer())
+    with pytest.raises(ValueError, match="non-empty"):
+        service.prompt_tokens("  ", GenerationConfig(max_tokens=1))
+
+
+def test_generate_text_stops_at_assistant_end(tiny_model, monkeypatch):
+    service = ChatService(tiny_model, TinyTokenizer())
+    monkeypatch.setattr(service, "generate_tokens", lambda *_: [7, 4, 8])
+    assert service.generate_text("hi", GenerationConfig(max_tokens=3)) == "H"
+
+
 def test_stream_honors_cancellation(tiny_model):
     service = ChatService(tiny_model, TinyTokenizer())
     calls = iter((False, True))
@@ -39,3 +51,8 @@ def test_stream_honors_cancellation(tiny_model):
         cancelled=lambda: next(calls),
     ))
     assert len(chunks) == 1
+
+
+def test_loader_rejects_unknown_checkpoint_type_before_io():
+    with pytest.raises(ValueError, match="base, sft, or rl"):
+        load_chat_service("d4", "unknown")

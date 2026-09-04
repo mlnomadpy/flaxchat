@@ -15,14 +15,12 @@ All arrays placed on replicated sharding for multi-device compatibility.
 """
 
 import math
-from functools import partial
 from collections import deque
 
 import jax
 import jax.numpy as jnp
-from flax import nnx
 
-from flaxchat.gpt import GPT, rms_norm, apply_rotary_emb, COMPUTE_DTYPE
+from flaxchat.gpt import rms_norm, apply_rotary_emb, COMPUTE_DTYPE
 from flaxchat.execution import execute_code
 
 
@@ -733,7 +731,8 @@ class Engine:
         key = jax.random.key(seed)
 
         # Resolve special token ids for the tool use state machine
-        get_special = lambda s: self.tokenizer.encode_special(s)
+        def get_special(value):
+            return self.tokenizer.encode_special(value)
         python_start = get_special("<|python_start|>")
         python_end = get_special("<|python_end|>")
         output_start = get_special("<|output_start|>")
@@ -822,7 +821,7 @@ class Engine:
                         expr = self.tokenizer.decode(state.python_expr_tokens)
                         result = use_calculator(expr)
                         if result is None:
-                            # Calculator can't handle it — try sandboxed execution
+                            # Generated Python is fail-closed without a real isolation backend.
                             exec_result = execute_code(expr)
                             if exec_result.success:
                                 result = exec_result.stdout.rstrip("\n")
