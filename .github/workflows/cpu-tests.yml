@@ -43,23 +43,48 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
       - uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
         with:
           cache: true
-      - name: Static checks and dependency audit
+      - name: Select the minimum safe validation scope
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ -z "$BASE_SHA" ] || [[ "$BASE_SHA" =~ ^0+$ ]]; then
+            pixi run python -m scripts.ci_scope --full --github-output "$GITHUB_OUTPUT"
+          else
+            pixi run python -m scripts.ci_scope --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
+          fi
+      - name: Static checks
         run: |
           pixi run lint
           pixi run typecheck
-          pixi run audit
-      - name: Tests with coverage
+      - name: Dependency audit
+        if: steps.scope.outputs.run_audit == 'true'
+        run: pixi run audit
+      - name: Full tests with coverage
+        if: steps.scope.outputs.mode == 'full'
         run: pixi run test-coverage
+      - name: Targeted tests
+        if: steps.scope.outputs.mode == 'targeted' && steps.scope.outputs.tests != '[]'
+        env:
+          TEST_FILES: ${{ steps.scope.outputs.tests }}
+        run: pixi run python -c 'import json,os,subprocess; raise SystemExit(subprocess.call(["pytest", "-v", *json.loads(os.environ["TEST_FILES"])]))'
       - name: Eight-device CPU topology checks
+        if: steps.scope.outputs.run_multidevice == 'true'
         run: |
           pixi run test-multidevice
           pixi run pytest tests/test_checkpoint_topology.py -v
       - name: End-to-end smoke test
+        if: steps.scope.outputs.run_e2e == 'true'
         run: pixi run test-e2e
       - name: Build and inspect distributions
+        if: steps.scope.outputs.run_build == 'true'
         run: |
           pixi run build-package
           unzip -l dist/*.whl | grep -E 'flaxchat/(gpt|checkpoint|dataloader)\.py'

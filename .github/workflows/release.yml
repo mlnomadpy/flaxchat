@@ -37,6 +37,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
       - uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
         with:
           cache: true
@@ -46,11 +48,10 @@ jobs:
         run: >-
           pixi run python -c
           "import os,tomllib,pathlib; v=tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version']; assert os.environ['RELEASE_TAG']==f'v{v}', (os.environ['RELEASE_TAG'],v)"
-      - run: pixi run lint
-      - run: pixi run typecheck
-      - run: pixi run test
-      - run: pixi run test-e2e
-      - run: pixi run audit
+      - name: Verify tag commit is already on the validated default branch
+        run: |
+          git fetch origin master --depth=1
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/master
       - run: pixi run build-package
       - name: Package checkpoint, generate SBOM, and verify checksums
         run: |

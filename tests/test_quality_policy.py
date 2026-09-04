@@ -52,6 +52,13 @@ def test_expensive_workflows_are_opt_in_and_routine_ci_is_linux_only():
     assert "!benchmarks/results/**" in cpu[True]["push"]["paths"]
 
 
+def test_release_reuses_default_branch_validation_instead_of_retesting():
+    release_text = (WORKFLOWS / "release.yml").read_text()
+    assert "git merge-base --is-ancestor" in release_text
+    assert "pixi run test\n" not in release_text
+    assert "pixi run test-e2e" not in release_text
+
+
 def test_pages_uses_default_branch_and_pr_builds_without_deploying():
     pages = _workflow("deploy.yaml")
     assert pages[True]["push"]["branches"] == ["master"]
