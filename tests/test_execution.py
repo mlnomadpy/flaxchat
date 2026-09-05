@@ -6,6 +6,7 @@ Tests run on CPU with no special permissions required.
 
 import pytest
 import sys
+import time
 
 from flaxchat.execution import (
     ExecutionResult,
@@ -64,6 +65,8 @@ class TestIsolatedExecution:
         ):
             assert required in command
         assert not any(part.startswith("--volume") for part in command)
+        named = config.command(container_name="flaxchat-exec-test")
+        assert "--name=flaxchat-exec-test" in named
         with pytest.raises(ValueError, match="sha256 digest"):
             IsolatedExecutionConfig(image="python:latest")
         with pytest.raises(ValueError, match="CPU and memory"):
@@ -120,6 +123,65 @@ class TestIsolatedExecution:
             (sys.executable, "-c", "while True: pass"), "", 0.1, 100
         )
         assert result.timeout
+
+    def test_bounded_runner_times_out_while_child_ignores_large_stdin(self):
+        started = time.monotonic()
+        result = _run_bounded_process(
+            (sys.executable, "-c", "import time; time.sleep(10)"),
+            "x" * 5_000_000,
+            0.1,
+            100,
+        )
+        assert result.timeout
+        assert time.monotonic() - started < 2
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups")
+    def test_bounded_runner_kills_descendants_holding_output_descriptors(self):
+        child = (
+            "import subprocess,sys; "
+            "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(10)'])"
+        )
+        started = time.monotonic()
+        result = _run_bounded_process((sys.executable, "-c", child), "", 0.1, 100)
+        assert result.timeout
+        assert time.monotonic() - started < 2
+
+    def test_isolated_runner_always_attempts_named_container_cleanup(self, monkeypatch):
+        config = IsolatedExecutionConfig(image=self.IMAGE)
+        commands = []
+
+        def completed(command, *_args, **_kwargs):
+            commands.append(command)
+            return ExecutionResult(success=True)
+
+        cleanups = []
+        monkeypatch.setattr("flaxchat.execution._run_bounded_process", completed)
+        monkeypatch.setattr(
+            "flaxchat.execution.subprocess.run",
+            lambda command, **_kwargs: cleanups.append(command),
+        )
+        assert execute_code_isolated("pass", config).success
+        name = next(part for part in commands[0] if part.startswith("--name="))[7:]
+        assert cleanups == [("docker", "rm", "--force", name)]
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "open('/tmp/escape', 'w').write('x')",
+            "from pathlib import Path; Path('/tmp/escape').write_text('x')",
+            "import socket; socket.create_connection(('example.com', 80))",
+            "import ctypes; ctypes.CDLL(None)",
+            "import importlib; importlib.import_module('subprocess')",
+            "import os; os.fork()",
+        ],
+    )
+    def test_adversarial_payloads_fail_closed_without_backend(
+        self, monkeypatch, payload
+    ):
+        monkeypatch.delenv("FLAXCHAT_EXECUTION_IMAGE", raising=False)
+        result = execute_generated_code(payload)
+        assert not result.success
+        assert result.error == "Untrusted Python execution is disabled"
 
     def test_isolated_runtime_launch_error_is_structured(self, monkeypatch):
         config = IsolatedExecutionConfig(image=self.IMAGE)

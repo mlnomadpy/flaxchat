@@ -113,7 +113,7 @@ from flaxchat.engine import generate_speculative
 tokens = generate_speculative(model, draft_model, prompt_ids, draft_steps=4)
 ```
 
-### Sandboxed Code Execution
+### Guarded Code Execution
 
 For HumanEval evaluation and RL tool use:
 
@@ -124,7 +124,9 @@ result = execute_code("print(sum(range(10)))", timeout=5.0, trusted=True)
 # ExecutionResult(success=True, stdout="45\n", stderr="", error=None)
 ```
 
-Process isolation, signal-based timeouts, memory limits (Linux), and dangerous function blocking.
+This trusted-code reliability guard is not a security sandbox. Untrusted generated
+code stays disabled unless a digest-pinned Docker/Podman boundary is configured;
+see `docs/SECURITY.md`.
 
 ## Parallelism (built-in, not optional)
 

@@ -54,12 +54,16 @@ for tokens, masks in engine.generate(prompt_ids, num_samples=3):
     pass
 ```
 
-### Sandboxed Code Execution
+### Guarded Code Execution
 ```python
 from flaxchat.execution import execute_code
 result = execute_code("print(sum(range(10)))", timeout=5.0, trusted=True)
 # ExecutionResult(success=True, stdout="45\n")
 ```
+
+This is a best-effort reliability guard for reviewed code, not a security
+sandbox. Untrusted execution is disabled unless an external isolation backend
+is explicitly configured.
 
 ### Parallelism (default, not optional)
 ```python

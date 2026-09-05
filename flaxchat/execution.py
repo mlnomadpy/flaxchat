@@ -18,6 +18,7 @@ import threading
 import queue
 import re
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -55,9 +56,9 @@ class IsolatedExecutionConfig:
         if self.pids_limit < 1 or self.tmpfs_bytes <= 0:
             raise ValueError("container process and tmpfs limits must be positive")
 
-    def command(self) -> tuple[str, ...]:
+    def command(self, *, container_name: str | None = None) -> tuple[str, ...]:
         """Return a shell-free, deny-by-default container invocation."""
-        return (
+        command = (
             self.runtime,
             "run",
             "--rm",
@@ -72,6 +73,10 @@ class IsolatedExecutionConfig:
             "--user=65534:65534",
             f"--tmpfs=/tmp:rw,noexec,nosuid,size={self.tmpfs_bytes}",
             "--env=PYTHONHASHSEED=0",
+        )
+        if container_name is not None:
+            command += (f"--name={container_name}",)
+        return command + (
             self.image,
             "python",
             "-I",
@@ -291,10 +296,12 @@ def _run_bounded_process(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env={"PATH": os.environ.get("PATH", "/usr/bin:/bin")},
+        start_new_session=os.name != "nt",
     )
     assert process.stdin is not None
     assert process.stdout is not None
     assert process.stderr is not None
+    stdin = process.stdin
     chunks: queue.Queue[tuple[str, bytes | None]] = queue.Queue(maxsize=8)
 
     def read_stream(name: str, stream) -> None:
@@ -302,37 +309,55 @@ def _run_bounded_process(
             chunks.put((name, block))
         chunks.put((name, None))
 
+    def write_stdin() -> None:
+        try:
+            stdin.write(code.encode("utf-8"))
+            stdin.close()
+        except (BrokenPipeError, OSError, ValueError):
+            pass
+
+    def terminate_process_tree() -> None:
+        if os.name != "nt":
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        elif process.poll() is None:
+            process.kill()
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+
     readers = [
         threading.Thread(target=read_stream, args=("stdout", process.stdout), daemon=True),
         threading.Thread(target=read_stream, args=("stderr", process.stderr), daemon=True),
     ]
     for reader in readers:
         reader.start()
+    deadline = time.monotonic() + timeout
+    writer = threading.Thread(target=write_stdin, daemon=True)
+    writer.start()
     try:
-        process.stdin.write(code.encode("utf-8"))
-        process.stdin.close()
         outputs = {"stdout": bytearray(), "stderr": bytearray()}
         finished_streams = 0
-        deadline = time.monotonic() + timeout
         while finished_streams < 2:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                process.kill()
-                process.wait()
+                terminate_process_tree()
                 return ExecutionResult(timeout=True, error="Execution timed out")
             try:
                 name, block = chunks.get(timeout=remaining)
             except queue.Empty:
-                process.kill()
-                process.wait()
+                terminate_process_tree()
                 return ExecutionResult(timeout=True, error="Execution timed out")
             if block is None:
                 finished_streams += 1
                 continue
             outputs[name].extend(block)
             if sum(map(len, outputs.values())) > maximum_output_bytes:
-                process.kill()
-                process.wait()
+                terminate_process_tree()
                 return ExecutionResult(error="Output limit exceeded")
         return_code = process.wait()
         stdout = outputs["stdout"].decode("utf-8", errors="replace")
@@ -346,8 +371,7 @@ def _run_bounded_process(
         )
     finally:
         if process.poll() is None:
-            process.kill()
-            process.wait()
+            terminate_process_tree()
 
 
 def execute_code_isolated(
@@ -360,14 +384,31 @@ def execute_code_isolated(
     """Execute untrusted Python only inside a hardened external container."""
     if timeout <= 0 or maximum_output_bytes <= 0:
         raise ValueError("timeout and maximum_output_bytes must be positive")
+    container_name = f"flaxchat-exec-{uuid.uuid4().hex}"
     try:
-        return _run_bounded_process(
-            config.command(), code, timeout, maximum_output_bytes
-        )
-    except FileNotFoundError:
-        return ExecutionResult(error=f"isolation runtime {config.runtime!r} not found")
-    except OSError as error:
-        return ExecutionResult(error=f"isolation runtime failed: {error}")
+        try:
+            return _run_bounded_process(
+                config.command(container_name=container_name),
+                code,
+                timeout,
+                maximum_output_bytes,
+            )
+        except FileNotFoundError:
+            return ExecutionResult(error=f"isolation runtime {config.runtime!r} not found")
+        except OSError as error:
+            return ExecutionResult(error=f"isolation runtime failed: {error}")
+    finally:
+        try:
+            subprocess.run(
+                (config.runtime, "rm", "--force", container_name),
+                check=False,
+                env={"PATH": os.environ.get("PATH", "/usr/bin:/bin")},
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+            )
+        except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
+            pass
 
 
 def execute_generated_code(
