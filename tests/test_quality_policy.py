@@ -13,6 +13,9 @@ from scripts.check_coverage import FLOORS, check_coverage, main, module_coverage
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / ".github" / "workflows"
 PINNED_ACTION = re.compile(r"^[^@]+@[0-9a-f]{40}$")
+PINNED_ACTION_LINE = re.compile(
+    r"^\s*(?:-\s*)?uses:\s*[^@\s]+@[0-9a-f]{40}\s+#\s+v\d"
+)
 
 
 def _workflow(name):
@@ -28,6 +31,43 @@ def test_third_party_actions_are_immutable():
             for step in job.get("steps", []):
                 if "uses" in step:
                     assert PINNED_ACTION.fullmatch(step["uses"]), (path, step["uses"])
+        action_lines = [line for line in path.read_text().splitlines() if "uses:" in line]
+        assert action_lines
+        assert all(PINNED_ACTION_LINE.match(line) for line in action_lines), path
+
+
+def test_workflow_permissions_remain_least_privilege():
+    expected = {
+        "cpu-tests.yml": {"contents": "read"},
+        "deploy.yaml": {"contents": "read"},
+        "kaggle-tpu.yml": {"contents": "read"},
+        "macos-compatibility.yml": {"contents": "read"},
+        "release.yml": {
+            "contents": "write",
+            "actions": "read",
+            "id-token": "write",
+            "attestations": "write",
+        },
+    }
+    for name, permissions in expected.items():
+        workflow = _workflow(name)
+        assert workflow.get("permissions") == permissions
+        assert "write-all" not in (WORKFLOWS / name).read_text()
+    pages = _workflow("deploy.yaml")
+    assert pages["jobs"]["build"].get("permissions") in (None, {"contents": "read"})
+    assert pages["jobs"]["deploy"]["permissions"] == {
+        "pages": "write",
+        "id-token": "write",
+    }
+
+
+def test_dependabot_covers_actions_and_python_dependency_metadata():
+    config = yaml.safe_load((ROOT / ".github" / "dependabot.yml").read_text())
+    ecosystems = {
+        (entry["package-ecosystem"], entry["directory"])
+        for entry in config["updates"]
+    }
+    assert ecosystems == {("github-actions", "/"), ("pip", "/")}
 
 
 def test_release_publishes_and_smokes_the_checkpoint_only_on_tags():
