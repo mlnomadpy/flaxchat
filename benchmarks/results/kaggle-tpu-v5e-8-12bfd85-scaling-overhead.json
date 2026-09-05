@@ -1,0 +1,252 @@
+{
+  "benchmark": "single-host-strong-scaling",
+  "controls": {
+    "global_batch_size": 32,
+    "iterations": 5,
+    "minimum_efficiency": 0.5,
+    "per_device_batch_size": null,
+    "precision": "bfloat16",
+    "seed": 42,
+    "synchronization": "jax.block_until_ready after every measured step",
+    "trials": 3,
+    "warmup": 2
+  },
+  "efficiency_regressions": [
+    2,
+    4,
+    8
+  ],
+  "format_version": 1,
+  "hardware": {
+    "available_device_count": 8,
+    "backend": "tpu",
+    "device_kind": "TPU v5 lite",
+    "host_count": 1,
+    "local_device_count": 8,
+    "topology": [
+      "TPU_0(process=0,(0,0,0,0))",
+      "TPU_1(process=0,(1,0,0,0))",
+      "TPU_2(process=0,(0,1,0,0))",
+      "TPU_3(process=0,(1,1,0,0))",
+      "TPU_4(process=0,(0,2,0,0))",
+      "TPU_5(process=0,(1,2,0,0))",
+      "TPU_6(process=0,(0,3,0,0))",
+      "TPU_7(process=0,(1,3,0,0))"
+    ]
+  },
+  "limitations": [
+    "The MFU value uses the conventional 6*N*tokens approximation.",
+    "Compiled memory is argument plus output plus temporary bytes minus aliases, not a device-wide HBM watermark.",
+    "Device subsets share one physical host, so this measures strong device scaling but does not establish inter-host efficiency."
+  ],
+  "measurements": [
+    {
+      "checkpoint_seconds": 0.27646636899999066,
+      "compile_seconds": 2.377405260000046,
+      "compiled_memory": {
+        "alias_bytes": 4728832,
+        "argument_bytes": 7323648,
+        "output_bytes": 7259136,
+        "peak_bytes_estimate": 131164672,
+        "temporary_bytes": 121310720
+      },
+      "device_count": 1,
+      "global_batch_size": 32,
+      "input_shape": [
+        32,
+        256
+      ],
+      "losses": [
+        6.223260879516602,
+        6.215636253356934,
+        6.2079925537109375,
+        6.200353622436523,
+        6.192697048187256,
+        6.184963226318359,
+        6.177245140075684,
+        6.169500827789307,
+        6.1617112159729,
+        6.153895378112793,
+        6.146035671234131,
+        6.138065814971924,
+        6.1300482749938965,
+        6.122004508972168,
+        6.113893032073975
+      ],
+      "meets_efficiency_threshold": true,
+      "model_flops_utilization_estimate": 0.03652035442084372,
+      "model_parameters": 589902,
+      "scaling_efficiency": 1.0,
+      "steady_step_seconds": 0.004030137400013701,
+      "steady_tokens_per_second": 2032685.0394659375,
+      "step_seconds_population_stddev": 3.4670624146080175e-05,
+      "tokens_per_step": 8192,
+      "trial_step_seconds": [
+        0.004035155400015355,
+        0.004030137400013701,
+        0.003959227400014242
+      ]
+    },
+    {
+      "checkpoint_seconds": 0.6570330030000378,
+      "compile_seconds": 3.0341697619999195,
+      "compiled_memory": {
+        "alias_bytes": 4728832,
+        "argument_bytes": 7290880,
+        "output_bytes": 7259136,
+        "peak_bytes_estimate": 9821184,
+        "temporary_bytes": 0
+      },
+      "device_count": 2,
+      "global_batch_size": 32,
+      "input_shape": [
+        32,
+        256
+      ],
+      "losses": [
+        6.223260402679443,
+        6.21563720703125,
+        6.2079925537109375,
+        6.200352668762207,
+        6.192697525024414,
+        6.184963226318359,
+        6.177245140075684,
+        6.169501304626465,
+        6.1617112159729,
+        6.153894901275635,
+        6.146035194396973,
+        6.138065338134766,
+        6.130047798156738,
+        6.122005939483643,
+        6.113893508911133
+      ],
+      "meets_efficiency_threshold": false,
+      "model_flops_utilization_estimate": 0.017457853736951044,
+      "model_parameters": 589902,
+      "scaling_efficiency": 0.4780307862233424,
+      "steady_step_seconds": 0.004215353399990818,
+      "steady_tokens_per_second": 1943372.0551206558,
+      "step_seconds_population_stddev": 0.0064577648262937855,
+      "tokens_per_step": 8192,
+      "trial_step_seconds": [
+        0.004215353399990818,
+        0.01787193519999164,
+        0.004130931400004556
+      ]
+    },
+    {
+      "checkpoint_seconds": 0.9220292240000845,
+      "compile_seconds": 2.2028626359999635,
+      "compiled_memory": {
+        "alias_bytes": 4728832,
+        "argument_bytes": 7274496,
+        "output_bytes": 7259136,
+        "peak_bytes_estimate": 9804800,
+        "temporary_bytes": 0
+      },
+      "device_count": 4,
+      "global_batch_size": 32,
+      "input_shape": [
+        32,
+        256
+      ],
+      "losses": [
+        6.223260879516602,
+        6.215636730194092,
+        6.207992076873779,
+        6.200353145599365,
+        6.192697525024414,
+        6.184962749481201,
+        6.17724609375,
+        6.169500827789307,
+        6.1617112159729,
+        6.153894424438477,
+        6.146035671234131,
+        6.138065338134766,
+        6.1300482749938965,
+        6.122004985809326,
+        6.113894462585449
+      ],
+      "meets_efficiency_threshold": false,
+      "model_flops_utilization_estimate": 0.00814983987229687,
+      "model_parameters": 589902,
+      "scaling_efficiency": 0.22315883844887902,
+      "steady_step_seconds": 0.00451487539999107,
+      "steady_tokens_per_second": 1814446.5293585297,
+      "step_seconds_population_stddev": 2.702210503804682e-05,
+      "tokens_per_step": 8192,
+      "trial_step_seconds": [
+        0.00451487539999107,
+        0.004535975399994641,
+        0.004471093400002246
+      ]
+    },
+    {
+      "checkpoint_seconds": 1.3746428070001002,
+      "compile_seconds": 1.7029265380000425,
+      "compiled_memory": {
+        "alias_bytes": 4728832,
+        "argument_bytes": 7266304,
+        "output_bytes": 7259136,
+        "peak_bytes_estimate": 9796608,
+        "temporary_bytes": 0
+      },
+      "device_count": 8,
+      "global_batch_size": 32,
+      "input_shape": [
+        32,
+        256
+      ],
+      "losses": [
+        6.223260879516602,
+        6.215636253356934,
+        6.207992076873779,
+        6.200352668762207,
+        6.192697525024414,
+        6.184963226318359,
+        6.177245616912842,
+        6.169500827789307,
+        6.161710262298584,
+        6.153894424438477,
+        6.146035194396973,
+        6.138065338134766,
+        6.130048751831055,
+        6.122005462646484,
+        6.113893985748291
+      ],
+      "meets_efficiency_threshold": false,
+      "model_flops_utilization_estimate": 0.0035178192735125335,
+      "model_parameters": 589902,
+      "scaling_efficiency": 0.09632489413916433,
+      "steady_step_seconds": 0.005229875200006973,
+      "steady_tokens_per_second": 1566385.369958556,
+      "step_seconds_population_stddev": 5.361400280388478e-05,
+      "tokens_per_step": 8192,
+      "trial_step_seconds": [
+        0.005329471200002445,
+        0.005205541200007246,
+        0.005229875200006973
+      ]
+    }
+  ],
+  "model_config": {
+    "attention_backend": "xla",
+    "n_embd": 128,
+    "n_head": 4,
+    "n_kv_head": 4,
+    "n_layer": 2,
+    "sequence_len": 256,
+    "tie_embeddings": false,
+    "use_scan": false,
+    "vocab_size": 512,
+    "window_pattern": "L"
+  },
+  "software": {
+    "flax": "0.12.7",
+    "jax": "0.10.2",
+    "jaxlib": "0.10.2",
+    "optax": "0.2.8",
+    "python": "3.12.13"
+  },
+  "source_revision": "12bfd8522f9a4dff46f05157108eb63159240882"
+}

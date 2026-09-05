@@ -2,39 +2,72 @@ name: Deploy Blog to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
-    paths: ["docs/**"]
+    branches: ["master"]
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "benchmarks/results/**"
+      - "scripts/check_docs.py"
+      - "scripts/check_mermaid.mjs"
+      - ".github/workflows/deploy.yaml"
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "benchmarks/results/**"
+      - "scripts/check_docs.py"
+      - "scripts/check_mermaid.mjs"
+      - ".github/workflows/deploy.yaml"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+
+      - name: Validate local documentation links and extract Mermaid diagrams
+        run: python scripts/check_docs.py --mermaid-dir "$RUNNER_TEMP/mermaid"
+
+      - name: Validate Mermaid syntax
+        run: |
+          npm install --prefix "$RUNNER_TEMP/mermaid-parser" --no-save \
+            mermaid@11.12.0 jsdom@26.1.0
+          node scripts/check_mermaid.mjs \
+            "$RUNNER_TEMP/mermaid" \
+            "$RUNNER_TEMP/mermaid-parser/node_modules/mermaid/dist/mermaid.esm.min.mjs" \
+            "$RUNNER_TEMP/mermaid-parser/node_modules/jsdom/lib/api.js"
 
       - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
+        uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697 # v1.0.13
         with:
           source: ./docs
           destination: ./_site
 
+      - name: Record source revision in the published site
+        if: github.event_name != 'pull_request'
+        run: echo "$GITHUB_SHA" > _site/revision.txt
+
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        if: github.event_name != 'pull_request'
 
   deploy:
+    if: github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -43,4 +76,20 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+
+      - name: Smoke check published revision
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          expected="$GITHUB_SHA"
+          for attempt in 1 2 3 4 5 6; do
+            actual="$(curl --fail --silent --show-error \
+              "${PAGE_URL%/}/revision.txt?source=${GITHUB_SHA}&attempt=${attempt}" || true)"
+            if [ "$actual" = "$expected" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Published revision '$actual' did not match '$expected'" >&2
+          exit 1

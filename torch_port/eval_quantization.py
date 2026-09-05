@@ -5,10 +5,10 @@ naive weight-only quantization (INT8, INT4).
 Applies round-to-nearest symmetric quantization on all Linear/embedding weights,
 then evaluates wikitext-103 loss. Reports Δ = quantized_loss - fp32_loss.
 """
-import sys, math, copy
+import sys
+import math
 from pathlib import Path
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from transformers import AutoTokenizer
@@ -69,10 +69,18 @@ def eval_wikitext_loss(model, tokenizer, model_type, max_tokens=500_000, seq_len
 def run_quant_test(model_type, weights_path, tag):
     if model_type == "gelu":
         from torch_port.torch_gpt import GELU_GPT
-        load_fn = lambda: GELU_GPT.from_pretrained(weights_path, map_location="cpu").to(torch.float32).eval()
+
+        def load_fn():
+            return GELU_GPT.from_pretrained(
+                weights_path, map_location="cpu"
+            ).to(torch.float32).eval()
     elif model_type == "yatnmn":
         from torch_port.yatnmn_gpt import Yat_GPT
-        load_fn = lambda: Yat_GPT.from_pretrained(weights_path, map_location="cpu").to(torch.float32).eval()
+
+        def load_fn():
+            return Yat_GPT.from_pretrained(
+                weights_path, map_location="cpu"
+            ).to(torch.float32).eval()
     else:
         raise ValueError(model_type)
 

@@ -1,13 +1,16 @@
 """
 BPE Tokenizer — direct port of nanochat's tokenizer.
 
-Two backends:
+Three backends:
 1) HuggingFace Tokenizer (training + inference)
 2) rustbpe + tiktoken (fast training + efficient inference)
+3) ByT5-compatible raw UTF-8 bytes (training-free)
 """
 
 import os
 import copy
+import codecs
+import json
 import pickle
 from functools import lru_cache
 
@@ -24,6 +27,9 @@ SPECIAL_TOKENS = [
 ]
 
 SPLIT_PATTERN = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1,2}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+"""
+
+BYT5_RESERVED_TOKENS = ("<pad>", "</s>", "<unk>")
+BYTE_TOKENIZER_FILENAME = "byte_tokenizer.json"
 
 
 def _render_conversation(tokenizer, conversation, max_tokens=2048):
@@ -192,6 +198,177 @@ class HuggingFaceTokenizer:
 
 
 # ---------------------------------------------------------------------------
+# ByT5 / MrT5-compatible byte tokenizer
+# ---------------------------------------------------------------------------
+class ByteTokenizer:
+    """Training-free UTF-8 byte tokenizer with ByT5-compatible byte IDs.
+
+    ByT5 reserves IDs 0, 1, and 2 for padding, end-of-sequence, and unknown,
+    respectively, then maps every byte ``b`` to ``b + 3``. Flaxchat's chat
+    control tokens follow the 256 byte IDs. This provides the raw-byte input
+    contract used by ByT5 and MrT5; MrT5's learned deletion gate belongs in
+    the model architecture and is deliberately not represented here.
+    """
+
+    FORMAT_VERSION = 1
+    BYTE_OFFSET = len(BYT5_RESERVED_TOKENS)
+    BYTE_VOCAB_SIZE = 256
+
+    def __init__(self, special_tokens=None):
+        self._special_tokens = tuple(special_tokens or SPECIAL_TOKENS)
+        if len(set(self._special_tokens)) != len(self._special_tokens):
+            raise ValueError("Byte tokenizer special tokens must be unique")
+        reserved = set(BYT5_RESERVED_TOKENS)
+        overlap = reserved.intersection(self._special_tokens)
+        if overlap:
+            raise ValueError(
+                f"Byte tokenizer special tokens overlap reserved tokens: {sorted(overlap)}"
+            )
+        special_offset = self.BYTE_OFFSET + self.BYTE_VOCAB_SIZE
+        self._special_to_id = {
+            token: special_offset + index
+            for index, token in enumerate(self._special_tokens)
+        }
+        self._id_to_special = {
+            token_id: token for token, token_id in self._special_to_id.items()
+        }
+        self._reserved_to_id = {
+            token: index for index, token in enumerate(BYT5_RESERVED_TOKENS)
+        }
+        self._id_to_reserved = {
+            token_id: token for token, token_id in self._reserved_to_id.items()
+        }
+
+    @classmethod
+    def from_directory(cls, tokenizer_dir):
+        config_path = os.path.join(tokenizer_dir, BYTE_TOKENIZER_FILENAME)
+        with open(config_path, encoding="utf-8") as handle:
+            config = json.load(handle)
+        if config.get("type") != "byt5_utf8_bytes":
+            raise ValueError(f"Unsupported byte tokenizer type: {config.get('type')!r}")
+        if config.get("format_version") != cls.FORMAT_VERSION:
+            raise ValueError(
+                "Unsupported byte tokenizer format version: "
+                f"{config.get('format_version')!r}"
+            )
+        if config.get("byte_offset") != cls.BYTE_OFFSET:
+            raise ValueError("Byte tokenizer offset is not ByT5-compatible")
+        special_tokens = config.get("special_tokens")
+        if not isinstance(special_tokens, list) or not all(
+            isinstance(token, str) for token in special_tokens
+        ):
+            raise ValueError("Byte tokenizer special_tokens must be a list of strings")
+        return cls(special_tokens=special_tokens)
+
+    def get_vocab_size(self):
+        return self.BYTE_OFFSET + self.BYTE_VOCAB_SIZE + len(self._special_tokens)
+
+    def get_special_tokens(self):
+        return [*BYT5_RESERVED_TOKENS, *self._special_tokens]
+
+    def id_to_token(self, token_id):
+        if token_id in self._id_to_reserved:
+            return self._id_to_reserved[token_id]
+        if token_id in self._id_to_special:
+            return self._id_to_special[token_id]
+        byte_value = token_id - self.BYTE_OFFSET
+        if 0 <= byte_value < self.BYTE_VOCAB_SIZE:
+            return chr(byte_value)
+        raise ValueError(f"Token ID out of range: {token_id}")
+
+    @lru_cache(maxsize=32)
+    def encode_special(self, text):
+        if text in self._reserved_to_id:
+            return self._reserved_to_id[text]
+        try:
+            return self._special_to_id[text]
+        except KeyError as exc:
+            raise ValueError(f"Unknown special token: {text!r}") from exc
+
+    def get_bos_token_id(self):
+        return self.encode_special("<|bos|>")
+
+    def _encode_one(self, text, prepend=None, append=None, num_threads=None):
+        del num_threads
+        if not isinstance(text, str):
+            raise TypeError("Byte tokenizer input must be text")
+        ids = [byte + self.BYTE_OFFSET for byte in text.encode("utf-8")]
+        if prepend is not None:
+            prepend_id = prepend if isinstance(prepend, int) else self.encode_special(prepend)
+            ids.insert(0, prepend_id)
+        if append is not None:
+            append_id = append if isinstance(append, int) else self.encode_special(append)
+            ids.append(append_id)
+        return ids
+
+    def encode(self, text, *args, **kwargs):
+        if isinstance(text, str):
+            return self._encode_one(text, *args, **kwargs)
+        if isinstance(text, list):
+            return [self._encode_one(item, *args, **kwargs) for item in text]
+        raise ValueError(f"Invalid input type: {type(text)}")
+
+    def __call__(self, *args, **kwargs):
+        return self.encode(*args, **kwargs)
+
+    def decode(self, ids):
+        pieces = []
+        byte_buffer = bytearray()
+
+        def flush_bytes():
+            if byte_buffer:
+                pieces.append(bytes(byte_buffer).decode("utf-8", errors="ignore"))
+                byte_buffer.clear()
+
+        for token_id in ids:
+            byte_value = token_id - self.BYTE_OFFSET
+            if 0 <= byte_value < self.BYTE_VOCAB_SIZE:
+                byte_buffer.append(byte_value)
+                continue
+            flush_bytes()
+            pieces.append(self.id_to_token(token_id))
+        flush_bytes()
+        return "".join(pieces)
+
+    def decode_stream(self, ids):
+        """Incrementally decode token IDs without dropping split UTF-8 characters."""
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="ignore")
+        for token_id in ids:
+            byte_value = token_id - self.BYTE_OFFSET
+            if 0 <= byte_value < self.BYTE_VOCAB_SIZE:
+                yield decoder.decode(bytes([byte_value]), final=False)
+                continue
+            remainder = decoder.decode(b"", final=True)
+            if remainder:
+                yield remainder
+            yield self.id_to_token(token_id)
+            decoder.reset()
+        remainder = decoder.decode(b"", final=True)
+        if remainder:
+            yield remainder
+
+    def save(self, tokenizer_dir):
+        os.makedirs(tokenizer_dir, exist_ok=True)
+        config_path = os.path.join(tokenizer_dir, BYTE_TOKENIZER_FILENAME)
+        payload = {
+            "type": "byt5_utf8_bytes",
+            "format_version": self.FORMAT_VERSION,
+            "byte_offset": self.BYTE_OFFSET,
+            "special_tokens": list(self._special_tokens),
+        }
+        with open(config_path, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+        print(f"Saved byte tokenizer config to {config_path}")
+
+    def render_conversation(self, conversation, max_tokens=2048):
+        return _render_conversation(self, conversation, max_tokens)
+
+    def render_for_completion(self, conversation):
+        return _render_for_completion(self, conversation)
+
+
+# ---------------------------------------------------------------------------
 # rustbpe + tiktoken wrapper
 # ---------------------------------------------------------------------------
 import rustbpe
@@ -295,10 +472,30 @@ class RustBPETokenizer:
 
 
 # ---------------------------------------------------------------------------
-# Convenience: get tokenizer from cache dir
+# Convenience: load a tokenizer backend from a directory
 # ---------------------------------------------------------------------------
+def load_tokenizer(tokenizer_dir):
+    """Load a tokenizer by its backend-specific persisted artifact."""
+    if os.path.isfile(os.path.join(tokenizer_dir, BYTE_TOKENIZER_FILENAME)):
+        return ByteTokenizer.from_directory(tokenizer_dir)
+    if os.path.isfile(os.path.join(tokenizer_dir, "tokenizer.json")):
+        return HuggingFaceTokenizer.from_directory(tokenizer_dir)
+    if os.path.isfile(os.path.join(tokenizer_dir, "tokenizer.pkl")):
+        return RustBPETokenizer.from_directory(tokenizer_dir)
+    raise FileNotFoundError(f"No supported tokenizer artifact in {tokenizer_dir}")
+
+
+def tokenizer_artifact_path(tokenizer_dir):
+    """Return the concrete persisted file used by a supported tokenizer."""
+    for filename in (BYTE_TOKENIZER_FILENAME, "tokenizer.json", "tokenizer.pkl"):
+        path = os.path.join(tokenizer_dir, filename)
+        if os.path.isfile(path):
+            return path
+    raise FileNotFoundError(f"No supported tokenizer artifact in {tokenizer_dir}")
+
+
 def get_tokenizer():
     from flaxchat.common import get_base_dir
     base_dir = get_base_dir()
     tokenizer_dir = os.path.join(base_dir, "tokenizer")
-    return RustBPETokenizer.from_directory(tokenizer_dir)
+    return load_tokenizer(tokenizer_dir)

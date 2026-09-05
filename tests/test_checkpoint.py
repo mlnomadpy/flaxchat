@@ -18,9 +18,9 @@ from flaxchat.checkpoint import (
     create_checkpoint_manager,
     save_checkpoint,
     load_checkpoint,
+    load_checkpoint_metadata,
     restore_model_from_checkpoint,
 )
-from flaxchat.config import GPTConfig
 from flaxchat.gpt import GPT
 
 
@@ -42,7 +42,10 @@ class TestCreateCheckpointManager:
         ckpt_dir = str(tmp_path / "checkpoints")
         assert not os.path.exists(ckpt_dir)
         manager = create_checkpoint_manager(ckpt_dir)
-        assert os.path.exists(ckpt_dir)
+        try:
+            assert os.path.exists(ckpt_dir)
+        finally:
+            manager.close()
 
     def test_returns_manager(self, tmp_path):
         """Should return an Orbax CheckpointManager instance."""
@@ -102,6 +105,7 @@ class TestSaveLoadRoundTrip:
         assert loaded_metadata["step"] == 100
         assert loaded_metadata["loss"] == 2.5
         assert model_dict is not None
+        assert load_checkpoint_metadata(ckpt_dir) == metadata
 
     def test_save_and_load_specific_step(self, tiny_model, tmp_path):
         """Load a specific step rather than latest."""
@@ -305,8 +309,6 @@ class TestRestoreModelFromCheckpoint:
 
         # Verify they differ before restore
         state_a = nnx.to_pure_dict(nnx.state(model_a, nnx.Param))
-        state_b_before = nnx.to_pure_dict(nnx.state(model_b, nnx.Param))
-
         # Restore into model_b
         metadata = restore_model_from_checkpoint(model_b, ckpt_dir, step=5)
 

@@ -31,11 +31,11 @@ graph TD
         REPORT[report.py<br/>Training Reports]
     end
 
-    subgraph "Training Scripts"
-        PT[pretrain.py]
-        SFT[sft.py]
-        RL[rl.py]
-        EV[eval script]
+    subgraph "Typed Stage Services"
+        PT[PretrainRequest → StageResult]
+        SFT[SFTRequest → StageResult]
+        RL[RLRequest → StageResult]
+        EV[EvalRequest → StageResult]
     end
 
     subgraph "Infrastructure"
@@ -82,6 +82,12 @@ flaxchat/__init__.py
 Remote provisioning is intentionally outside the importable core: `tpuz`
 handles Google Cloud TPUs, while `scripts/kaggle_tpu_tests.py` submits pinned
 test bundles through the Kaggle CLI.
+
+Every platform adapter writes the same immutable `LaunchSpec` contract. The
+GCP transport invokes a fixed `flaxchat.launch` wrapper, which loads the
+manifest and executes the recorded argv without a shell. Provision, execution,
+resume, artifact collection, and teardown remain adapter lifecycle concerns;
+training stays in the shared stage services.
 
 ## GPT Model Architecture
 

@@ -15,15 +15,13 @@ All arrays placed on replicated sharding for multi-device compatibility.
 """
 
 import math
-from functools import partial
 from collections import deque
 
 import jax
 import jax.numpy as jnp
-from flax import nnx
 
-from flaxchat.gpt import GPT, rms_norm, apply_rotary_emb, COMPUTE_DTYPE
-from flaxchat.execution import execute_code
+from flaxchat.gpt import rms_norm, apply_rotary_emb, COMPUTE_DTYPE
+from flaxchat.execution import execute_generated_code
 
 
 # ---------------------------------------------------------------------------
@@ -36,6 +34,14 @@ def _get_replicated_sharding():
         return NamedSharding(get_mesh(), P())
     except (AssertionError, ImportError):
         return None
+
+
+def _get_model_sharding(model):
+    """Use the model's real placement instead of an unrelated global mesh."""
+    try:
+        return model.wte.embedding[...].sharding
+    except (AttributeError, TypeError):
+        return _get_replicated_sharding()
 
 
 def _to_device(arr, sharding=None):
@@ -206,10 +212,18 @@ def generate(model, tokens, max_tokens=256, temperature=1.0, top_k=None, seed=42
 # ---------------------------------------------------------------------------
 # Python-loop KV-cached generation (medium speed)
 # ---------------------------------------------------------------------------
-def generate_with_cache(model, tokens, max_tokens=256, temperature=1.0, top_k=40, seed=42):
+def generate_with_cache(
+    model,
+    tokens,
+    max_tokens=256,
+    temperature=1.0,
+    top_k=40,
+    seed=42,
+    cancelled=None,
+):
     """KV-cached with Python loop. Faster than padded, slower than while_loop."""
     config = model.config
-    sharding = _get_replicated_sharding()
+    sharding = _get_model_sharding(model)
     key = jax.random.key(seed)
     total_len = len(tokens) + max_tokens
     n_layer = config.n_layer
@@ -226,6 +240,8 @@ def generate_with_cache(model, tokens, max_tokens=256, temperature=1.0, top_k=40
 
     # Prefill
     for t in range(len(tokens)):
+        if cancelled is not None and cancelled():
+            return generated
         tok = _to_device(jnp.array([[tokens[t]]], dtype=jnp.int32), sharding)
         logits, k_cache, v_cache, prev_emb = _single_step_forward(
             model, tok, pos, k_cache, v_cache, prev_emb
@@ -234,6 +250,8 @@ def generate_with_cache(model, tokens, max_tokens=256, temperature=1.0, top_k=40
 
     # Decode
     for _ in range(max_tokens):
+        if cancelled is not None and cancelled():
+            break
         tkl, tki = jax.lax.top_k(logits, min(top_k, logits.shape[-1]))
         cur = jnp.full_like(logits, -1e9).at[0, tki[0]].set(tkl[0])
         if temperature > 0:
@@ -733,7 +751,8 @@ class Engine:
         key = jax.random.key(seed)
 
         # Resolve special token ids for the tool use state machine
-        get_special = lambda s: self.tokenizer.encode_special(s)
+        def get_special(value):
+            return self.tokenizer.encode_special(value)
         python_start = get_special("<|python_start|>")
         python_end = get_special("<|python_end|>")
         output_start = get_special("<|output_start|>")
@@ -822,8 +841,8 @@ class Engine:
                         expr = self.tokenizer.decode(state.python_expr_tokens)
                         result = use_calculator(expr)
                         if result is None:
-                            # Calculator can't handle it — try sandboxed execution
-                            exec_result = execute_code(expr)
+                            # Generated Python is fail-closed without a real isolation backend.
+                            exec_result = execute_generated_code(expr)
                             if exec_result.success:
                                 result = exec_result.stdout.rstrip("\n")
                             else:

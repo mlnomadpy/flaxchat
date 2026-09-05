@@ -17,6 +17,7 @@ def _record(framework="flaxchat", throughput=100.0):
         "scaling_efficiency": 0.9, "limitations": "Synthetic fixture only.",
         "validation_metric": "loss", "validation_value": 2.5,
         "protocol_sha256": "a" * 64,
+        "data_sha256": "d" * 64,
         "dataset": "roneneldan/TinyStories", "dataset_revision": "c" * 40,
         "optimizer": "adamw", "seed": 42, "warmup_steps": 2,
         "measured_steps": 10,

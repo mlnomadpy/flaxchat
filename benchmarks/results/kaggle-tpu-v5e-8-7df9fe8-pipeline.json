@@ -1,0 +1,108 @@
+{
+  "artifacts": {
+    "checkpoint": "checkpoint",
+    "tokenizer": "tokenizer/tokenizer.json"
+  },
+  "checkpoint_manifest_sha256": "9b4e30b4ff3796a526ec90d762de7fa1eae8edc3f50a0c8925d4105ed6b61752",
+  "data_sha256": "d6a33b98a5e6ae765b46caa45e2e2ae83fa3adbfbd00cc881fce6d7117ec1169",
+  "dataset": {
+    "dataset": "roneneldan/TinyStories",
+    "license": "cdla-sharing-1.0",
+    "revision": "f54c09fd23315a6f9c86f9dc80f725de7d8f9c64",
+    "train_indices": [
+      0,
+      128
+    ],
+    "validation_indices": [
+      0,
+      32
+    ]
+  },
+  "format_version": 1,
+  "hardware": {
+    "attention": {
+      "fallback_reason": "Mosaic Splash kernels cannot be automatically partitioned across the data mesh; using exact XLA attention for distributed training",
+      "requested": "auto",
+      "selected": "xla"
+    },
+    "backend": "tpu",
+    "device_count": 8,
+    "device_kind": "TPU v5 lite"
+  },
+  "metrics": {
+    "pretrain_loss": [
+      5.768518447875977,
+      5.7685956954956055
+    ],
+    "rl_loss": [
+      1.7282477617263794
+    ],
+    "sft_loss": [
+      5.765142440795898
+    ],
+    "validation_loss": 5.763411998748779
+  },
+  "model_config": {
+    "attention_backend": "xla",
+    "n_embd": 32,
+    "n_head": 2,
+    "n_kv_head": 1,
+    "n_layer": 1,
+    "sequence_len": 128,
+    "tie_embeddings": false,
+    "use_scan": false,
+    "vocab_size": 320,
+    "window_pattern": "L"
+  },
+  "protocol_sha256": "26fc963ae78d0738bcdddcead4fa3402593ca6fc2421bfc71209f4db9d79f4f3",
+  "resolved_config": {
+    "attention_backend": "auto",
+    "batch_size": 8,
+    "embedding_dim": 32,
+    "heads": 2,
+    "layers": 1,
+    "learning_rate": 0.0003,
+    "max_new_tokens": 4,
+    "pretrain_steps": 2,
+    "rl_steps": 1,
+    "seed": 42,
+    "sequence_length": 128,
+    "sft_steps": 1,
+    "vocab_size": 320
+  },
+  "sample": {
+    "prompt": "Once upon a time",
+    "text": "<|bos|>Once upon a time cy p,",
+    "token_ids": [
+      0,
+      55,
+      86,
+      75,
+      77,
+      229,
+      93,
+      88,
+      314,
+      267,
+      266,
+      301,
+      77,
+      287,
+      97,
+      286,
+      20
+    ]
+  },
+  "source_revision": "7df9fe85817acf27fa61f5feb46e7f2a0774a3b1",
+  "stages": [
+    "tokenizer",
+    "pretrain",
+    "sft",
+    "rl",
+    "eval",
+    "inference"
+  ],
+  "status": "complete",
+  "tokenizer_sha256": "a4905c925f51a906076a9bda1c75cc4a0a9cfc1c303a5167cc943491839ffc16",
+  "wall_time_seconds": 18.662076564000017
+}

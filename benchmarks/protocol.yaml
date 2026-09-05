@@ -13,6 +13,8 @@ training:
 data:
   dataset: roneneldan/TinyStories
   revision: f54c09fd23315a6f9c86f9dc80f725de7d8f9c64
+  tokenization: byte_v1_pad0_bos1_eos2_utf8_offset3
+  shared_artifact: matched_batches.npz
 measurement:
   hardware: Tesla P100-PCIE-16GB
   device_count: 1
@@ -27,4 +29,5 @@ rules:
   - Exclude data loading and compilation from steady-state throughput.
   - Synchronize the accelerator before starting and stopping every timer.
   - Use the same tokenized and right-padded batches in every framework.
+  - Reject records whose shared batch artifact SHA-256 differs.
   - Archive raw records and logs even when validation or performance disappoints.

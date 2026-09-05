@@ -1,95 +1,100 @@
-name: CPU tests
+name: Linux validation
 
 on:
   pull_request:
+    paths:
+      - "flaxchat/**"
+      - "scripts/**"
+      - "tasks/**"
+      - "benchmarks/**"
+      - "!benchmarks/results/**"
+      - "accelerators/**"
+      - "infra/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "pixi.toml"
+      - "pixi.lock"
+      - ".github/workflows/cpu-tests.yml"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/deploy.yaml"
+      - ".github/workflows/kaggle-tpu.yml"
+      - ".github/workflows/macos-compatibility.yml"
   push:
     branches: [master]
+    paths:
+      - "flaxchat/**"
+      - "scripts/**"
+      - "tasks/**"
+      - "benchmarks/**"
+      - "!benchmarks/results/**"
+      - "accelerators/**"
+      - "infra/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "pixi.toml"
+      - "pixi.lock"
+      - ".github/workflows/cpu-tests.yml"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/deploy.yaml"
+      - ".github/workflows/kaggle-tpu.yml"
+      - ".github/workflows/macos-compatibility.yml"
   workflow_dispatch:
+
+concurrency:
+  group: linux-validation-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  quality:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
         with:
           cache: true
-      - run: pixi run lint
-      - run: pixi run typecheck
-      - run: pixi run audit
-
-  test:
-    name: Tests (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-14]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run test-quick
-
-  coverage:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run test-coverage
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage-xml
-          path: coverage.xml
-
-  virtual-multidevice:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run test-multidevice
-      - name: Restore an 8-device checkpoint on one device
-        run: pixi run pytest tests/test_checkpoint_topology.py -v
-      - name: Public CLI smoke test
+      - name: Select the minimum safe validation scope
+        id: scope
         env:
-          FLAXCHAT_BASE_DIR: ${{ runner.temp }}/flaxchat
-          XLA_FLAGS: --xla_force_host_platform_device_count=8
-        run: pixi run python -m scripts.pretrain --cpu-smoke
-
-  end-to-end:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run test-e2e
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tinystories-smoke-artifacts
-          path: artifacts/tinystories-smoke
-
-  package:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: prefix-dev/setup-pixi@v0.9.0
-        with:
-          cache: true
-      - run: pixi run build-package
-      - name: Verify wheel contents
-        run: unzip -l dist/*.whl | grep -E 'flaxchat/(gpt|checkpoint|dataloader)\.py'
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.action == 'synchronize' && github.event.before || github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ -z "$BASE_SHA" ] || [[ "$BASE_SHA" =~ ^0+$ ]]; then
+            pixi run python -m scripts.ci_scope --full --github-output "$GITHUB_OUTPUT"
+          else
+            pixi run python -m scripts.ci_scope --base "$BASE_SHA" --head "$HEAD_SHA" --github-output "$GITHUB_OUTPUT"
+          fi
+      - name: Static checks
+        run: |
+          pixi run lint
+          pixi run typecheck
+      - name: Dependency audit
+        if: steps.scope.outputs.run_audit == 'true'
+        run: pixi run audit
+      - name: Full tests with coverage
+        if: steps.scope.outputs.mode == 'full'
+        run: pixi run test-coverage
+      - name: Targeted tests
+        if: steps.scope.outputs.mode == 'targeted' && steps.scope.outputs.tests != '[]'
+        env:
+          TEST_FILES: ${{ steps.scope.outputs.tests }}
+        run: pixi run python -c 'import json,os,subprocess; raise SystemExit(subprocess.call(["pytest", "-v", *json.loads(os.environ["TEST_FILES"])]))'
+      - name: Eight-device CPU topology checks
+        if: steps.scope.outputs.run_multidevice == 'true'
+        run: |
+          pixi run test-multidevice
+          pixi run pytest tests/test_checkpoint_topology.py -v
+      - name: End-to-end smoke test
+        if: steps.scope.outputs.run_e2e == 'true'
+        run: pixi run test-e2e
+      - name: Build and inspect distributions
+        if: steps.scope.outputs.run_build == 'true'
+        run: |
+          pixi run build-package
+          unzip -l dist/*.whl | grep -E 'flaxchat/(gpt|checkpoint|dataloader)\.py'

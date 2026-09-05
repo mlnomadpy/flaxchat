@@ -48,7 +48,7 @@ flaxchat/
 ## Running Tests
 
 ```bash
-pixi run test              # All 204 collected tests
+pixi run test              # Complete local suite
 pixi run test-quick        # Skip slow and accelerator tests
 pixi run test-coverage     # Enforce the branch-coverage floor
 pixi run test-multidevice  # Exercise an eight-device CPU mesh
@@ -71,11 +71,29 @@ Well tested:
 - Muon optimizer standalone + setup_optimizer integration
 - Config creation/serialization (YAML, JSON, dict, roundtrip)
 - KV-cache vs padded generation consistency
-- Calculator sandboxing
+- Calculator and guarded-execution behavior
 
-Needs tests:
-- Dataloader (best-fit packing logic)
-- Checkpoint save/load roundtrip
-- Tokenizer encode/decode
-- Training scripts (1-step integration test)
-- Sharding functions
+Risk-based per-module coverage floors are enforced by
+`scripts/check_coverage.py`. The coverage job prints each protected module's
+signed distance from its floor, and a low protected module fails even when the
+global percentage passes, so unrelated covered code cannot mask a regression.
+Accelerator-only behavior is covered by the on-demand bundled Kaggle workflow.
+
+Ruff enables Pyflakes, fatal pycodestyle checks, and Bugbear correctness rules.
+The documented per-file Bugbear exceptions in `pyproject.toml` are the deferred
+legacy baseline; new files receive every selected rule. Pyright checks the full
+`flaxchat` and `scripts` trees, with its remaining JAX-heavy modules listed in
+the adjacent explicit migration baseline rather than silently excluded by a
+narrow include list.
+
+## Dependency and CI policy
+
+- Commit `pixi.lock` whenever dependency metadata changes and review JAX,
+  accelerator-plugin, Orbax, and Flax compatibility together.
+- GitHub Actions are pinned to reviewed commit SHAs. Dependabot proposes
+  monthly updates; reviewers verify the upstream tag before merging.
+- Routine changes use the single Linux validation job. Run the manual macOS,
+  Kaggle GPU, or Kaggle TPU workflows only when the affected platform or a
+  release candidate needs fresh evidence.
+- Release tags alone run the supported-Python install matrix, checksum/SBOM
+  generation, full gates, and artifact attestation.

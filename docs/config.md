@@ -125,6 +125,20 @@ seed), `evaluation` (seed, sample bound, prompt-template version), and
 fields live under `training`; mesh and precision live under `tpu`. Unknown keys
 and invalid ranges fail during config construction rather than during a run.
 
+### Byte-level tokenizer
+
+`python -m scripts.tok_train --backend byte` writes a training-free tokenizer
+using the ByT5 byte contract: UTF-8 bytes occupy IDs 3–258 after `<pad>`,
+`</s>`, and `<unk>`. Flaxchat chat-control tokens occupy IDs 259–267, for a
+fixed vocabulary size of 268. This enables raw-byte experiments inspired by
+[MrT5](https://arxiv.org/abs/2410.20771) without a learned BPE vocabulary and
+works with training, evaluation, checkpoints, and chat loading.
+
+MrT5's dynamic merging is a learned deletion gate inside a T5 encoder, not a
+tokenizer algorithm. Flaxchat's byte backend therefore implements the paper's
+input representation, but does not claim architectural compatibility with the
+MrT5 encoder or its inference-time hard deletion.
+
 ## YAML Example
 
 ```yaml

@@ -1,0 +1,42 @@
+{
+  "format_version": 1,
+  "kernel": {
+    "id": "skywolfmo/flaxchat-matched-trainer-benchmark",
+    "version": 2
+  },
+  "hardware": {
+    "accelerator": "Tesla P100-PCIE-16GB",
+    "cuda_compute_capability": "sm_60",
+    "device_count": 1
+  },
+  "source_revisions": {
+    "flaxchat": "248b1fab586fcf7f4f57d71d4b398395536bcb9e",
+    "nanochat": "a445144d3905c6845fda2d3cab8e63248a70cd32",
+    "MaxText": "87b18614b0ef6c68c4be43b4396c695645ecf055"
+  },
+  "stages": [
+    {
+      "name": "prepare-data",
+      "returncode": 0
+    },
+    {
+      "name": "flaxchat",
+      "returncode": 0
+    },
+    {
+      "name": "nanochat",
+      "returncode": 1
+    },
+    {
+      "name": "MaxText",
+      "returncode": 0
+    }
+  ],
+  "success": false,
+  "failure": {
+    "classification": "incompatible_runtime",
+    "framework": "nanochat",
+    "message": "The installed PyTorch wheel supported sm_70 and newer, but the controlled Kaggle P100 protocol requires sm_60. Model initialization failed with cudaErrorNoKernelImageForDevice."
+  },
+  "disposition": "Negative evidence retained. No comparative result is valid because all three records did not complete in the same bundled run. The corrective bundle pins an sm_60-compatible PyTorch runtime and asserts architecture support before measurement."
+}

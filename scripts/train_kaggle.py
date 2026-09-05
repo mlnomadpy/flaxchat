@@ -1,86 +1,126 @@
-"""
-Train flaxchat on Kaggle GPUs/TPUs using kgz.
+"""Launch the canonical TinyStories training pipeline through the Kaggle CLI."""
 
-Usage:
-    python -m scripts.train_kaggle --url=https://kkb-... --depth=8 --steps=5000
-    python -m scripts.train_kaggle --url=https://kkb-... --depth=8 --steps=5000 \
-        --notify=https://hooks.slack.com/... --budget=8
-"""
+from __future__ import annotations
 
-import os
 import argparse
+import json
+from pathlib import Path
+import subprocess
+import tempfile
 
-parser = argparse.ArgumentParser(description="Train flaxchat on Kaggle")
-parser.add_argument("--url", required=True, help="Kaggle Jupyter proxy URL")
-parser.add_argument("--depth", type=int, default=8)
-parser.add_argument("--steps", type=int, default=5000)
-parser.add_argument("--batch-size", type=int, default=64)
-parser.add_argument("--dataset", default="tinystories")
-parser.add_argument("--name", default="flaxchat-kaggle")
-parser.add_argument("--notify", default=None, help="Slack webhook")
-parser.add_argument("--budget", type=float, default=None, help="Max hours")
-args = parser.parse_args()
+from flaxchat.launch import LaunchSpec
+from scripts.kaggle_tpu_tests import command, kaggle_cli, monitor_kernel
 
-try:
-    from kgz import Kernel
-except ImportError:
-    print("Install kgz: pip install kgz (or pip install flaxchat[kaggle])")
-    exit(1)
 
-k = Kernel(args.url, name=args.name)
-print(f"Connected: {k}")
+ROOT = Path(__file__).resolve().parents[1]
+TEMPLATE = ROOT / "accelerators" / "kaggle" / "train.py"
 
-# Health check
-k.health_check()
 
-# Set secrets
-hf = os.environ.get("HF_TOKEN", "")
-wandb = os.environ.get("WANDB_API_KEY", "")
-if hf: k.set_env(HF_TOKEN=hf)
-if wandb: k.set_env(WANDB_API_KEY=wandb)
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--kernel-id", required=True, help="owner/kernel-slug")
+    parser.add_argument("--accelerator", choices=("tpu", "gpu"), default="tpu")
+    parser.add_argument("--revision", help="full source SHA; defaults to local HEAD")
+    parser.add_argument("--repository", default="https://github.com/mlnomadpy/flaxchat.git")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts" / "kaggle-training")
+    parser.add_argument("--artifact-dir", default="artifacts/tinystories")
+    parser.add_argument("--layers", type=int, default=2)
+    parser.add_argument("--steps", type=int, default=10)
+    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--sequence-length", type=int, default=128)
+    parser.add_argument("--budget-hours", type=float)
+    parser.add_argument("--secret", action="append", default=[], dest="secrets")
+    parser.add_argument("--no-wait", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    return parser
 
-# Pipeline
-steps = [
-    ("Install deps", """
-import subprocess, sys
-subprocess.check_call([sys.executable, "-m", "pip", "install", "-q",
-    "flax", "optax", "orbax-checkpoint", "rustbpe", "tiktoken", "datasets"])
-print("Done!")
-"""),
-    ("Check devices", """
-import jax
-print(f"JAX {jax.__version__}, Backend: {jax.default_backend()}, Devices: {jax.devices()}")
-"""),
-]
 
-results = k.pipeline(steps, notify_url=args.notify, use_cache=True)
+def build_launch_spec(args: argparse.Namespace) -> LaunchSpec:
+    revision = args.revision or subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
+    artifact_dir = args.artifact_dir
+    argv = (
+        "python", "-m", "scripts.run_tinystories",
+        "--output-dir", artifact_dir,
+        "--layers", str(args.layers),
+        "--pretrain-steps", str(args.steps),
+        "--sft-steps", "1", "--rl-steps", "1",
+        "--batch-size", str(args.batch_size),
+        "--sequence-length", str(args.sequence_length),
+    )
+    return LaunchSpec(
+        platform="kaggle",
+        accelerator=args.accelerator,
+        source_repository=args.repository,
+        source_revision=revision,
+        argv=argv,
+        resolved_config={
+            "layers": args.layers,
+            "pretrain_steps": args.steps,
+            "batch_size": args.batch_size,
+            "sequence_length": args.sequence_length,
+        },
+        artifacts=(artifact_dir,),
+        secret_names=tuple(args.secrets),
+        budget_hours=args.budget_hours,
+        budget=({"max_hours": args.budget_hours} if args.budget_hours else {}),
+        recovery=True,
+        teardown="always",
+    )
 
-# Check all passed
-if not all(r.success for _, r in results):
-    print("Setup failed!")
-    exit(1)
 
-# Training
-print(f"\nTraining: depth={args.depth}, steps={args.steps}")
+def render_bundle(spec: LaunchSpec, kernel_id: str, destination: Path) -> None:
+    owner, separator, slug = kernel_id.partition("/")
+    if not separator or not owner or not slug:
+        raise ValueError("--kernel-id must use owner/kernel-slug")
+    encoded = json.dumps(spec.to_json())[1:-1]
+    source = TEMPLATE.read_text(encoding="utf-8").replace("__LAUNCH_SPEC_JSON__", encoded)
+    destination.mkdir(parents=True, exist_ok=True)
+    (destination / "launch.py").write_text(source, encoding="utf-8")
+    metadata = {
+        "id": kernel_id,
+        "title": slug.replace("-", " ").title(),
+        "code_file": "launch.py",
+        "language": "python",
+        "kernel_type": "script",
+        "is_private": "true",
+        "enable_gpu": str(spec.accelerator == "gpu").lower(),
+        "enable_tpu": str(spec.accelerator == "tpu").lower(),
+        "enable_internet": "true",
+        "dataset_sources": [],
+        "competition_sources": [],
+        "kernel_sources": [],
+        "model_sources": [],
+    }
+    (destination / "kernel-metadata.json").write_text(
+        json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
+    )
 
-# Start quota + budget tracking
-k.start_quota_tracking()
-if args.budget:
-    print(f"Budget: {args.budget}h")
 
-# Execute training (inline code for the TinyStories pipeline)
-train_code = f"""
-print("Training would use run_tinystories.py inline code")
-print("depth={args.depth}, steps={args.steps}, batch={args.batch_size}")
-print("For full pipeline, paste the run_tinystories code here")
-"""
-k.execute_notify(train_code, notify_url=args.notify, label=f"Training d{args.depth}")
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if kaggle_cli() is None and not args.dry_run:
+        parser.error("Kaggle CLI not found; install with `python -m pip install kaggle`)")
+    try:
+        spec = build_launch_spec(args)
+        if args.dry_run:
+            render_bundle(spec, args.kernel_id, args.output_dir / "bundle")
+            spec.write(args.output_dir / "launch_spec.json")
+            print(spec.to_json())
+            return 0
+        with tempfile.TemporaryDirectory(prefix="flaxchat-kaggle-training-") as directory:
+            render_bundle(spec, args.kernel_id, Path(directory))
+            command("kernels", "push", "-p", directory)
+        spec.write(args.output_dir / "launch_spec.json")
+        print(f"Submitted {args.kernel_id} at exact revision {spec.source_revision}")
+        if args.no_wait:
+            return 0
+        return monitor_kernel(args.kernel_id, args.output_dir)
+    except ValueError as error:
+        parser.error(str(error))
 
-k.stop_quota_tracking()
-k.quota_summary()
 
-# Save
-k.save_session()
-k.to_notebook(f"{args.name}.ipynb")
-print(f"\nSession: {args.name}, Notebook: {args.name}.ipynb")
-k.close()
+if __name__ == "__main__":
+    raise SystemExit(main())

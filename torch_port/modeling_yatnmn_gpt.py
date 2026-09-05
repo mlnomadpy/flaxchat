@@ -7,7 +7,7 @@ the `(kv_list, last_embed)` past_key_values format are identical.
 from __future__ import annotations
 
 import math
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -241,9 +241,11 @@ class YatGPTForCausalLM(PreTrainedModel, GenerationMixin):
         return {"input_ids": input_ids, "past_key_values": past_key_values, "use_cache": True}
 
     def _get_cache_length(self, past_key_values):
-        if past_key_values is None: return 0
+        if past_key_values is None:
+            return 0
         kv, _ = past_key_values
-        if not kv: return 0
+        if not kv:
+            return 0
         return kv[0][0].shape[-2]
 
 

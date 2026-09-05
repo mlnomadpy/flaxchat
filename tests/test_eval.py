@@ -7,9 +7,6 @@ from pathlib import Path
 
 import jax
 import jax.numpy as jnp
-import numpy as np
-import pytest
-from flax import nnx
 
 from flaxchat.eval import (
     evaluate_core,

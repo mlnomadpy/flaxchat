@@ -44,6 +44,7 @@ wandb/
 tensorboard/
 .coverage
 coverage.xml
+coverage.json
 artifacts/
 
 # Jekyll build
@@ -51,3 +52,10 @@ docs/_site/
 docs/.jekyll-cache/
 docs/.sass-cache/
 docs/Gemfile.lock
+
+# The dacli workspace lives on its own ref (dacli-record), not on trunk: records
+# carried on a branch fork with it, so a task closed on a task branch is
+# invisible on trunk until its record merges. The history is NOT lost —
+#   git log dacli-record
+#   git show dacli-record:.dacli/projects/<p>/tasks/done/<file>
+.dacli/
