@@ -1169,7 +1169,7 @@ packages:
 - pypi: ./
   name: flaxchat
   version: 0.1.1
-  sha256: 32ab3dc7131d8c30265b78acb4a1388da763ba444471426252468c0455b55e07
+  sha256: 1893429f1d3b4b817dbb3f2e4fef3c61bdee42ed8dadd0fcf6373c204427193c
   requires_dist:
   - jax>=0.9.0
   - flax>=0.12.0
@@ -1182,6 +1182,7 @@ packages:
   - filelock>=3.0
   - jax[tpu]>=0.9.0 ; extra == 'tpu'
   - tpuz>=0.1.0 ; extra == 'tpu'
+  - jax[cuda12]>=0.9.0 ; extra == 'cuda12'
   - kaggle>=2.0.0 ; extra == 'kaggle'
   - datasets>=5.0.1,<6 ; extra == 'data'
   - pyarrow>=18.0.0 ; extra == 'data'

@@ -3,6 +3,7 @@ import json
 import os
 import re
 import subprocess
+import tomllib
 
 import pytest
 import yaml
@@ -84,6 +85,9 @@ def test_release_publishes_and_smokes_the_checkpoint_only_on_tags():
     assert source.count("pixi run build-package") == 1
     for suffix in ("311", "312", "313"):
         assert f"/tmp/flaxchat-release-{suffix}" in source
+    assert '"$environment/bin/pip" install dist/*.whl' in source
+    assert '"$environment/bin/pip" uninstall -y flaxchat' in source
+    assert '"$environment/bin/pip" install --no-deps dist/*.tar.gz' in source
     assert "mktemp -d" in source
     assert 'test "$output" = " he4it("' in source
     assert "artifacts/tinystories-smoke/run_manifest.json" not in source
@@ -128,6 +132,22 @@ def test_release_reuses_default_branch_validation_instead_of_retesting():
     assert "actions/workflows/cpu-tests.yml/runs" in release_text
     assert "pixi run test\n" not in release_text
     assert "pixi run test-e2e" not in release_text
+
+
+def test_python_and_optional_dependency_contracts_are_truthful_and_disjoint():
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    assert project["requires-python"] == ">=3.11,<3.14"
+    assert set(project["classifiers"]) == {
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+    }
+    extras = project["optional-dependencies"]
+    assert extras["kaggle"] == ["kaggle>=2.0.0"]
+    assert extras["cuda12"] == ["jax[cuda12]>=0.9.0"]
+    assert extras["tpu"] == ["jax[tpu]>=0.9.0", "tpuz>=0.1.0"]
+    for name in ("kaggle", "cuda12", "tpu", "web"):
+        assert not set(extras[name]) & set(project["dependencies"])
 
 
 def test_pages_uses_default_branch_and_pr_builds_without_deploying():

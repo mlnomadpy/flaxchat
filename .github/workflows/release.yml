@@ -57,10 +57,13 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       - run: python -m venv /tmp/flaxchat-release-313
-      - name: Install-smoke one wheel on every supported Python
+      - name: Install-smoke wheel and sdist on every supported Python
         run: |
           for environment in /tmp/flaxchat-release-311 /tmp/flaxchat-release-312 /tmp/flaxchat-release-313; do
             "$environment/bin/pip" install dist/*.whl
+            "$environment/bin/python" -c "import flaxchat; assert flaxchat.__version__ == '0.1.1'"
+            "$environment/bin/pip" uninstall -y flaxchat
+            "$environment/bin/pip" install --no-deps dist/*.tar.gz
             "$environment/bin/python" -c "import flaxchat; assert flaxchat.__version__ == '0.1.1'"
           done
       - name: Package checkpoint, generate SBOM, and verify checksums

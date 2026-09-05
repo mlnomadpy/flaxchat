@@ -28,6 +28,7 @@ classifiers = [
 
 [project.optional-dependencies]
 tpu = ["jax[tpu]>=0.9.0", "tpuz>=0.1.0"]
+cuda12 = ["jax[cuda12]>=0.9.0"]
 kaggle = ["kaggle>=2.0.0"]
 data = [
     "datasets>=5.0.1,<6",
