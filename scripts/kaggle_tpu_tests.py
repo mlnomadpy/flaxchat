@@ -17,6 +17,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "accelerators" / "kaggle" / "launch.py"
 _GIT_SHA = re.compile(r"[0-9a-f]{40}")
+_KERNEL_VERSION = re.compile(r"\bversion\s+(\d+)\b", re.IGNORECASE)
 
 
 def validate_revision(revision: str) -> str:
@@ -110,31 +111,61 @@ def command(
     raise AssertionError("unreachable")
 
 
-def _write_monitor_state(path: Path, kernel_id: str, status: str) -> None:
+def _kernel_version(text: str) -> int | None:
+    match = _KERNEL_VERSION.search(text)
+    return int(match.group(1)) if match else None
+
+
+def _read_monitor_state(path: Path) -> dict:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _write_monitor_state(
+    path: Path,
+    kernel_id: str,
+    status: str,
+    *,
+    kernel_version: int | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"kernel_id": kernel_id, "last_status": status, "updated_at": time.time()}
+    previous = _read_monitor_state(path)
+    payload = {
+        "kernel_id": kernel_id,
+        "kernel_version": kernel_version or previous.get("kernel_version"),
+        "last_status": status,
+        "updated_at": time.time(),
+    }
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     temporary.replace(path)
 
 
 def _download_output(kernel_id: str, output_dir: Path) -> None:
-    """Download into a temporary directory so partial output never looks complete."""
+    """Download and atomically replace output so partial data is never published."""
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix=f".{output_dir.name}-", dir=output_dir.parent
     ) as directory:
-        temporary = Path(directory)
-        command("kernels", "output", kernel_id, "-p", str(temporary), retries=5)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        for source in temporary.iterdir():
-            target = output_dir / source.name
-            if source.is_dir():
-                if target.exists():
-                    shutil.rmtree(target)
-                shutil.copytree(source, target)
-            else:
-                shutil.copy2(source, target)
+        workspace = Path(directory)
+        downloaded = workspace / "downloaded"
+        downloaded.mkdir()
+        command("kernels", "output", kernel_id, "-p", str(downloaded), retries=5)
+        state_path = output_dir / "monitor_state.json"
+        if state_path.exists():
+            shutil.copy2(state_path, downloaded / state_path.name)
+        backup = workspace / "previous"
+        if output_dir.exists():
+            output_dir.replace(backup)
+        try:
+            downloaded.replace(output_dir)
+        except BaseException:
+            if backup.exists() and not output_dir.exists():
+                backup.replace(output_dir)
+            raise
 
 
 def monitor_kernel(
@@ -146,12 +177,14 @@ def monitor_kernel(
 ) -> int:
     """Reconnectable monitor that distinguishes transport loss from remote failure."""
     state_path = output_dir / "monitor_state.json"
+    kernel_version = _read_monitor_state(state_path).get("kernel_version")
     outage_started: float | None = None
     outage_attempt = 0
     while True:
         try:
             result = command("kernels", "status", kernel_id, capture=True, retries=1)
             status = (result.stdout + result.stderr).strip()
+            kernel_version = _kernel_version(status) or kernel_version
             outage_started = None
             outage_attempt = 0
         except subprocess.CalledProcessError as error:
@@ -164,9 +197,15 @@ def monitor_kernel(
             if not transient:
                 raise
             now = time.monotonic()
-            outage_started = outage_started or now
+            if outage_started is None:
+                outage_started = now
             elapsed = now - outage_started
-            _write_monitor_state(state_path, kernel_id, f"transport-outage:{elapsed:.1f}s")
+            _write_monitor_state(
+                state_path,
+                kernel_id,
+                f"transport-outage:{elapsed:.1f}s",
+                kernel_version=kernel_version,
+            )
             if elapsed >= outage_budget_seconds:
                 print("Kaggle API outage budget exhausted; rerun with --resume-monitor", flush=True)
                 return 2
@@ -175,11 +214,18 @@ def monitor_kernel(
             time.sleep(delay)
             continue
         print(status, flush=True)
-        _write_monitor_state(state_path, kernel_id, status)
+        _write_monitor_state(
+            state_path, kernel_id, status, kernel_version=kernel_version
+        )
         normalized = status.lower()
         if "complete" in normalized:
             _download_output(kernel_id, output_dir)
-            _write_monitor_state(state_path, kernel_id, "complete:artifacts-downloaded")
+            _write_monitor_state(
+                state_path,
+                kernel_id,
+                "complete:artifacts-downloaded",
+                kernel_version=kernel_version,
+            )
             return 0
         if any(word in normalized for word in ("error", "failed", "cancel")):
             _download_output(kernel_id, output_dir)
@@ -247,7 +293,14 @@ def main(argv: list[str] | None = None) -> int:
             (bundle / "kernel-metadata.json").write_text(
                 json.dumps(metadata, indent=2), encoding="utf-8"
             )
-            command("kernels", "push", "-p", str(bundle))
+            push = command("kernels", "push", "-p", str(bundle), capture=True)
+        version = _kernel_version((push.stdout or "") + (push.stderr or ""))
+        _write_monitor_state(
+            args.output_dir / "monitor_state.json",
+            args.kernel_id,
+            "submitted",
+            kernel_version=version,
+        )
         print(f"Submitted {args.kernel_id} at exact revision {revision}")
         if not args.wait:
             return 0

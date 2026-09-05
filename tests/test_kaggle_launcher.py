@@ -6,7 +6,13 @@ import subprocess
 import pytest
 
 from flaxchat.launch import LaunchSpec, execute_launch_spec
-from scripts.kaggle_tpu_tests import command, monitor_kernel, validate_revision
+from scripts import kaggle_tpu_tests
+from scripts.kaggle_tpu_tests import (
+    _download_output,
+    command,
+    monitor_kernel,
+    validate_revision,
+)
 from scripts.kaggle_matched_benchmarks import (
     MAXTEXT_REVISION,
     NANOCHAT_REVISION,
@@ -181,7 +187,7 @@ def test_training_bundle_runs_real_pipeline_at_exact_revision(tmp_path):
 
 
 def test_monitor_recovers_after_transport_reset(monkeypatch, tmp_path):
-    attempts = iter(("reset", "running", "complete"))
+    attempts = iter(("reset", "running version 12", "complete version 12"))
 
     def fake_command(*args, **kwargs):
         state = next(attempts)
@@ -198,6 +204,76 @@ def test_monitor_recovers_after_transport_reset(monkeypatch, tmp_path):
     assert monitor_kernel("owner/kernel", tmp_path, poll_seconds=0) == 0
     state = json.loads((tmp_path / "monitor_state.json").read_text())
     assert state["last_status"] == "complete:artifacts-downloaded"
+    assert state["kernel_version"] == 12
+
+
+def test_resume_monitor_never_submits_a_new_version(monkeypatch, tmp_path):
+    monkeypatch.setattr(kaggle_tpu_tests, "kaggle_cli", lambda: ["kaggle"])
+    calls = []
+    monkeypatch.setattr(
+        kaggle_tpu_tests,
+        "monitor_kernel",
+        lambda kernel_id, output_dir, **kwargs: calls.append(
+            (kernel_id, output_dir, kwargs)
+        ) or 0,
+    )
+    assert kaggle_tpu_tests.main([
+        "--kernel-id", "owner/kernel",
+        "--resume-monitor",
+        "--output-dir", str(tmp_path),
+    ]) == 0
+    assert calls and calls[0][0] == "owner/kernel"
+
+
+def test_partial_artifact_download_keeps_previous_complete_output(
+    monkeypatch, tmp_path
+):
+    output = tmp_path / "artifacts"
+    output.mkdir()
+    (output / "previous.json").write_text("complete", encoding="utf-8")
+
+    def partial(*args, **_kwargs):
+        destination = Path(args[args.index("-p") + 1])
+        (destination / "partial.json").write_text("partial", encoding="utf-8")
+        raise subprocess.CalledProcessError(1, args, stderr="connection reset")
+
+    monkeypatch.setattr("scripts.kaggle_tpu_tests.command", partial)
+    with pytest.raises(subprocess.CalledProcessError):
+        _download_output("owner/kernel", output)
+    assert (output / "previous.json").read_text() == "complete"
+    assert not (output / "partial.json").exists()
+
+
+def test_monitor_exhausts_transport_outage_budget(monkeypatch, tmp_path):
+    def reset(*args, **kwargs):
+        raise subprocess.CalledProcessError(
+            1, args, output="", stderr="TLS connection reset"
+        )
+
+    ticks = iter((0.0, 2.0))
+    monkeypatch.setattr("scripts.kaggle_tpu_tests.command", reset)
+    monkeypatch.setattr("scripts.kaggle_tpu_tests.time.monotonic", lambda: next(ticks))
+    monkeypatch.setattr("scripts.kaggle_tpu_tests.time.sleep", lambda _: None)
+    monkeypatch.setattr("scripts.kaggle_tpu_tests.random.uniform", lambda *_: 0.0)
+    assert monitor_kernel(
+        "owner/kernel", tmp_path, poll_seconds=0, outage_budget_seconds=1
+    ) == 2
+    state = json.loads((tmp_path / "monitor_state.json").read_text())
+    assert state["last_status"] == "transport-outage:2.0s"
+
+
+def test_kernel_error_is_not_treated_as_transport_failure(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        "scripts.kaggle_tpu_tests.command",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args, 0, stdout="ERROR version 9", stderr=""
+        ),
+    )
+    monkeypatch.setattr("scripts.kaggle_tpu_tests._download_output", lambda *_: None)
+    assert monitor_kernel("owner/kernel", tmp_path, poll_seconds=0) == 1
+    state = json.loads((tmp_path / "monitor_state.json").read_text())
+    assert state["kernel_version"] == 9
+    assert state["last_status"] == "ERROR version 9"
 
 
 def test_kaggle_command_bounds_a_hung_cli(monkeypatch):
