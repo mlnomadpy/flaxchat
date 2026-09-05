@@ -212,7 +212,15 @@ def generate(model, tokens, max_tokens=256, temperature=1.0, top_k=None, seed=42
 # ---------------------------------------------------------------------------
 # Python-loop KV-cached generation (medium speed)
 # ---------------------------------------------------------------------------
-def generate_with_cache(model, tokens, max_tokens=256, temperature=1.0, top_k=40, seed=42):
+def generate_with_cache(
+    model,
+    tokens,
+    max_tokens=256,
+    temperature=1.0,
+    top_k=40,
+    seed=42,
+    cancelled=None,
+):
     """KV-cached with Python loop. Faster than padded, slower than while_loop."""
     config = model.config
     sharding = _get_model_sharding(model)
@@ -232,6 +240,8 @@ def generate_with_cache(model, tokens, max_tokens=256, temperature=1.0, top_k=40
 
     # Prefill
     for t in range(len(tokens)):
+        if cancelled is not None and cancelled():
+            return generated
         tok = _to_device(jnp.array([[tokens[t]]], dtype=jnp.int32), sharding)
         logits, k_cache, v_cache, prev_emb = _single_step_forward(
             model, tok, pos, k_cache, v_cache, prev_emb
@@ -240,6 +250,8 @@ def generate_with_cache(model, tokens, max_tokens=256, temperature=1.0, top_k=40
 
     # Decode
     for _ in range(max_tokens):
+        if cancelled is not None and cancelled():
+            break
         tkl, tki = jax.lax.top_k(logits, min(top_k, logits.shape[-1]))
         cur = jnp.full_like(logits, -1e9).at[0, tki[0]].set(tkl[0])
         if temperature > 0:

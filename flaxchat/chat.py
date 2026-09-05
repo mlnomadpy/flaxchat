@@ -43,7 +43,13 @@ class ChatService:
             )
         return tokens
 
-    def generate_tokens(self, user_text: str, config: GenerationConfig) -> list[int]:
+    def generate_tokens(
+        self,
+        user_text: str,
+        config: GenerationConfig,
+        *,
+        cancelled: Callable[[], bool] | None = None,
+    ) -> list[int]:
         prompt = self.prompt_tokens(user_text, config)
         return generate_with_cache(
             self.model,
@@ -52,6 +58,7 @@ class ChatService:
             temperature=config.temperature,
             top_k=config.top_k,
             seed=config.seed,
+            cancelled=cancelled,
         )[len(prompt):]
 
     def stream_text(
@@ -64,7 +71,9 @@ class ChatService:
         assistant_end = self.tokenizer.encode_special("<|assistant_end|>")
 
         def active_tokens():
-            for token in self.generate_tokens(user_text, config):
+            for token in self.generate_tokens(
+                user_text, config, cancelled=cancelled
+            ):
                 if cancelled is not None and cancelled():
                     return
                 if token == assistant_end:

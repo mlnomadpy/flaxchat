@@ -51,6 +51,18 @@ Logs, artifacts, JUnit XML, and a JSON summary are downloaded together.
 Transient Kaggle API outages are persisted locally and retried; `--resume-monitor`
 reconnects without creating a duplicate kernel version.
 
+## Web chat service
+
+`scripts.chat_web` is an application factory: importing it does not parse
+arguments or load model state. Production adapters should inject a
+manifest-verified `ChatService` and set bounded input, generation, concurrency,
+and output-buffer limits through `WebSettings`.
+
+The WebSocket protocol emits `token`, `done`, or structured `error` events.
+Error codes are `invalid_json`, `invalid_request`, `context_overflow`,
+`overloaded`, `request_error`, and `model_error`; internal model exceptions are
+not exposed. Disconnects signal cooperative cancellation into cached decoding.
+
 ## 3. GCP TPU Pod
 
 The production flex-start launcher, pinned environment, worker coordination,

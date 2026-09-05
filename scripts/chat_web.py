@@ -43,6 +43,15 @@ class WebSettings:
     max_concurrent_generations: int = 1
     output_buffer_size: int = 32
 
+    def __post_init__(self) -> None:
+        if min(
+            self.max_input_chars,
+            self.max_tokens,
+            self.max_concurrent_generations,
+            self.output_buffer_size,
+        ) < 1:
+            raise ValueError("web service limits must be positive")
+
 
 def _error(code: str, message: str) -> str:
     return json.dumps({"type": "error", "code": code, "message": message})
@@ -121,16 +130,39 @@ def create_app(service: ChatService, settings: WebSettings | None = None) -> Fas
 
                 async with semaphore:
                     worker = asyncio.create_task(asyncio.to_thread(generate))
-                    while True:
-                        kind, text = await queue.get()
-                        if kind == "done":
-                            await websocket.send_text(json.dumps({"type": "done"}))
-                            break
-                        if kind == "token":
-                            await websocket.send_text(json.dumps({"type": "token", "text": text}))
-                        else:
-                            await websocket.send_text(_error(kind, text))
-                    await worker
+                    disconnect = asyncio.create_task(websocket.receive())
+                    try:
+                        while True:
+                            output = asyncio.create_task(queue.get())
+                            completed, _ = await asyncio.wait(
+                                (output, disconnect),
+                                return_when=asyncio.FIRST_COMPLETED,
+                            )
+                            if disconnect in completed:
+                                output.cancel()
+                                event = disconnect.result()
+                                if event["type"] == "websocket.disconnect":
+                                    cancelled.set()
+                                    await worker
+                                    return
+                                await websocket.send_text(
+                                    _error("overloaded", "wait for generation to finish")
+                                )
+                                disconnect = asyncio.create_task(websocket.receive())
+                                continue
+                            kind, text = output.result()
+                            if kind == "done":
+                                await websocket.send_text(json.dumps({"type": "done"}))
+                                break
+                            if kind == "token":
+                                await websocket.send_text(
+                                    json.dumps({"type": "token", "text": text})
+                                )
+                            else:
+                                await websocket.send_text(_error(kind, text))
+                        await worker
+                    finally:
+                        disconnect.cancel()
         except WebSocketDisconnect:
             cancelled.set()
         finally:

@@ -40,25 +40,24 @@ def test_empty_prompt_is_rejected(tiny_model):
 
 def test_generate_text_stops_at_assistant_end(tiny_model, monkeypatch):
     service = ChatService(tiny_model, TinyTokenizer())
-    monkeypatch.setattr(service, "generate_tokens", lambda *_: [7, 4, 8])
+    monkeypatch.setattr(service, "generate_tokens", lambda *_, **__: [7, 4, 8])
     assert service.generate_text("hi", GenerationConfig(max_tokens=3)) == "H"
 
 
-def test_stream_honors_cancellation(tiny_model):
+def test_stream_honors_cancellation_before_decode(tiny_model):
     service = ChatService(tiny_model, TinyTokenizer())
-    calls = iter((False, True))
     chunks = list(service.stream_text(
         "hello", GenerationConfig(max_tokens=4, temperature=0),
-        cancelled=lambda: next(calls),
+        cancelled=lambda: True,
     ))
-    assert len(chunks) == 1
+    assert chunks == []
 
 
 def test_stream_preserves_byte_tokenizer_unicode(tiny_model, monkeypatch):
     tokenizer = ByteTokenizer()
     service = ChatService(tiny_model, tokenizer)
     tokens = tokenizer.encode("Hi 👋") + [tokenizer.encode_special("<|assistant_end|>")]
-    monkeypatch.setattr(service, "generate_tokens", lambda *_: tokens)
+    monkeypatch.setattr(service, "generate_tokens", lambda *_, **__: tokens)
     assert "".join(service.stream_text(
         "hello", GenerationConfig(max_tokens=len(tokens), temperature=0)
     )) == "Hi 👋"
