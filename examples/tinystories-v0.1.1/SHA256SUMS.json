@@ -1,5 +1,6 @@
 {
-  "README.md": "087fc7c0d9bc29cce053ba4f33788710b49fceb370603b62d6b2bbedeb8ee377",
+  "LICENSE": "81b0713bae57d1fc03c4793e7214ea84bc409a1866fcfee878bfd1c2f1e77371",
+  "README.md": "55162d7c1e09ed6b7317a1847752a72560f0ed71ed1dbf5c811932d464b29f2b",
   "checkpoint/4/_CHECKPOINT_METADATA": "97a72cfe51096d3e3f29317d068cd3b9e9bb7a0f690d26760d5692e8c0493e0f",
   "checkpoint/4/manifest/metadata": "6db13230c3abde3a82ca7a3490768ded202611e16f6482ec9aa0cea6e296f209",
   "checkpoint/4/metadata/metadata": "1106e91015f2ea6d70f76736332d752b4151f2491447555109c759ef2c4893f5",
@@ -35,6 +36,7 @@
   "checkpoint/4/training_state/ocdbt.process_0/d/f1e79a780ede514de91957e450bbe16b": "89f32fbd0200937c89c144652582e5d897272150fe12739ee3f52c835e742453",
   "checkpoint/4/training_state/ocdbt.process_0/d/fc844304875afaa2e462dccb2ba8b69d": "edfb1882ea6e518d0e63ef95cc3c05309246446ab01c7501760f2c5b8d0bb12d",
   "checkpoint/4/training_state/ocdbt.process_0/manifest.ocdbt": "98e2e252b1c882a71dc85bc53f15d9c7b8e37b16c911985ed61b0528b140a9d4",
-  "run_manifest.json": "e50d304475f764e1b5f90bcaf66265b98ff4c95ad0894e2067ef27815c03fc81",
+  "resolved_config.json": "12e9b493da51a1a46ad73b57a68118a4f248e0ceb8643f8a071228d13be6bdb7",
+  "run_manifest.json": "cd5d42b93f33c8d12f0cde1ec3d7efea3de9a4692c5f20d4788df4a7e617258f",
   "tokenizer/tokenizer.json": "a4905c925f51a906076a9bda1c75cc4a0a9cfc1c303a5167cc943491839ffc16"
 }

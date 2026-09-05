@@ -1,6 +1,8 @@
 {
   "artifacts": {
     "checkpoint": "checkpoint",
+    "license": "LICENSE",
+    "resolved_config": "resolved_config.json",
     "tokenizer": "tokenizer/tokenizer.json"
   },
   "checkpoint_manifest_sha256": "6db13230c3abde3a82ca7a3490768ded202611e16f6482ec9aa0cea6e296f209",
@@ -55,6 +57,12 @@
     "window_pattern": "L"
   },
   "protocol_sha256": "8204dee3bce0343835aabbc705661638f7b29d312d6cb03baefde10259e57f89",
+  "release_compatibility": {
+    "project": "flaxchat",
+    "published": false,
+    "required_tag": "v0.1.1",
+    "version": "0.1.1"
+  },
   "resolved_config": {
     "attention_backend": "auto",
     "batch_size": 8,

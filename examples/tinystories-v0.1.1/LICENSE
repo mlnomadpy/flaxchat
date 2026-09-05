@@ -1,0 +1,13 @@
+FlaxChat TinyStories checkpoint license notice
+
+The FlaxChat source code and original checkpoint packaging are provided under
+the repository's MIT License.
+
+The model checkpoint and tokenizer were produced from a subset of
+roneneldan/TinyStories, revision
+f54c09fd23315a6f9c86f9dc80f725de7d8f9c64. Its recorded dataset license is
+CDLA-Sharing-1.0. Users of this artifact are responsible for complying with the
+dataset terms and any applicable laws.
+
+This notice does not grant rights to third-party material beyond those granted
+by its respective license.

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 import hashlib
+import json
 import os
+from pathlib import Path
 
 from flax import nnx
 
+from flaxchat.artifact import resolve_artifact_path, verify_artifact
 from flaxchat.checkpoint import load_checkpoint_metadata, restore_model_from_checkpoint
 from flaxchat.common import get_base_dir
 from flaxchat.config import FlaxChatConfig, GenerationConfig
@@ -125,3 +128,46 @@ def load_chat_service(
         },
     )
     return ChatService(model, tokenizer)
+
+
+def load_chat_service_from_artifact(artifact_dir: str | Path) -> ChatService:
+    """Verify and load an artifact using only its manifest identities."""
+    manifest = verify_artifact(artifact_dir)
+    artifacts = manifest["artifacts"]
+    required_paths = {"checkpoint", "license", "resolved_config", "tokenizer"}
+    if not isinstance(artifacts, dict) or not required_paths.issubset(artifacts):
+        raise ValueError("artifact manifest has invalid artifact paths")
+
+    compatibility = manifest["release_compatibility"]
+    if (
+        not isinstance(compatibility, dict)
+        or compatibility.get("project") != "flaxchat"
+        or not isinstance(compatibility.get("version"), str)
+    ):
+        raise ValueError("artifact manifest has invalid release compatibility metadata")
+
+    checkpoint = resolve_artifact_path(artifact_dir, artifacts["checkpoint"])
+    tokenizer_file = resolve_artifact_path(artifact_dir, artifacts["tokenizer"])
+    resolved_config_file = resolve_artifact_path(
+        artifact_dir, artifacts["resolved_config"]
+    )
+    license_file = resolve_artifact_path(artifact_dir, artifacts["license"])
+    if not license_file.is_file() or not tokenizer_file.is_file():
+        raise ValueError("artifact license and tokenizer paths must be files")
+    resolved_config = json.loads(resolved_config_file.read_text(encoding="utf-8"))
+    if resolved_config != manifest["resolved_config"]:
+        raise ValueError("resolved configuration does not match artifact manifest")
+    if hashlib.sha256(tokenizer_file.read_bytes()).hexdigest() != manifest["tokenizer_sha256"]:
+        raise ValueError("tokenizer hash does not match artifact manifest")
+
+    metadata = load_checkpoint_metadata(str(checkpoint))
+    if metadata.get("model_config") != manifest["model_config"]:
+        raise ValueError("checkpoint model configuration does not match artifact manifest")
+    if metadata.get("source_revision") != manifest["source_revision"]:
+        raise ValueError("checkpoint source revision does not match artifact manifest")
+    return load_chat_service(
+        "artifact",
+        "base",
+        checkpoint_path=str(checkpoint),
+        tokenizer_path=str(tokenizer_file.parent),
+    )

@@ -7,6 +7,7 @@ import asyncio
 import concurrent.futures
 from dataclasses import dataclass
 import json
+from pathlib import Path
 import threading
 from typing import Any
 
@@ -14,7 +15,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 import uvicorn
 
-from flaxchat.chat import ChatService, GenerationConfig, load_chat_service
+from flaxchat.chat import (
+    ChatService,
+    GenerationConfig,
+    load_chat_service,
+    load_chat_service_from_artifact,
+)
 
 
 HTML_PAGE = """<!doctype html><html><head><title>flaxchat</title></head>
@@ -138,6 +144,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", default="d12")
     parser.add_argument("--checkpoint-path")
     parser.add_argument("--tokenizer-path")
+    parser.add_argument(
+        "--artifact-dir",
+        help="artifact directory; verifies checksums and loads its manifest",
+    )
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--checkpoint-type", choices=("base", "sft", "rl"), default="sft")
@@ -146,17 +156,28 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    service = load_chat_service(
-        args.model,
-        args.checkpoint_type,
-        checkpoint_path=args.checkpoint_path,
-        tokenizer_path=args.tokenizer_path,
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.artifact_dir and (args.checkpoint_path or args.tokenizer_path):
+        parser.error("--artifact-dir cannot be combined with explicit checkpoint paths")
+    service = (
+        load_chat_service_from_artifact(args.artifact_dir)
+        if args.artifact_dir
+        else load_chat_service(
+            args.model,
+            args.checkpoint_type,
+            checkpoint_path=args.checkpoint_path,
+            tokenizer_path=args.tokenizer_path,
+        )
     )
     app = create_app(
         service,
         WebSettings(
-            model_name=args.model,
+            model_name=(
+                f"artifact:{Path(args.artifact_dir).name}"
+                if args.artifact_dir
+                else args.model
+            ),
             max_concurrent_generations=args.max_concurrent_generations,
         ),
     )

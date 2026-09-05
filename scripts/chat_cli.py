@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import argparse
 
-from flaxchat.chat import GenerationConfig, load_chat_service
+from flaxchat.chat import (
+    GenerationConfig,
+    load_chat_service,
+    load_chat_service_from_artifact,
+)
 from flaxchat.common import print0
 
 
@@ -13,6 +17,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", default="d12")
     parser.add_argument("--checkpoint-path")
     parser.add_argument("--tokenizer-path")
+    parser.add_argument(
+        "--artifact-dir",
+        help="artifact directory; verifies checksums and loads its manifest",
+    )
     parser.add_argument("-p", "--prompt")
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top-k", type=int, default=50)
@@ -22,12 +30,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    service = load_chat_service(
-        args.model,
-        args.checkpoint_type,
-        checkpoint_path=args.checkpoint_path,
-        tokenizer_path=args.tokenizer_path,
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.artifact_dir and (args.checkpoint_path or args.tokenizer_path):
+        parser.error("--artifact-dir cannot be combined with explicit checkpoint paths")
+    service = (
+        load_chat_service_from_artifact(args.artifact_dir)
+        if args.artifact_dir
+        else load_chat_service(
+            args.model,
+            args.checkpoint_type,
+            checkpoint_path=args.checkpoint_path,
+            tokenizer_path=args.tokenizer_path,
+        )
     )
     generation = GenerationConfig(
         max_tokens=args.max_tokens,
