@@ -76,7 +76,15 @@ def main(argv: list[str] | None = None) -> int:
         "--artifact-dir", type=str, default="artifacts/fineweb-gpt",
         help="directory for the immutable resolved training summary",
     )
-    parser.add_argument("--tie-embeddings", action="store_true", default=False)
+    embedding_tying = parser.add_mutually_exclusive_group()
+    embedding_tying.add_argument(
+        "--tie-embeddings", action="store_true", dest="tie_embeddings", default=True,
+        help="share token embedding and output projection weights (GPT-2 default)",
+    )
+    embedding_tying.add_argument(
+        "--untie-embeddings", action="store_false", dest="tie_embeddings",
+        help="use separate token embedding and output projection weights",
+    )
     args = parser.parse_args(argv)
 
     # ── Distributed init ──
@@ -103,11 +111,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # ── Model ──
     aspect_ratio = 64
-    head_dim = 128
+    # Match the canonical GPT-2 small head layout: 12 layers, 768 hidden
+    # dimensions, and 12 full-attention heads of width 64 by default.
+    head_dim = 64
     base_dim = args.depth * aspect_ratio
     model_dim = ((base_dim + head_dim - 1) // head_dim) * head_dim
     n_heads = model_dim // head_dim
-    n_kv_heads = max(1, n_heads // 2)
+    n_kv_heads = n_heads
 
     config = GPTConfig(
         sequence_len=args.seq_len,
@@ -116,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         n_head=n_heads,
         n_kv_head=n_kv_heads,
         n_embd=model_dim,
-        window_pattern="SSSL",
+        window_pattern="L",
         tie_embeddings=args.tie_embeddings,
     )
 
