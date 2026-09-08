@@ -1,8 +1,10 @@
 """
-Train GPT-2 base model (124M) on FineWeb-Edu using HF streaming.
+Train a GPT-2-sized causal language model on FineWeb-Edu using HF streaming.
 
-Self-contained — no pre-existing tokenizer or data files needed.
-Uses Mistral tokenizer + HF datasets streaming.
+Self-contained — no pre-existing tokenizer or data files are needed.  The
+default tokenizer is the open GPT-2 byte-level BPE (50,257 tokens), which is
+small enough for the embedding table to remain practical while preserving a
+standard GPT vocabulary contract.
 
 Usage:
     # Single host (v6e-8)
@@ -46,19 +48,34 @@ def parse_tokens(s):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Train GPT-2 on FineWeb-Edu")
+    parser = argparse.ArgumentParser(description="Train a GPT-2-sized model on FineWeb-Edu")
     parser.add_argument("--depth", type=int, default=12)
     parser.add_argument("--batch-per-device", type=int, default=512)
     parser.add_argument("--seq-len", type=int, default=2048)
-    parser.add_argument("--tokens", type=str, default="10B")
+    parser.add_argument("--tokens", type=str, default="1B")
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--warmup-steps", type=int, default=200)
     parser.add_argument("--eval-every", type=int, default=500)
     parser.add_argument("--save-every", type=int, default=2000)
     parser.add_argument("--dataset", type=str, default="HuggingFaceFW/fineweb-edu")
     parser.add_argument("--dataset-subset", type=str, default="sample-10BT")
+    parser.add_argument(
+        "--tokenizer", type=str, default="gpt2",
+        help="Hugging Face tokenizer ID; must have at most --max-vocab-size tokens",
+    )
+    parser.add_argument(
+        "--max-vocab-size", type=int, default=60_000,
+        help="hard upper bound for the tokenizer vocabulary",
+    )
     parser.add_argument("--run-name", type=str, default="gpt2-base")
-    parser.add_argument("--ckpt-dir", type=str, default="gs://orbax/flaxchat/checkpoints")
+    parser.add_argument(
+        "--ckpt-dir", type=str, default="artifacts/fineweb-gpt/checkpoints",
+        help="local or mounted directory for resumable Orbax checkpoints",
+    )
+    parser.add_argument(
+        "--artifact-dir", type=str, default="artifacts/fineweb-gpt",
+        help="directory for the immutable resolved training summary",
+    )
     parser.add_argument("--tie-embeddings", action="store_true", default=False)
     args = parser.parse_args(argv)
 
@@ -68,12 +85,21 @@ def main(argv: list[str] | None = None) -> int:
     n_devices = jax.device_count()
     total_tokens = parse_tokens(args.tokens)
 
+    if args.max_vocab_size <= 0:
+        parser.error("--max-vocab-size must be positive")
+
     # ── Tokenizer ──
     print0("Loading tokenizer...")
     from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     tokenizer.pad_token = tokenizer.eos_token
-    vocab_size = 32768  # Pad to multiple of 64 for efficiency
+    vocab_size = len(tokenizer)
+    if vocab_size > args.max_vocab_size:
+        parser.error(
+            f"tokenizer {args.tokenizer!r} has {vocab_size:,} tokens; "
+            f"the configured maximum is {args.max_vocab_size:,}"
+        )
+    print0(f"Tokenizer: {args.tokenizer} ({vocab_size:,} tokens)")
 
     # ── Model ──
     aspect_ratio = 64
@@ -110,6 +136,11 @@ def main(argv: list[str] | None = None) -> int:
     tok_per_step = global_batch * args.seq_len
     num_steps = total_tokens // tok_per_step
     actual_tokens = num_steps * tok_per_step
+    if num_steps <= 0:
+        parser.error(
+            "--tokens must cover at least one global training step "
+            f"({tok_per_step:,} tokens)"
+        )
 
     print0(f"Batch: {args.batch_per_device}/dev × {n_devices} = {global_batch} global")
     print0(f"Tokens/step: {tok_per_step:,} ({tok_per_step/1e6:.1f}M)")
@@ -190,6 +221,8 @@ def main(argv: list[str] | None = None) -> int:
                 "batch_per_device": args.batch_per_device, "global_batch": global_batch,
                 "total_tokens": actual_tokens, "num_steps": num_steps,
                 "lr": args.lr, "dataset": args.dataset,
+                "dataset_subset": args.dataset_subset, "tokenizer": args.tokenizer,
+                "vocab_size": vocab_size,
             })
             use_wandb = True
         except Exception:
@@ -242,6 +275,11 @@ def main(argv: list[str] | None = None) -> int:
                 mgr = create_checkpoint_manager(args.ckpt_dir, async_checkpointing=False)
                 save_checkpoint(mgr, step, model, optimizer, {
                     "step": step, "loss": loss_val, "tokens": (step + 1) * tok_per_step,
+                    "resolved_config": vars(args),
+                    "tokenizer_identity": {"id": args.tokenizer, "vocab_size": vocab_size},
+                    "data_manifest_identity": {
+                        "dataset": args.dataset, "subset": args.dataset_subset,
+                    },
                 })
                 mgr.wait_until_finished()
                 print0(f"  Saved checkpoint at step {step}")
@@ -265,11 +303,23 @@ def main(argv: list[str] | None = None) -> int:
         from flaxchat.checkpoint import create_checkpoint_manager, save_checkpoint
         os.makedirs(args.ckpt_dir, exist_ok=True)
         mgr = create_checkpoint_manager(args.ckpt_dir, async_checkpointing=False)
-        save_checkpoint(mgr, num_steps, model, optimizer, {
+        final_metadata = {
             "step": num_steps, "loss": loss_val, "tokens": actual_tokens,
             "elapsed_h": elapsed / 3600, "tok_per_sec": final_tok_s,
-        })
+            "resolved_config": vars(args),
+            "tokenizer_identity": {"id": args.tokenizer, "vocab_size": vocab_size},
+            "data_manifest_identity": {
+                "dataset": args.dataset, "subset": args.dataset_subset,
+            },
+        }
+        save_checkpoint(mgr, num_steps, model, optimizer, final_metadata)
         mgr.wait_until_finished()
+        artifact_dir = os.path.abspath(args.artifact_dir)
+        os.makedirs(artifact_dir, exist_ok=True)
+        with open(os.path.join(artifact_dir, "training_summary.json"), "w", encoding="utf-8") as handle:
+            import json
+            json.dump(final_metadata, handle, indent=2, sort_keys=True)
+            handle.write("\n")
         print0("Final checkpoint saved!")
 
     if use_wandb:

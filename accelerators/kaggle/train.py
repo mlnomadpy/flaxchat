@@ -50,7 +50,15 @@ checkout = (
     else {"name": "checkout", "return_code": 1, "elapsed_seconds": 0.0}
 )
 install = (
-    run("install", [sys.executable, "-m", "pip", "install", "--quiet", ".[dev]"], SOURCE)
+    run(
+        "install",
+        [
+            sys.executable, "-m", "pip", "install", "--quiet", "--find-links",
+            "https://storage.googleapis.com/jax-releases/libtpu_releases.html",
+            "jax[tpu]>=0.9.0", ".[dev,data,logging]",
+        ],
+        SOURCE,
+    )
     if checkout["return_code"] == 0
     else {"name": "install", "return_code": 1, "elapsed_seconds": 0.0}
 )

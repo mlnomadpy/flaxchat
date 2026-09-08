@@ -186,6 +186,39 @@ def test_training_bundle_runs_real_pipeline_at_exact_revision(tmp_path):
     assert metadata["enable_tpu"] == "true"
 
 
+def test_fineweb_gpt2_bundle_uses_gpt2_tokenizer_below_vocab_ceiling(tmp_path):
+    args = argparse.Namespace(
+        revision="f" * 40,
+        repository="https://example.invalid/flaxchat.git",
+        accelerator="tpu",
+        artifact_dir="artifacts/tinystories",
+        workload="fineweb-gpt2",
+        layers=2,
+        steps=3,
+        batch_size=4,
+        sequence_length=64,
+        tokens="100M",
+        batch_per_device=16,
+        gpt_depth=12,
+        gpt_sequence_length=1024,
+        gpt_lr=6e-4,
+        tokenizer="gpt2",
+        max_vocab_size=60_000,
+        dataset="HuggingFaceFW/fineweb-edu",
+        dataset_subset="sample-10BT",
+        save_every=500,
+        secrets=[],
+        budget_hours=None,
+    )
+    spec = build_launch_spec(args)
+    render_bundle(spec, "owner/fineweb-gpt2", tmp_path)
+    launch = (tmp_path / "launch.py").read_text()
+    assert "scripts.train_gpt2" in launch
+    assert '"--tokenizer", "gpt2"' in launch
+    assert '"--max-vocab-size", "60000"' in launch
+    assert spec.artifacts == ("artifacts/fineweb-gpt",)
+
+
 def test_monitor_recovers_after_transport_reset(monkeypatch, tmp_path):
     attempts = iter(("reset", "running version 12", "complete version 12"))
 
