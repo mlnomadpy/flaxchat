@@ -208,7 +208,7 @@ class CausalSelfAttention(nnx.Module):
         # Store config (registered as static) and scalar metadata
         self.config: GPTConfig = nnx.data(config)
         self.layer_idx: int = nnx.data(layer_idx)
-        self._has_ve = has_ve(layer_idx, config.n_layer)  # plain Python bool, not traced
+        self._has_ve = not config.standard_gpt and has_ve(layer_idx, config.n_layer)
 
         head_dim = config.n_embd // config.n_head
         self.c_q = nnx.Linear(config.n_embd, config.n_head * head_dim, use_bias=False, rngs=rngs)
@@ -340,21 +340,20 @@ class GPT(nnx.Module):
             self.lm_head = None  # use wte.embedding.T
 
         # Per-layer learnable scalars
-        self.resid_lambdas = nnx.Param(jnp.ones(config.n_layer))
-        self.x0_lambdas = nnx.Param(jnp.zeros(config.n_layer))
+        if not config.standard_gpt:
+            self.resid_lambdas = nnx.Param(jnp.ones(config.n_layer))
+            self.x0_lambdas = nnx.Param(jnp.zeros(config.n_layer))
+            self.smear_gate = nnx.Linear(24, 1, use_bias=False, rngs=rngs)
+            self.smear_lambda = nnx.Param(jnp.zeros(1))
+            self.backout_lambda = nnx.Param(0.2 * jnp.ones(1))
 
-        # Smear
-        self.smear_gate = nnx.Linear(24, 1, use_bias=False, rngs=rngs)
-        self.smear_lambda = nnx.Param(jnp.zeros(1))
-
-        # Backout
-        self.backout_lambda = nnx.Param(0.2 * jnp.ones(1))
-
-        # Value embeddings
+        # Value embeddings are a FlaxChat extension, deliberately absent from
+        # the standard GPT path used by the FineWeb trainer.
         head_dim = config.n_embd // config.n_head
         kv_dim = config.n_kv_head * head_dim
         self.value_embeds = _NNX_DICT({str(i): nnx.Embed(padded_vocab_size, kv_dim, rngs=rngs)
-                                       for i in range(config.n_layer) if has_ve(i, config.n_layer)})
+                                       for i in range(config.n_layer)
+                                       if not config.standard_gpt and has_ve(i, config.n_layer)})
 
         # Precompute rotary embeddings (stored as non-node data)
         rotary_seq_len = config.sequence_len * 10
@@ -403,10 +402,11 @@ class GPT(nnx.Module):
                 block.attn.ve_gate.kernel[...] = jax.random.uniform(keys[4], block.attn.ve_gate.kernel[...].shape, minval=0.0, maxval=0.02)
 
         # Per-layer scalar init
-        resid_vals = jnp.array([1.15 - (0.10 * i / max(n_layer - 1, 1)) for i in range(n_layer)])
-        x0_vals = jnp.array([0.20 - (0.15 * i / max(n_layer - 1, 1)) for i in range(n_layer)])
-        self.resid_lambdas[...] = resid_vals
-        self.x0_lambdas[...] = x0_vals
+        if not config.standard_gpt:
+            resid_vals = jnp.array([1.15 - (0.10 * i / max(n_layer - 1, 1)) for i in range(n_layer)])
+            x0_vals = jnp.array([0.20 - (0.15 * i / max(n_layer - 1, 1)) for i in range(n_layer)])
+            self.resid_lambdas[...] = resid_vals
+            self.x0_lambdas[...] = x0_vals
 
         # Value embeddings: uniform like c_v
         for _key_str, ve in self.value_embeds.items():
@@ -435,7 +435,8 @@ class GPT(nnx.Module):
         """Run transformer blocks in a Python loop (default path)."""
         x_backout = None
         for i, block in enumerate(self.blocks):
-            x = self.resid_lambdas[...][i] * x + self.x0_lambdas[...][i] * x0
+            if not self.config.standard_gpt:
+                x = self.resid_lambdas[...][i] * x + self.x0_lambdas[...][i] * x0
             ve_key = str(i)
             ve = self.value_embeds[ve_key](idx).astype(x.dtype) if ve_key in self.value_embeds else None
             x = block(x, ve, cos, sin, self.window_sizes[i])
@@ -518,10 +519,10 @@ class GPT(nnx.Module):
         x = rms_norm(x)
         x = _maybe_shard(x, P('data', None, None))
 
-        # Smear
-        gate = self.smear_lambda[...].astype(x.dtype) * jax.nn.sigmoid(self.smear_gate(x[:, 1:, :24]))
-        x_smeared = x[:, 1:] + gate * x[:, :-1]
-        x = jnp.concatenate([x[:, :1], x_smeared], axis=1)
+        if not config.standard_gpt:
+            gate = self.smear_lambda[...].astype(x.dtype) * jax.nn.sigmoid(self.smear_gate(x[:, 1:, :24]))
+            x_smeared = x[:, 1:] + gate * x[:, :-1]
+            x = jnp.concatenate([x[:, :1], x_smeared], axis=1)
 
         x0 = x
         n_layer = config.n_layer
@@ -532,7 +533,7 @@ class GPT(nnx.Module):
         else:
             x, x_backout = self._forward_loop(x, x0, idx, cos, sin, n_layer, backout_layer)
 
-        if x_backout is not None:
+        if not config.standard_gpt and x_backout is not None:
             x = x - self.backout_lambda[...].astype(x.dtype) * x_backout
         x = rms_norm(x)
 
@@ -563,14 +564,12 @@ class GPT(nnx.Module):
         nparams = sum(p.size for p in all_params)
 
         nparams_exclude = (
-            self.wte.embedding[...].size +
-            sum(ve.embedding[...].size for ve in self.value_embeds.values()) +
-            self.resid_lambdas[...].size +
-            self.x0_lambdas[...].size +
-            self.smear_gate.kernel[...].size +
-            self.smear_lambda[...].size +
-            self.backout_lambda[...].size
+            self.wte.embedding[...].size + sum(ve.embedding[...].size for ve in self.value_embeds.values())
         )
+        if not config.standard_gpt:
+            nparams_exclude += (self.resid_lambdas[...].size + self.x0_lambdas[...].size +
+                                self.smear_gate.kernel[...].size + self.smear_lambda[...].size +
+                                self.backout_lambda[...].size)
 
         h = config.n_head
         q = config.n_embd // config.n_head

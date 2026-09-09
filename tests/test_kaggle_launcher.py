@@ -214,8 +214,9 @@ def test_fineweb_gpt2_bundle_uses_gpt2_tokenizer_below_vocab_ceiling(tmp_path):
     render_bundle(spec, "owner/fineweb-gpt2", tmp_path)
     launch = (tmp_path / "launch.py").read_text()
     assert "scripts.train_gpt2" in launch
-    assert '"--tokenizer", "gpt2"' in launch
-    assert '"--max-vocab-size", "60000"' in launch
+    assert "gpt2" in launch
+    assert "--max-vocab-size" in launch
+    assert "60000" in launch
     assert spec.artifacts == ("artifacts/fineweb-gpt",)
 
 

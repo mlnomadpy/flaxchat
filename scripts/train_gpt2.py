@@ -32,7 +32,6 @@ import optax
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flaxchat.gpt import GPT, GPTConfig
 from flaxchat.common import compute_init, print0
-from flaxchat.prefetch import BackgroundPrefetcher
 
 
 def parse_tokens(s):
@@ -128,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         n_embd=model_dim,
         window_pattern="L",
         tie_embeddings=args.tie_embeddings,
+        standard_gpt=True,
     )
 
     print0(f"Model: {config.n_layer}L/{config.n_embd}d/{config.n_head}h (GQA: {config.n_kv_head}kv)")
@@ -248,11 +248,13 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.time()
     smooth_loss = None
     batch_sharding = NamedSharding(mesh, P('data'))
-    prefetcher = BackgroundPrefetcher(get_batch, mesh, batch_sharding, prefetch_count=2)
-
     for step in range(num_steps):
-        # Batches arrive pre-sharded from the background prefetcher
-        inputs, targets = next(prefetcher)
+        # HF streaming uses PyArrow C extensions. Keep it and device placement
+        # on the main process: Kaggle's TPU runtime can abort when a daemon
+        # prefetch thread finalizes while PyArrow is reading a remote parquet.
+        inputs, targets = get_batch()
+        inputs = jax.device_put(jnp.asarray(inputs), batch_sharding)
+        targets = jax.device_put(jnp.asarray(targets), batch_sharding)
 
         loss = train_step(model, optimizer, inputs, targets)
         loss_val = float(loss)
@@ -293,8 +295,6 @@ def main(argv: list[str] | None = None) -> int:
                 })
                 mgr.wait_until_finished()
                 print0(f"  Saved checkpoint at step {step}")
-
-    prefetcher.stop()
 
     # ── Final ──
     elapsed = time.time() - t0
