@@ -1,0 +1,57 @@
+{
+  "format_version": 1,
+  "kernel": {
+    "id": "skywolfmo/flaxchat-matched-trainer-benchmark",
+    "version": 3
+  },
+  "hardware": {
+    "accelerator": "Tesla P100-PCIE-16GB",
+    "cuda_compute_capability": "sm_60",
+    "device_count": 1
+  },
+  "runtime_guard": {
+    "jax_gpu_detected": true,
+    "torch": "2.5.1+cu118",
+    "torch_architectures": [
+      "sm_37",
+      "sm_50",
+      "sm_60",
+      "sm_70",
+      "sm_75",
+      "sm_80",
+      "sm_86",
+      "sm_90"
+    ],
+    "passed": true
+  },
+  "source_revisions": {
+    "flaxchat": "32351d4ab96f519cc55b2e12f5d709aaa622a1fc",
+    "nanochat": "a445144d3905c6845fda2d3cab8e63248a70cd32",
+    "MaxText": "87b18614b0ef6c68c4be43b4396c695645ecf055"
+  },
+  "stages": [
+    {
+      "name": "prepare-data",
+      "returncode": 0
+    },
+    {
+      "name": "flaxchat",
+      "returncode": 0
+    },
+    {
+      "name": "nanochat",
+      "returncode": 1
+    },
+    {
+      "name": "MaxText",
+      "returncode": 0
+    }
+  ],
+  "success": false,
+  "failure": {
+    "classification": "adapter_dtype",
+    "framework": "nanochat",
+    "message": "The framework-neutral NumPy batches use int32 token ids, while PyTorch cross-entropy requires int64 targets. torch.compile rejected the int32 target at aten.gather during its fake-tensor validation."
+  },
+  "disposition": "Negative evidence retained. The adapter now promotes input and target token tensors to torch.int64, and the free CPU preflight executes a native nanochat forward/backward optimizer update before any future GPU measurement."
+}

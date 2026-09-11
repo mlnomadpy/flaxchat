@@ -26,11 +26,4 @@ class SmolTalk(Task):
         row = self.ds[index]
         messages = row["messages"]
 
-        # Validate alternating user/assistant structure
-        for i, msg in enumerate(messages):
-            if i == 0 and msg["role"] == "system":
-                continue  # system message is ok as first
-            expected = "user" if (i % 2 == 0 or (i == 1 and messages[0]["role"] == "system")) else "assistant"
-            # Don't assert — some conversations may have different structures
-
         return {"messages": messages}

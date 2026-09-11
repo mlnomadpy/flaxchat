@@ -17,7 +17,10 @@ Usage:
 """
 from __future__ import annotations
 
-import argparse, json, os, sys
+import argparse
+import json
+import os
+import sys
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict
@@ -28,13 +31,13 @@ import torch
 _THIS = Path(__file__).resolve().parent
 sys.path.insert(0, str(_THIS.parent))
 
-from torch_port.yatnmn_gpt import YatGPTConfig, Yat_GPT  # noqa: E402
+from torch_port.yatnmn_gpt import YatGPTConfig  # noqa: E402
 from torch_port.torch_gpt import has_ve  # noqa: E402
 
 
 def _restore_flax_state(ckpt_dir: str, config: YatGPTConfig) -> Dict[str, Any]:
     """Rebuild the live Flax model with matching YatNMN config, restore Orbax."""
-    import jax, jax.numpy as jnp
+    import jax
     import orbax.checkpoint as ocp
     from flax import nnx
     from nmn.nnx.layers import YatNMN
@@ -98,15 +101,20 @@ def _restore_flax_state(ckpt_dir: str, config: YatGPTConfig) -> Dict[str, Any]:
     _gpt_mod.Block.__init__ = _orig_block_init
     # Convert all jnp arrays to numpy for downstream torch use
     def _tonp(t):
-        if isinstance(t, dict): return {k: _tonp(v) for k, v in t.items()}
-        if isinstance(t, list): return [_tonp(v) for v in t]
+        if isinstance(t, dict):
+            return {k: _tonp(v) for k, v in t.items()}
+        if isinstance(t, list):
+            return [_tonp(v) for v in t]
         return np.asarray(t)
+
     return _tonp(restored["model"])
 
 
 def _to_numpy(x):
-    if isinstance(x, np.ndarray): return x
-    if hasattr(x, "value"): x = x.value
+    if isinstance(x, np.ndarray):
+        return x
+    if hasattr(x, "value"):
+        x = x.value
     return np.asarray(x)
 
 
@@ -116,8 +124,10 @@ def build_torch_state_dict(flax_model, config: YatGPTConfig):
     sd["wte.weight"] = torch.from_numpy(_to_numpy(flax_model["wte"]["embedding"]))
 
     blocks_c = flax_model["blocks"]
+
     def _get_block(i: int):
-        if isinstance(blocks_c, list): return blocks_c[i]
+        if isinstance(blocks_c, list):
+            return blocks_c[i]
         return blocks_c[i] if i in blocks_c else blocks_c[str(i)]
 
     for i in range(config.n_layer):
@@ -154,7 +164,8 @@ def build_torch_state_dict(flax_model, config: YatGPTConfig):
     # Value embeddings
     ve = flax_model["value_embeds"]
     for i in range(config.n_layer):
-        if not has_ve(i, config.n_layer): continue
+        if not has_ve(i, config.n_layer):
+            continue
         entry = ve[i] if i in ve else ve[str(i)]
         sd[f"value_embeds.{i}.weight"] = torch.from_numpy(_to_numpy(entry["embedding"]).copy())
 

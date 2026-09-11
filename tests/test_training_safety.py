@@ -70,7 +70,9 @@ def test_single_microbatch_path_is_supported(tiny_model, random_batch):
 
 
 def test_schedule_is_defined_before_optimizer_construction():
-    source = (Path(__file__).parents[1] / 'scripts' / 'pretrain.py').read_text()
+    source = (
+        Path(__file__).parents[1] / "flaxchat" / "stages" / "pretrain.py"
+    ).read_text()
     schedule = source.index('lr_schedule = make_lr_schedule(')
     optimizer = source.index('optimizer = setup_optimizer(')
     assert schedule < optimizer

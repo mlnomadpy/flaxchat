@@ -23,9 +23,8 @@ in `convert_flax_to_torch.py` loads the Orbax checkpoint once and emits a
 """
 from __future__ import annotations
 
-import json
 import math
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 from typing import Optional, Tuple, List
 
 import torch

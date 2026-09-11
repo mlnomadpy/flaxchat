@@ -56,14 +56,15 @@ for token_column, masks in engine.generate(prompt_ids, num_samples=3, max_tokens
 
 Engine automatically handles `<|python_start|>...<|python_end|>` blocks:
 1. First tries `use_calculator()` (safe math/string.count)
-2. Falls back to `execute_code()` (sandboxed Python subprocess)
+2. Leaves generated Python disabled by default; reviewed code may opt into the
+   best-effort `execute_code(..., trusted=True)` reliability guard
 3. Injects `<|output_start|>result<|output_end|>` tokens
 
-## Sandboxed Execution
+## Guarded Execution
 
 ```python
 from flaxchat.execution import execute_code
-result = execute_code("print(2 + 2)", timeout=5.0)
+result = execute_code("print(2 + 2)", timeout=5.0, trusted=True)
 # ExecutionResult(success=True, stdout="4\n", ...)
 ```
 

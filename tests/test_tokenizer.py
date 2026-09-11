@@ -9,7 +9,14 @@ available in CI).
 import os
 import pytest
 
-from flaxchat.tokenizer import HuggingFaceTokenizer, SPECIAL_TOKENS
+from scripts import tok_train
+from flaxchat.tokenizer import (
+    BYTE_TOKENIZER_FILENAME,
+    ByteTokenizer,
+    HuggingFaceTokenizer,
+    SPECIAL_TOKENS,
+    load_tokenizer,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -203,3 +210,86 @@ class TestSaveLoad:
         trained_tokenizer.save(tok_dir)
         loaded = HuggingFaceTokenizer.from_directory(tok_dir)
         assert loaded.get_vocab_size() == trained_tokenizer.get_vocab_size()
+
+
+class TestByteTokenizer:
+    def test_uses_byt5_byte_id_mapping(self):
+        tokenizer = ByteTokenizer()
+        assert tokenizer.encode("A") == [ord("A") + 3]
+        assert tokenizer.encode("\x00\xff") == [3, 198, 194]
+        assert tokenizer.id_to_token(0) == "<pad>"
+        assert tokenizer.id_to_token(1) == "</s>"
+        assert tokenizer.id_to_token(2) == "<unk>"
+
+    def test_unicode_roundtrip(self):
+        tokenizer = ByteTokenizer()
+        text = "Café ☃ ภาษาไทย 中文 🚀"
+        assert tokenizer.decode(tokenizer.encode(text)) == text
+
+    def test_batch_prepend_and_append(self):
+        tokenizer = ByteTokenizer()
+        bos = tokenizer.get_bos_token_id()
+        eos = tokenizer.encode_special("</s>")
+        rows = tokenizer.encode(["a", "é"], prepend=bos, append=eos)
+        assert all(row[0] == bos and row[-1] == eos for row in rows)
+        assert [tokenizer.decode(row[1:-1]) for row in rows] == ["a", "é"]
+
+    def test_vocab_contains_bytes_reserved_and_chat_tokens(self):
+        tokenizer = ByteTokenizer()
+        assert tokenizer.get_vocab_size() == 3 + 256 + len(SPECIAL_TOKENS)
+        assert tokenizer.encode_special("<|bos|>") == 259
+        assert tokenizer.encode_special("<|assistant_end|>") == 263
+        assert tokenizer.get_special_tokens() == [
+            "<pad>", "</s>", "<unk>", *SPECIAL_TOKENS
+        ]
+
+    def test_special_tokens_are_explicit_not_parsed_from_text(self):
+        tokenizer = ByteTokenizer()
+        literal = "<|bos|>"
+        assert tokenizer.encode(literal) != [tokenizer.get_bos_token_id()]
+        assert tokenizer.decode(tokenizer.encode(literal)) == literal
+
+    def test_conversation_rendering(self):
+        tokenizer = ByteTokenizer()
+        conversation = {
+            "messages": [
+                {"role": "user", "content": "Hello 👋"},
+                {"role": "assistant", "content": "Hi!"},
+            ]
+        }
+        ids, mask = tokenizer.render_conversation(conversation)
+        assert len(ids) == len(mask)
+        assert ids[0] == tokenizer.get_bos_token_id()
+        assert ids[-1] == tokenizer.encode_special("<|assistant_end|>")
+        assert any(mask)
+
+    def test_save_load_and_factory_roundtrip(self, tmp_path):
+        tokenizer = ByteTokenizer()
+        tokenizer.save(tmp_path)
+        assert (tmp_path / BYTE_TOKENIZER_FILENAME).is_file()
+        loaded = load_tokenizer(tmp_path)
+        assert isinstance(loaded, ByteTokenizer)
+        text = "raw bytes survive 💾"
+        assert loaded.encode(text) == tokenizer.encode(text)
+        assert loaded.decode(loaded.encode(text)) == text
+
+    def test_stream_decode_preserves_multibyte_characters(self):
+        tokenizer = ByteTokenizer()
+        assert "".join(tokenizer.decode_stream(tokenizer.encode("Hi 👋"))) == "Hi 👋"
+
+    def test_rejects_unknown_special_and_invalid_id(self):
+        tokenizer = ByteTokenizer()
+        with pytest.raises(ValueError, match="Unknown special token"):
+            tokenizer.encode_special("<|missing|>")
+        with pytest.raises(ValueError, match="out of range"):
+            tokenizer.id_to_token(tokenizer.get_vocab_size())
+
+    def test_training_cli_needs_no_dataset(self, tmp_path, monkeypatch):
+        def forbidden(*_args, **_kwargs):
+            raise AssertionError("byte backend attempted to download training data")
+
+        monkeypatch.setattr(tok_train, "download_shards", forbidden)
+        monkeypatch.setattr(tok_train, "get_base_dir", lambda: str(tmp_path))
+        assert tok_train.main(["--backend", "byte"]) == 0
+        loaded = load_tokenizer(tmp_path / "tokenizer")
+        assert isinstance(loaded, ByteTokenizer)

@@ -1,0 +1,23 @@
+name: macOS compatibility (manual)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: macos-compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
+        with:
+          cache: true
+      - run: pixi run test-quick
+      - run: pixi run build-package

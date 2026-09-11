@@ -18,7 +18,7 @@ REQUIRED_FIELDS = {
     "model_flops_utilization", "checkpoint_seconds", "scaling_efficiency",
     "validation_metric", "validation_value", "limitations", "protocol_sha256",
     "dataset", "dataset_revision", "optimizer", "seed", "warmup_steps",
-    "measured_steps",
+    "measured_steps", "data_sha256",
 }
 
 
@@ -39,6 +39,8 @@ def load_record(path: str | Path) -> dict:
         raise ValueError(f"{path}: source_revision must be an exact 40-character git SHA")
     if not _SHA256.fullmatch(record["protocol_sha256"]):
         raise ValueError(f"{path}: protocol_sha256 must be a 64-character SHA-256")
+    if not _SHA256.fullmatch(record["data_sha256"]):
+        raise ValueError(f"{path}: data_sha256 must be a 64-character SHA-256")
     for name in (
         "device_count", "model_parameters", "target_model_parameters",
         "sequence_length", "global_batch_size", "peak_memory_bytes", "measured_steps",
@@ -91,7 +93,7 @@ def compare(records: list[dict]) -> dict:
         "parameter_tolerance_fraction",
         "sequence_length", "global_batch_size", "validation_metric",
         "protocol_sha256", "dataset", "dataset_revision", "optimizer", "seed",
-        "warmup_steps", "measured_steps",
+        "warmup_steps", "measured_steps", "data_sha256",
     )
     reference = records[0]
     mismatches = {

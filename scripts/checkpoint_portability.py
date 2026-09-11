@@ -49,6 +49,7 @@ def main() -> None:
             optimizer=optimizer,
             load_training_state=True,
         )
+        assert training_state is not None
         np.testing.assert_array_equal(
             np.asarray(model.weight[...]), np.arange(32, dtype=np.float32).reshape(8, 4)
         )

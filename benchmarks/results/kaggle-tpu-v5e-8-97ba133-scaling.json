@@ -1,0 +1,141 @@
+{
+  "benchmark": "single-host-strong-scaling",
+  "controls": {
+    "global_batch_size": 32,
+    "iterations": 5,
+    "precision": "bfloat16",
+    "seed": 42,
+    "warmup": 2
+  },
+  "format_version": 1,
+  "hardware": {
+    "available_device_count": 8,
+    "backend": "tpu",
+    "device_kind": "TPU v5 lite",
+    "host_count": 1
+  },
+  "limitations": [
+    "The MFU value uses the conventional 6*N*tokens approximation.",
+    "Compiled memory is argument plus output plus temporary bytes minus aliases, not a device-wide HBM watermark.",
+    "Device subsets share one physical host, so this measures strong scaling but does not establish inter-host efficiency."
+  ],
+  "measurements": [
+    {
+      "checkpoint_seconds": 0.30597349900006066,
+      "compile_seconds": 2.365240325000059,
+      "compiled_memory": {
+        "alias_bytes": 4728832,
+        "argument_bytes": 7323648,
+        "output_bytes": 7259136,
+        "peak_bytes_estimate": 131164672,
+        "temporary_bytes": 121310720
+      },
+      "device_count": 1,
+      "global_batch_size": 32,
+      "losses": [
+        6.223260879516602,
+        6.215636253356934,
+        6.2079925537109375,
+        6.200353622436523,
+        6.192697048187256
+      ],
+      "model_flops_utilization_estimate": 0.03675418514752868,
+      "model_parameters": 589902,
+      "scaling_efficiency": 1.0,
+      "steady_step_seconds": 0.004004497599999013,
+      "steady_tokens_per_second": 2045699.8151283744,
+      "tokens_per_step": 8192
+    },
+    {
+      "checkpoint_seconds": 0.742690221000089,
+      "compile_seconds": 3.1019716060000064,
+      "compiled_memory": {
+        "alias_bytes": 4728832,
+        "argument_bytes": 7290880,
+        "output_bytes": 7259136,
+        "peak_bytes_estimate": 9821184,
+        "temporary_bytes": 0
+      },
+      "device_count": 2,
+      "global_batch_size": 32,
+      "losses": [
+        6.223260402679443,
+        6.21563720703125,
+        6.2079925537109375,
+        6.200352668762207,
+        6.192697525024414
+      ],
+      "model_flops_utilization_estimate": 0.01765466475784974,
+      "model_parameters": 589902,
+      "scaling_efficiency": 0.4803443386647037,
+      "steady_step_seconds": 0.0041683614000021406,
+      "steady_tokens_per_second": 1965280.6496086912,
+      "tokens_per_step": 8192
+    },
+    {
+      "checkpoint_seconds": 0.9747653200000741,
+      "compile_seconds": 2.198038616999952,
+      "compiled_memory": {
+        "alias_bytes": 4728832,
+        "argument_bytes": 7274496,
+        "output_bytes": 7259136,
+        "peak_bytes_estimate": 9804800,
+        "temporary_bytes": 0
+      },
+      "device_count": 4,
+      "global_batch_size": 32,
+      "losses": [
+        6.223260879516602,
+        6.215636730194092,
+        6.207992076873779,
+        6.200353145599365,
+        6.192697525024414
+      ],
+      "model_flops_utilization_estimate": 0.00825183648260233,
+      "model_parameters": 589902,
+      "scaling_efficiency": 0.22451420020550167,
+      "steady_step_seconds": 0.0044590693999907675,
+      "steady_tokens_per_second": 1837154.6314163583,
+      "tokens_per_step": 8192
+    },
+    {
+      "checkpoint_seconds": 1.3710269469999048,
+      "compile_seconds": 1.702844153000001,
+      "compiled_memory": {
+        "alias_bytes": 4728832,
+        "argument_bytes": 7266304,
+        "output_bytes": 7259136,
+        "peak_bytes_estimate": 9796608,
+        "temporary_bytes": 0
+      },
+      "device_count": 8,
+      "global_batch_size": 32,
+      "losses": [
+        6.223260879516602,
+        6.215636253356934,
+        6.207992076873779,
+        6.200352668762207,
+        6.192697525024414
+      ],
+      "model_flops_utilization_estimate": 0.003482475498770403,
+      "model_parameters": 589902,
+      "scaling_efficiency": 0.09475044773246896,
+      "steady_step_seconds": 0.005282953400001134,
+      "steady_tokens_per_second": 1550647.7872771397,
+      "tokens_per_step": 8192
+    }
+  ],
+  "model_config": {
+    "attention_backend": "xla",
+    "n_embd": 128,
+    "n_head": 4,
+    "n_kv_head": 4,
+    "n_layer": 2,
+    "sequence_len": 256,
+    "tie_embeddings": false,
+    "use_scan": false,
+    "vocab_size": 512,
+    "window_pattern": "L"
+  },
+  "source_revision": "97ba1333bf46b51f85ca3d9099c8c2717438ce91"
+}

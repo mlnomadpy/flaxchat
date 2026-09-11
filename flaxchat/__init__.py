@@ -14,6 +14,8 @@ Quick Start:
     engine.train(train_loader)
 """
 
+__version__ = "0.1.1"
+
 from flaxchat.config import FlaxChatConfig
 from flaxchat.gpt import GPT, GPTConfig
 from flaxchat.engine import Engine, generate, generate_with_cache, generate_fast, generate_speculative
@@ -33,4 +35,5 @@ __all__ = [
     "compute_init", "get_mesh", "setup_mesh",
     "LOGICAL_AXIS_RULES", "shard_model_params", "shard_batch_logical",
     "BackgroundPrefetcher",
+    "__version__",
 ]

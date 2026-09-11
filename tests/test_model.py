@@ -8,7 +8,7 @@ import pytest
 from flax import nnx
 
 from flaxchat.gpt import (
-    GPT, GPTConfig, rms_norm, precompute_rotary_embeddings,
+    GPT, rms_norm, precompute_rotary_embeddings,
     apply_rotary_emb, has_ve, CausalSelfAttention, MLP, Block, exact_attention,
     attention_backend_metadata,
 )

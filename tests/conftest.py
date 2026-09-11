@@ -9,7 +9,7 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from flaxchat.config import FlaxChatConfig, GPTConfig
+from flaxchat.config import GPTConfig
 from flaxchat.gpt import GPT
 
 
@@ -82,7 +82,6 @@ def shakespeare_batch(shakespeare_text, tiny_config):
     # Pad if needed
     while len(tokens) < total_tokens:
         tokens.append(0)
-    import numpy as np
     arr = jnp.array(tokens[:total_tokens]).reshape(B, T + 1)
     inputs = arr[:, :-1]
     targets = arr[:, 1:]

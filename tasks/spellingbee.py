@@ -75,7 +75,7 @@ class SpellingBee(Task):
         for i in range(self.size):
             rng = random.Random(42 + i if self.split == "train" else 123 + i)
             word = rng.choice(WORDS)
-            letter = rng.choice([l for l in set(word)])  # pick a letter that exists
+            letter = rng.choice(list(set(word)))  # pick a letter that exists
 
             # Maybe lowercase
             if rng.random() < 0.5:

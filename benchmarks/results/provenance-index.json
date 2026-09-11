@@ -1,0 +1,83 @@
+{
+  "format_version": 1,
+  "current_source_revision": "12bfd8522f9a4dff46f05157108eb63159240882",
+  "records": {
+    "summary": {
+      "path": "kaggle-tpu-v5e-8-12bfd85-summary.json",
+      "sha256": "57018077ba2253112c2a7d3ea019b67684ee08dde86b1a07faff2fefa02fa9d7"
+    },
+    "pipeline": {
+      "path": "kaggle-tpu-v5e-8-12bfd85-pipeline.json",
+      "sha256": "c7ec680af8e22ce20a61af0b44acb075dc230fcade805813e6b2bf2fde8b8ce9"
+    },
+    "scaling_overhead": {
+      "path": "kaggle-tpu-v5e-8-12bfd85-scaling-overhead.json",
+      "sha256": "4873abe443760203f49508807304902724823275540100332244c5a242ad5cde"
+    },
+    "scaling_strong": {
+      "path": "kaggle-tpu-v5e-8-12bfd85-scaling-strong.json",
+      "sha256": "10bc896ee291fb69716ddef4e9f915dc9ed520d38d1ce915f5373b49197ed1d5"
+    },
+    "scaling_weak": {
+      "path": "kaggle-tpu-v5e-8-12bfd85-scaling-weak.json",
+      "sha256": "a21623cd7404b1f927a00e97cb4625dd27aaca8ad7f01c9800acb71f4695fd5b"
+    }
+  },
+  "identity": {
+    "hardware": {
+      "record": "scaling_strong",
+      "pointer": "/hardware"
+    },
+    "configuration": {
+      "record": "pipeline",
+      "pointer": "/resolved_config"
+    },
+    "data": {
+      "record": "pipeline",
+      "pointer": "/dataset"
+    }
+  },
+  "claims": {
+    "representative_model_parameters": {
+      "record": "scaling_strong",
+      "pointer": "/measurements/3/model_parameters",
+      "value": 29360454
+    },
+    "strong_8_device_tokens_per_second": {
+      "record": "scaling_strong",
+      "pointer": "/measurements/3/steady_tokens_per_second",
+      "value": 1169961.5680757125
+    },
+    "strong_8_device_efficiency": {
+      "record": "scaling_strong",
+      "pointer": "/measurements/3/scaling_efficiency",
+      "value": 0.5137930196163943
+    },
+    "weak_8_device_tokens_per_second": {
+      "record": "scaling_weak",
+      "pointer": "/measurements/3/steady_tokens_per_second",
+      "value": 1157992.1879928214
+    },
+    "weak_8_device_efficiency": {
+      "record": "scaling_weak",
+      "pointer": "/measurements/3/scaling_efficiency",
+      "value": 0.7411781442493456
+    },
+    "overhead_model_parameters": {
+      "record": "scaling_overhead",
+      "pointer": "/measurements/0/model_parameters",
+      "value": 589902
+    },
+    "pipeline_validation_loss": {
+      "record": "pipeline",
+      "pointer": "/metrics/validation_loss",
+      "value": 5.763411998748779
+    }
+  },
+  "publications": {
+    "README.md": "benchmarks/results/provenance-index.json",
+    "docs/RESULTS.md": "../benchmarks/results/provenance-index.json",
+    "docs/_posts/2026-04-01-tinystories-experiment.md": "../../benchmarks/results/provenance-index.json",
+    "docs/index.md": "../benchmarks/results/provenance-index.json"
+  }
+}

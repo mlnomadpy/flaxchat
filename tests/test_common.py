@@ -8,7 +8,7 @@ import pytest
 from flaxchat.common import (
     COMPUTE_DTYPE, COMPUTE_DTYPE_REASON,
     _initialize_runtime, _is_multi_process_environment, compute_init,
-    get_base_dir, get_peak_flops, DummyWandb,
+    get_base_dir, get_mesh, get_peak_flops, setup_mesh, DummyWandb,
 )
 import jax.numpy as jnp
 
@@ -51,6 +51,10 @@ class TestDummyWandb:
 
 
 class TestComputeInit:
+    def test_setup_mesh_registers_global_mesh(self):
+        mesh = setup_mesh()
+        assert get_mesh() is mesh
+
     def test_runtime_initializes_before_backend_discovery(self, monkeypatch):
         events = []
         monkeypatch.setenv("JAX_COORDINATOR_ADDRESS", "coordinator:1234")

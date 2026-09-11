@@ -23,7 +23,7 @@ import torch
 _THIS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_THIS_DIR.parent))
 
-from torch_port.torch_gpt import GELU_GPT, GPTConfig  # noqa: E402
+from torch_port.torch_gpt import GELU_GPT  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ def run_flax(flax_ckpt: str, ids_np: np.ndarray) -> np.ndarray:
     current_state = nnx.state(model, nnx.Param)
     nnx.replace_by_pure_dict(current_state, loaded)
     nnx.update(model, current_state)
-    print(f"[flax] restored")
+    print("[flax] restored")
 
     ids_jax = jnp.asarray(ids_np)
     logits = model(ids_jax)

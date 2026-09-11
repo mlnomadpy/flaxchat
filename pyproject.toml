@@ -1,10 +1,10 @@
 [project]
 name = "flaxchat"
-version = "0.1.0"
+version = "0.1.1"
 description = "A minimal end-to-end LLM training harness for TPUs, built on JAX/Flax NNX"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 authors = [
     { name = "Taha Bouhsine" },
 ]
@@ -13,21 +13,29 @@ dependencies = [
     "flax>=0.12.0",
     "optax>=0.2.4",
     "orbax-checkpoint>=0.12.0",
-    "datasets>=5.0.1",
     "tokenizers>=0.22.0",
-    "tiktoken>=0.11.0",
-    "rustbpe>=0.1.0",
-    "fastapi>=0.117.1",
-    "uvicorn>=0.36.0",
-    "wandb>=0.21.3",
-    "pyarrow>=18.0.0",
+    "tiktoken>=0.11.0,<0.13",
+    "rustbpe>=0.1.0,<0.2",
     "pyyaml>=6.0",
     "filelock>=3.0",
 ]
 
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
 [project.optional-dependencies]
-tpu = ["jax[tpu]>=0.6.0", "tpuz>=0.1.0"]
-kaggle = ["kgz>=0.1.0"]
+tpu = ["jax[tpu]>=0.9.0", "tpuz>=0.1.0"]
+cuda12 = ["jax[cuda12]>=0.9.0"]
+kaggle = ["kaggle>=2.0.0"]
+data = [
+    "datasets>=5.0.1,<6",
+    "pyarrow>=18.0.0",
+]
+web = ["fastapi>=0.117.1", "uvicorn>=0.36.0"]
+logging = ["wandb>=0.21.3"]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
@@ -39,10 +47,46 @@ dev = [
 ]
 
 [tool.ruff.lint]
-select = ["E9", "F63", "F7", "F82"]
+# Pyflakes, fatal pycodestyle checks, and Bugbear correctness rules. The
+# per-file baseline below is intentionally explicit and should shrink as the
+# affected legacy modules are touched.
+select = ["E4", "E7", "E9", "F", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# These legacy modules intentionally group optional imports beside their backends.
+"scripts/train_gpt2.py" = ["E402"]
+# Deferred Bugbear baseline; new files receive the complete selected rule set.
+"flaxchat/engine.py" = ["B007", "B905"]
+"flaxchat/execution.py" = ["B010"]
+"flaxchat/gpt.py" = ["B007"]
+"flaxchat/optim.py" = ["B905"]
+"flaxchat/pipeline.py" = ["B008"]
+"flaxchat/tokenizer.py" = ["E402", "B019"]
+"scripts/chat_web.py" = ["B023"]
+"scripts/gen_synthetic.py" = ["B007"]
+"tasks/common.py" = ["B905"]
+"tests/test_checkpoint.py" = ["B905"]
+"tests/test_dataloader.py" = ["B905"]
+"tests/test_model.py" = ["B905"]
+"tests/test_training_safety.py" = ["B905"]
+"torch_port/eval_quantization.py" = ["B007"]
 
 [tool.pyright]
-include = ["flaxchat/config.py", "flaxchat/pipeline.py"]
+include = ["flaxchat", "scripts"]
+ignore = [
+    # Explicit migration baseline; remove entries as these legacy JAX-heavy
+    # modules gain precise array/Orbax protocol annotations.
+    "flaxchat/dataloader.py",
+    "flaxchat/engine.py",
+    "flaxchat/eval.py",
+    "flaxchat/gpt.py",
+    "flaxchat/optim.py",
+    "flaxchat/stages/pretrain.py",
+    "flaxchat/tokenizer.py",
+    "scripts/convert_to_tflite.py",
+    "scripts/train_gpt2.py",
+    "scripts/train_tpu.py",
+]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
 
@@ -58,6 +102,11 @@ markers = [
 [tool.coverage.run]
 branch = true
 source = ["flaxchat"]
+omit = [
+    # Application orchestration is covered by smoke/integration runs; unit
+    # coverage targets the reusable core rather than duplicating CLI execution.
+    "flaxchat/stages/*",
+]
 
 [tool.coverage.report]
 show_missing = true

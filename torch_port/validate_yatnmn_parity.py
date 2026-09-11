@@ -2,7 +2,10 @@
 forward the same token sequence, report max |diff|. Target ≤ 1e-4 on CPU/fp32."""
 from __future__ import annotations
 
-import argparse, json, os, sys
+import argparse
+import json
+import os
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +21,8 @@ def run_flax(flax_ckpt: str, ids_np: np.ndarray, scalar_bias: bool, constant_alp
     os.environ.setdefault("JAX_PLATFORMS", "cpu")
     os.environ.setdefault("FLAXCHAT_COMPUTE_DTYPE", "float32")
 
-    import jax, jax.numpy as jnp
+    import jax
+    import jax.numpy as jnp
     from flax import nnx
     import orbax.checkpoint as ocp
     from nmn.nnx.layers import YatNMN

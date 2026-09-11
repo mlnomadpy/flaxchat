@@ -1,6 +1,10 @@
 import pytest
 
-from benchmarks.training_scaling import add_scaling_efficiency, validate_device_counts
+from benchmarks.training_scaling import (
+    add_scaling_efficiency,
+    software_metadata,
+    validate_device_counts,
+)
 
 
 def test_device_counts_are_sorted_unique_and_bounded():
@@ -17,10 +21,13 @@ def test_strong_scaling_efficiency_uses_one_device_baseline():
         {"device_count": 2, "steady_tokens_per_second": 180.0},
         {"device_count": 4, "steady_tokens_per_second": 320.0},
     ]
-    result = add_scaling_efficiency(measurements)
+    result = add_scaling_efficiency(measurements, minimum_efficiency=0.85)
     assert result[0]["scaling_efficiency"] == 1.0
     assert result[1]["scaling_efficiency"] == 0.9
     assert result[2]["scaling_efficiency"] == 0.8
+    assert result[0]["meets_efficiency_threshold"] is True
+    assert result[1]["meets_efficiency_threshold"] is True
+    assert result[2]["meets_efficiency_threshold"] is False
 
 
 def test_efficiency_rejects_nonbaseline_first_record():
@@ -28,3 +35,17 @@ def test_efficiency_rejects_nonbaseline_first_record():
         add_scaling_efficiency([
             {"device_count": 2, "steady_tokens_per_second": 100.0}
         ])
+
+
+def test_efficiency_rejects_invalid_threshold():
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        add_scaling_efficiency(
+            [{"device_count": 1, "steady_tokens_per_second": 100.0}],
+            minimum_efficiency=1.1,
+        )
+
+
+def test_software_metadata_is_explicit_and_versioned():
+    metadata = software_metadata()
+    assert set(metadata) == {"python", "jax", "jaxlib", "flax", "optax"}
+    assert all(metadata.values())

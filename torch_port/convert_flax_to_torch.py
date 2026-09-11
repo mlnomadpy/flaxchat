@@ -30,7 +30,7 @@ import torch
 _THIS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_THIS_DIR.parent))
 
-from torch_port.torch_gpt import GPTConfig, GELU_GPT, has_ve  # noqa: E402
+from torch_port.torch_gpt import GPTConfig, has_ve  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -57,10 +57,8 @@ def _restore_flax_state(ckpt_dir: str, config: "GPTConfig | None" = None) -> Dic
 
     _gpt_mod.MLP.__call__ = _gelu_call
 
-    import jax.numpy as jnp
     import orbax.checkpoint as ocp
     from flax import nnx
-    from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
     import numpy as _np_jax
     from flaxchat.gpt import GPT, GPTConfig as FlaxGPTConfig
 
@@ -78,12 +76,6 @@ def _restore_flax_state(ckpt_dir: str, config: "GPTConfig | None" = None) -> Dic
         tie_embeddings=config.tie_embeddings,
     )
     model = GPT(flax_cfg, rngs=nnx.Rngs(0))
-
-    # Build an abstract target with concrete sharding (replicated on single
-    # device) so Orbax can deserialize without guessing shardings.
-    devices = jax.devices()
-    mesh = Mesh(_np_jax.array(devices).reshape(len(devices)), axis_names=('data',))
-    rep = NamedSharding(mesh, P())
 
     param_state = nnx.state(model, nnx.Param)
     pure_abstract = nnx.to_pure_dict(param_state)

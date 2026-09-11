@@ -10,8 +10,7 @@ from flax import nnx
 from flaxchat.gpt import GPT
 from flaxchat.config import FlaxChatConfig
 from flaxchat.optim import (
-    muon, setup_optimizer, MuonState,
-    make_lr_schedule, make_weight_decay_schedule, make_muon_momentum_schedule,
+    muon, setup_optimizer, make_lr_schedule, make_weight_decay_schedule, make_muon_momentum_schedule,
     POLAR_EXPRESS_COEFFS,
 )
 

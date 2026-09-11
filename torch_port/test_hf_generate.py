@@ -11,9 +11,8 @@ from transformers import AutoTokenizer
 _THIS = Path(__file__).resolve().parent
 sys.path.insert(0, str(_THIS.parent))
 
-from torch_port.configuration_gelu_gpt import GeluGPTConfig
-from torch_port.modeling_gelu_gpt import GeluGPTForCausalLM
-from torch_port.torch_gpt import GELU_GPT
+from torch_port.configuration_gelu_gpt import GeluGPTConfig  # noqa: E402
+from torch_port.modeling_gelu_gpt import GeluGPTForCausalLM  # noqa: E402
 
 
 def build_hf_model_from_pt(pt_path: str) -> GeluGPTForCausalLM:

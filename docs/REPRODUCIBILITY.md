@@ -14,6 +14,14 @@ FLAXCHAT_BASE_DIR=/tmp/flaxchat-smoke pixi run python -m scripts.pretrain --cpu-
 The smoke command uses a fixed synthetic-data seed, runs two optimizer updates,
 and publishes a versioned checkpoint. It requires no dataset or accelerator.
 
+The four stage modules under `flaxchat.stages` expose typed `PretrainRequest`,
+`SFTRequest`, `RLRequest`, and `EvalRequest` inputs and return a common
+`StageResult` containing the resolved configuration, metrics, artifact paths,
+and exit status. Supplying `resolved_config` makes every stage consume the same
+already-validated `FlaxChatConfig`; CLI defaults resolve one when omitted. The
+modules in `scripts/` only parse CLI arguments, construct the request, invoke
+the service, and translate its result to a process exit code.
+
 ## Training identity
 
 Pretraining checkpoints record the resolved model/training configuration,
@@ -43,6 +51,9 @@ python -m scripts.kaggle_tpu_tests \
 The generated kernel pins the exact Git revision and downloads JUnit, summary,
 and command logs into `artifacts/kaggle`. GitHub's `Kaggle TPU tests` workflow
 exposes the same path when `KAGGLE_USERNAME` and `KAGGLE_KEY` secrets are set.
+Local, GCP, and Kaggle launchers serialize the same `LaunchSpec`. GCP transports
+a fixed wrapper command; the remote wrapper reads the manifest and executes its
+argv directly without interpolating training arguments into a shell string.
 
 ## CORE evaluation
 

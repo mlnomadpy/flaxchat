@@ -5,7 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from typing import Any
+import re
+from typing import Any, cast
 
 import jax
 import numpy as np
@@ -57,6 +58,16 @@ def _state_manifest(tree) -> dict[str, dict[str, Any]]:
             "sha256": hashlib.sha256(array.tobytes(order="C")).hexdigest(),
         }
     return manifest
+
+
+def _canonical_manifest_paths(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Equate sequence indexes with Orbax's metadata-restored numeric keys."""
+    result = {}
+    for path, value in manifest.items():
+        path = re.sub(r"\[(\d+)\]", r"['\1']", path)
+        path = re.sub(r"\.([A-Za-z_]\w*)", r"['\1']", path)
+        result[path] = value
+    return result
 
 
 def _checkpoint_manifest(step, model_state, opt_state, metadata, training_state):
@@ -116,11 +127,17 @@ def _validate_manifest(manifest, model_state, opt_state, metadata, training_stat
         "optimizer_state": _state_manifest(opt_state) if opt_state is not None else None,
         "training_state": _state_manifest(training_state) if training_state is not None else {},
     }
-    if actual["model_state"] != manifest.get("model_state"):
+    if _canonical_manifest_paths(actual["model_state"]) != _canonical_manifest_paths(
+        manifest.get("model_state", {})
+    ):
         raise CheckpointCompatibilityError("Model checkpoint state is incomplete or corrupt")
-    if opt_state is not None and actual["optimizer_state"] != manifest.get("optimizer_state"):
+    if opt_state is not None and _canonical_manifest_paths(
+        actual["optimizer_state"]
+    ) != _canonical_manifest_paths(manifest.get("optimizer_state", {})):
         raise CheckpointCompatibilityError("Optimizer checkpoint state is incomplete or corrupt")
-    if training_state is not None and actual["training_state"] != manifest.get("training_state"):
+    if training_state is not None and _canonical_manifest_paths(
+        actual["training_state"]
+    ) != _canonical_manifest_paths(manifest.get("training_state", {})):
         raise CheckpointCompatibilityError("Training checkpoint state is incomplete or corrupt")
     if _json_hash(metadata) != manifest.get("metadata_sha256"):
         raise CheckpointCompatibilityError("Checkpoint metadata is corrupt")
@@ -144,6 +161,17 @@ def _restore_args_on_current_topology(metadata):
     )
 
 
+def _item_metadata(manager: ocp.CheckpointManager, step: int, item: str):
+    """Read an item's stored schema without restoring its writer topology."""
+    step_directory = manager._get_read_step_directory(step, manager.directory)
+    try:
+        return ocp.PyTreeCheckpointHandler().metadata(step_directory / item)
+    except Exception as exc:
+        raise CheckpointCompatibilityError(
+            f"Checkpoint item {item!r} is incomplete, corrupt, or incompatible: {exc}"
+        ) from exc
+
+
 def load_checkpoint(
     manager: ocp.CheckpointManager,
     step: int | None = None,
@@ -162,29 +190,27 @@ def load_checkpoint(
         if step is None:
             raise ValueError("No checkpoints found")
 
-    model_abstract = nnx.to_pure_dict(nnx.state(model)) if model is not None else None
-    model_restore_args = (
-        ocp.checkpoint_utils.construct_restore_args(model_abstract)
-        if model_abstract is not None else None
-    )
+    # Restore against the stored schema so integrity is checked before Orbax can
+    # cast TPU values (for example bfloat16 constants) to a CPU target tree.
+    model_metadata = _item_metadata(manager, step, "model")
     items = {
-        "model": ocp.args.PyTreeRestore(model_abstract, restore_args=model_restore_args),
+        "model": ocp.args.PyTreeRestore(
+            model_metadata,
+            restore_args=_restore_args_on_current_topology(model_metadata),
+        ),
         "metadata": ocp.args.JsonRestore(),
         "manifest": ocp.args.JsonRestore(),
     }
     if optimizer is not None:
-        optimizer_abstract = _opt_state_pytree(optimizer)
+        optimizer_metadata = _item_metadata(manager, step, "optimizer")
         items["optimizer"] = ocp.args.PyTreeRestore(
-            optimizer_abstract,
-            restore_args=ocp.checkpoint_utils.construct_restore_args(optimizer_abstract),
+            optimizer_metadata,
+            restore_args=_restore_args_on_current_topology(optimizer_metadata),
         )
     if load_training_state:
         # A freshly opened Composite manager has no item handlers registered,
         # so ``manager.item_metadata`` cannot discover this tree reliably.
-        step_directory = manager._get_read_step_directory(step, manager.directory)
-        training_metadata = ocp.PyTreeCheckpointHandler().metadata(
-            step_directory / "training_state"
-        )
+        training_metadata = _item_metadata(manager, step, "training_state")
         items["training_state"] = ocp.args.PyTreeRestore(
             training_metadata,
             restore_args=_restore_args_on_current_topology(training_metadata)
@@ -196,14 +222,68 @@ def load_checkpoint(
             f"Checkpoint {step} is incomplete, corrupt, or incompatible: {exc}"
         ) from exc
 
-    opt_state = restored.optimizer if optimizer is not None else None
-    training_state = restored.training_state if load_training_state else None
+    restored = cast(dict[str, Any], restored)
+    opt_state = restored["optimizer"] if optimizer is not None else None
+    training_state = restored["training_state"] if load_training_state else None
     _validate_manifest(
-        restored.manifest, restored.model, opt_state, restored.metadata, training_state
+        restored["manifest"], restored["model"], opt_state, restored["metadata"], training_state
     )
+    # Integrity has now been established against the checkpoint's stored
+    # dtypes. Restore once more against live targets to recover Python
+    # container types and perform any dtype conversion intentionally.
+    step_directory = manager._get_read_step_directory(step, manager.directory)
+    model_state = restored["model"]
+    if model is not None:
+        model_abstract = nnx.to_pure_dict(nnx.state(model))
+        model_state = ocp.PyTreeCheckpointer().restore(
+            step_directory / "model",
+            args=ocp.args.PyTreeRestore(
+                model_abstract,
+                restore_args=ocp.checkpoint_utils.construct_restore_args(model_abstract),
+            ),
+        )
+    if optimizer is not None:
+        optimizer_abstract = _opt_state_pytree(optimizer)
+        opt_state = ocp.PyTreeCheckpointer().restore(
+            step_directory / "optimizer",
+            args=ocp.args.PyTreeRestore(
+                optimizer_abstract,
+                restore_args=ocp.checkpoint_utils.construct_restore_args(optimizer_abstract),
+            ),
+        )
     if optimizer is None and not load_training_state:
-        return restored.model, restored.metadata
-    return restored.model, opt_state, restored.metadata, training_state
+        return model_state, restored["metadata"]
+    return model_state, opt_state, restored["metadata"], training_state
+
+
+def load_checkpoint_metadata(checkpoint_dir: str, step: int | None = None) -> dict:
+    """Read integrity-checked metadata before constructing a live model."""
+    manager = create_checkpoint_manager(
+        checkpoint_dir, max_to_keep=999, async_checkpointing=False
+    )
+    try:
+        selected = manager.latest_step() if step is None else step
+        if selected is None:
+            raise ValueError("No checkpoints found")
+        restored = manager.restore(
+            selected,
+            args=ocp.args.Composite(
+                metadata=ocp.args.JsonRestore(),
+                manifest=ocp.args.JsonRestore(),
+            ),
+        )
+        restored = cast(dict[str, Any], restored)
+        if _json_hash(restored["metadata"]) != restored["manifest"].get("metadata_sha256"):
+            raise CheckpointCompatibilityError("Checkpoint metadata is corrupt")
+        return restored["metadata"]
+    except CheckpointCompatibilityError:
+        raise
+    except Exception as exc:
+        raise CheckpointCompatibilityError(
+            f"Checkpoint metadata is incomplete, corrupt, or incompatible: {exc}"
+        ) from exc
+    finally:
+        manager.close()
 
 
 def restore_model_from_checkpoint(
@@ -220,14 +300,16 @@ def restore_model_from_checkpoint(
         checkpoint_dir, max_to_keep=999, async_checkpointing=False
     )
     try:
-        loaded = load_checkpoint(
+        loaded: Any = load_checkpoint(
             manager, step, model, optimizer, load_training_state=load_training_state
         )
         if optimizer is None and not load_training_state:
-            model_dict, metadata = loaded
+            model_dict, metadata = cast(tuple[Any, dict], loaded)
             opt_state = training_state = None
         else:
-            model_dict, opt_state, metadata, training_state = loaded
+            model_dict, opt_state, metadata, training_state = cast(
+                tuple[Any, Any, dict, Any], loaded
+            )
 
         if expected_identity is not None:
             actual = {
@@ -248,7 +330,13 @@ def restore_model_from_checkpoint(
 
         model_state = nnx.state(model)
         pure_state = nnx.to_pure_dict(model_state)
-        if _state_manifest(pure_state).keys() != _state_manifest(model_dict).keys():
+        live_manifest = _state_manifest(pure_state)
+        restored_manifest = _state_manifest(model_dict)
+        live_schema = {key: value["shape"] for key, value in live_manifest.items()}
+        restored_schema = {
+            key: value["shape"] for key, value in restored_manifest.items()
+        }
+        if live_schema != restored_schema:
             raise CheckpointCompatibilityError("Live model state schema does not match checkpoint")
         nnx.replace_by_pure_dict(model_state, model_dict)
         nnx.update(model, model_state)

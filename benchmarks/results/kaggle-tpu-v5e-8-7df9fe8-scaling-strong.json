@@ -1,0 +1,207 @@
+{
+  "benchmark": "single-host-strong-scaling",
+  "controls": {
+    "global_batch_size": 32,
+    "iterations": 5,
+    "per_device_batch_size": null,
+    "precision": "bfloat16",
+    "seed": 42,
+    "trials": 3,
+    "warmup": 2
+  },
+  "format_version": 1,
+  "hardware": {
+    "available_device_count": 8,
+    "backend": "tpu",
+    "device_kind": "TPU v5 lite",
+    "host_count": 1
+  },
+  "limitations": [
+    "The MFU value uses the conventional 6*N*tokens approximation.",
+    "Compiled memory is argument plus output plus temporary bytes minus aliases, not a device-wide HBM watermark.",
+    "Device subsets share one physical host, so this measures strong device scaling but does not establish inter-host efficiency."
+  ],
+  "measurements": [
+    {
+      "checkpoint_seconds": 3.5745589809999956,
+      "compile_seconds": 5.830060997000032,
+      "compiled_memory": {
+        "alias_bytes": 234911744,
+        "argument_bytes": 353157120,
+        "output_bytes": 353027584,
+        "peak_bytes_estimate": 5419501056,
+        "temporary_bytes": 4948228096
+      },
+      "device_count": 1,
+      "global_batch_size": 32,
+      "losses": [
+        8.197704315185547,
+        8.13740062713623,
+        8.076685905456543,
+        8.01557445526123,
+        7.953873634338379,
+        7.891237735748291,
+        7.827897071838379,
+        7.763750076293945,
+        7.698543071746826,
+        7.632083415985107,
+        7.564420223236084,
+        7.495299816131592,
+        7.424056529998779,
+        7.351419448852539,
+        7.276846408843994
+      ],
+      "model_flops_utilization_estimate": 0.25327350223277406,
+      "model_parameters": 29360454,
+      "scaling_efficiency": 1.0,
+      "steady_step_seconds": 0.05784661820000565,
+      "steady_tokens_per_second": 283231.76894026966,
+      "step_seconds_population_stddev": 0.00640054507102886,
+      "tokens_per_step": 16384,
+      "trial_step_seconds": [
+        0.05715475220001735,
+        0.05784661820000565,
+        0.07106506459999765
+      ]
+    },
+    {
+      "checkpoint_seconds": 4.121786271000019,
+      "compile_seconds": 6.255852893999986,
+      "compiled_memory": {
+        "alias_bytes": 234911744,
+        "argument_bytes": 353091584,
+        "output_bytes": 353027584,
+        "peak_bytes_estimate": 2921304064,
+        "temporary_bytes": 2450096640
+      },
+      "device_count": 2,
+      "global_batch_size": 32,
+      "losses": [
+        8.197704315185547,
+        8.137401580810547,
+        8.076685905456543,
+        8.01557445526123,
+        7.953874111175537,
+        7.891238212585449,
+        7.827897071838379,
+        7.763749599456787,
+        7.698543548583984,
+        7.632083892822266,
+        7.564420700073242,
+        7.495297431945801,
+        7.4240570068359375,
+        7.3514180183410645,
+        7.276846408843994
+      ],
+      "model_flops_utilization_estimate": 0.2230699263812315,
+      "model_parameters": 29360454,
+      "scaling_efficiency": 0.8807471939019359,
+      "steady_step_seconds": 0.032839513199996874,
+      "steady_tokens_per_second": 498911.17143604794,
+      "step_seconds_population_stddev": 5.0180955003053225e-05,
+      "tokens_per_step": 16384,
+      "trial_step_seconds": [
+        0.032839513199996874,
+        0.032780329399997754,
+        0.03290321940000922
+      ]
+    },
+    {
+      "checkpoint_seconds": 4.868135938000023,
+      "compile_seconds": 7.51264366700002,
+      "compiled_memory": {
+        "alias_bytes": 234911744,
+        "argument_bytes": 353058816,
+        "output_bytes": 353027584,
+        "peak_bytes_estimate": 1674595840,
+        "temporary_bytes": 1203421184
+      },
+      "device_count": 4,
+      "global_batch_size": 32,
+      "losses": [
+        8.19770336151123,
+        8.137401580810547,
+        8.076684951782227,
+        8.01557445526123,
+        7.953874111175537,
+        7.891237735748291,
+        7.827897071838379,
+        7.763750076293945,
+        7.698543548583984,
+        7.632083415985107,
+        7.564420700073242,
+        7.495298385620117,
+        7.424057483673096,
+        7.351418495178223,
+        7.276846408843994
+      ],
+      "model_flops_utilization_estimate": 0.19666767568087892,
+      "model_parameters": 29360454,
+      "scaling_efficiency": 0.7765031633673589,
+      "steady_step_seconds": 0.01862407680000615,
+      "steady_tokens_per_second": 879721.458193009,
+      "step_seconds_population_stddev": 0.0003019618322414974,
+      "tokens_per_step": 16384,
+      "trial_step_seconds": [
+        0.018311255000003256,
+        0.01862407680000615,
+        0.019048114999986866
+      ]
+    },
+    {
+      "checkpoint_seconds": 5.258569674,
+      "compile_seconds": 6.681198874000074,
+      "compiled_memory": {
+        "alias_bytes": 234911744,
+        "argument_bytes": 353042432,
+        "output_bytes": 353027584,
+        "peak_bytes_estimate": 980851200,
+        "temporary_bytes": 509692928
+      },
+      "device_count": 8,
+      "global_batch_size": 32,
+      "losses": [
+        8.197704315185547,
+        8.137401580810547,
+        8.076685905456543,
+        8.01557445526123,
+        7.953874588012695,
+        7.891238212585449,
+        7.827898025512695,
+        7.763748645782471,
+        7.698544025421143,
+        7.632083892822266,
+        7.564418792724609,
+        7.495299339294434,
+        7.424056529998779,
+        7.351418495178223,
+        7.276846408843994
+      ],
+      "model_flops_utilization_estimate": 0.125729739608523,
+      "model_parameters": 29360454,
+      "scaling_efficiency": 0.4964188456357726,
+      "steady_step_seconds": 0.014565980599991235,
+      "steady_tokens_per_second": 1124812.7022776522,
+      "step_seconds_population_stddev": 0.010373878310305161,
+      "tokens_per_step": 16384,
+      "trial_step_seconds": [
+        0.014565980599991235,
+        0.014013812600001074,
+        0.036291019600002986
+      ]
+    }
+  ],
+  "model_config": {
+    "attention_backend": "xla",
+    "n_embd": 512,
+    "n_head": 8,
+    "n_kv_head": 8,
+    "n_layer": 6,
+    "sequence_len": 512,
+    "tie_embeddings": false,
+    "use_scan": false,
+    "vocab_size": 4096,
+    "window_pattern": "L"
+  },
+  "source_revision": "7df9fe85817acf27fa61f5feb46e7f2a0774a3b1"
+}

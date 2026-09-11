@@ -1,0 +1,63 @@
+{
+  "source_repository": "https://github.com/mlnomadpy/flaxchat.git",
+  "source_revision": "12bfd8522f9a4dff46f05157108eb63159240882",
+  "accelerator": "tpu",
+  "checks": [
+    {
+      "name": "checkout-revision",
+      "return_code": 0,
+      "elapsed_seconds": 0.7344650269999988
+    },
+    {
+      "name": "install",
+      "return_code": 0,
+      "elapsed_seconds": 49.744723427
+    },
+    {
+      "name": "device-check",
+      "return_code": 0,
+      "elapsed_seconds": 21.81789295499999
+    },
+    {
+      "name": "pytest-all",
+      "return_code": 0,
+      "elapsed_seconds": 234.94717271899998
+    },
+    {
+      "name": "pretrain-smoke",
+      "return_code": 0,
+      "elapsed_seconds": 36.05057605000002
+    },
+    {
+      "name": "tinystories-e2e",
+      "return_code": 0,
+      "elapsed_seconds": 64.23117674499997
+    },
+    {
+      "name": "attention-benchmark",
+      "return_code": 0,
+      "elapsed_seconds": 23.52534485700005
+    },
+    {
+      "name": "training-scaling-overhead",
+      "return_code": 0,
+      "elapsed_seconds": 38.321293542000035
+    },
+    {
+      "name": "training-scaling-representative-strong",
+      "return_code": 0,
+      "elapsed_seconds": 74.98547776800001
+    },
+    {
+      "name": "training-scaling-representative-weak",
+      "return_code": 0,
+      "elapsed_seconds": 73.68366995299994
+    },
+    {
+      "name": "speculative-benchmark",
+      "return_code": 0,
+      "elapsed_seconds": 65.3505222739999
+    }
+  ],
+  "passed": true
+}

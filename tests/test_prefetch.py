@@ -5,13 +5,11 @@ Uses CPU-only JAX (no TPU needed) with a trivial mesh and sharding.
 """
 
 import time
-import threading
 
 import numpy as np
 import pytest
 
 import jax
-import jax.numpy as jnp
 from jax.sharding import NamedSharding, PartitionSpec as P, Mesh
 
 from flaxchat.prefetch import BackgroundPrefetcher, PrefetchWorkerError

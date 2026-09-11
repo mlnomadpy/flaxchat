@@ -102,9 +102,10 @@ def main() -> None:
     aligned_draft = GPT(model_config(1), rngs=nnx.Rngs(2))
     _align_synthetic_draft(main_model, aligned_draft)
     prompt = [0, 10, 20, 30]
-    baseline = lambda: generate_with_cache(
-        main_model, prompt, max_tokens=args.max_tokens, temperature=0
-    )
+    def baseline():
+        return generate_with_cache(
+            main_model, prompt, max_tokens=args.max_tokens, temperature=0
+        )
     baseline()  # compile warmup
     baseline_tokens, baseline_seconds = _timed(baseline, args.iterations)
     print(json.dumps({

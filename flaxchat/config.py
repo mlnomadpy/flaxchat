@@ -24,6 +24,7 @@ class GPTConfig:
     tie_embeddings: bool = False
     use_scan: bool = False
     attention_backend: str = "auto"  # auto | xla | splash
+    standard_gpt: bool = False
 
     def __post_init__(self):
         if self.sequence_len <= 0:

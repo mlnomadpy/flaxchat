@@ -8,6 +8,7 @@ Evaluates by extracting Python code from completions and running test cases.
 import re
 from datasets import load_dataset
 from tasks.common import Task
+from flaxchat.execution import execute_generated_code
 
 
 def extract_code(completion):
@@ -24,27 +25,8 @@ def extract_code(completion):
 
 
 def execute_code(code, timeout_seconds=5):
-    """Execute Python code in a subprocess for isolation. Returns True if exit code 0."""
-    import subprocess
-    import tempfile
-    try:
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write(code)
-            f.flush()
-            result = subprocess.run(
-                ['python', f.name],
-                capture_output=True, text=True, timeout=timeout_seconds,
-            )
-        import os
-        os.unlink(f.name)
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, Exception):
-        try:
-            import os
-            os.unlink(f.name)
-        except Exception:
-            pass
-        return False
+    """Execute with an explicitly configured external isolation boundary."""
+    return execute_generated_code(code, timeout=timeout_seconds).success
 
 
 class HumanEval(Task):

@@ -1,12 +1,18 @@
 ---
 layout: post
-title: "Training a 19M Parameter Story Generator from Scratch on 2xT4 GPUs"
+title: "An Early TinyStories Training Experiment on 2xT4 GPUs"
 date: 2026-04-01
 author: Taha Bouhsine
 tags: [jax, flax, training, tinystories, experiment]
 ---
 
-We trained a GPT language model from scratch on the [TinyStories](https://huggingface.co/datasets/roneneldan/TinyStories) dataset using **flaxchat**, our JAX/Flax NNX port of [nanochat](https://github.com/karpathy/nanochat). The entire pipeline ran end-to-end on **2x NVIDIA T4 GPUs** via Kaggle with data-parallel training, generating coherent children's stories in under an hour.
+> Historical note: the raw run record for this early experiment was not
+> committed, so its quantitative tables have been withdrawn rather than treated
+> as verified results. Current reproducible measurements live in the
+> [machine-readable provenance index](../../benchmarks/results/provenance-index.json)
+> and [verified-results summary](../RESULTS.md).
+
+We trained a GPT language model from scratch on the [TinyStories](https://huggingface.co/datasets/roneneldan/TinyStories) dataset using **flaxchat**, our JAX/Flax NNX port of [nanochat](https://github.com/karpathy/nanochat). The experiment used **2x NVIDIA T4 GPUs** via Kaggle with data-parallel training.
 
 ## Experimental Setup
 
@@ -14,16 +20,14 @@ We trained a GPT language model from scratch on the [TinyStories](https://huggin
 - **2x NVIDIA T4 GPUs** (16GB each) on Kaggle
 - JAX 0.7.2, Flax 0.11.2
 - Data-parallel training via JAX SPMD mesh
-- **80 unit tests passing** on both CPU and GPU
 
-### Model Architecture (18.9M params)
+### Model Architecture
 
 | Feature | Detail |
 |---------|--------|
 | Layers | 8 |
 | Dimensions | 256 |
 | Heads | 8 (GQA-ready) |
-| Parameters | 18,874,794 |
 | Sequence length | 512 |
 | Vocab | 8,192 (BPE) |
 | Attention | `jax.nn.dot_product_attention` (hardware-adaptive) |
@@ -36,45 +40,15 @@ All nanochat features ported: RoPE, QK-norm (1.2x), ReLU^2, value embeddings (al
 - BPE tokenizer trained on 50K stories (3.8x compression)
 - BOS-aligned packing
 
-## Results
+## Data Parallelism
 
-### Training Loss
-
-| Step | Train | Val | Tok/s |
-|------|-------|-----|-------|
-| 0 | 9.01 | 9.01 | 1,849 (JIT warmup) |
-| 500 | 3.71 | 3.70 | 54,017 |
-| 1000 | 3.03 | 3.01 | ~55K |
-| 2000 | 2.55 | 2.53 | ~55K |
-| 3000 | 2.30 | 2.33 | ~55K |
-| 4000 | 2.19 | 2.22 | ~55K |
-| 4999 | 2.12 | **2.20** | ~55K |
-
-**Best validation loss: 2.1995** in 50.5 minutes.
-
-### Data Parallelism
-
-| Config | Throughput | Batch |
-|--------|-----------|-------|
-| 1 GPU | 30K tok/s | 32 |
-| **2 GPU (SPMD)** | **55K tok/s** | **64** |
-
-Nearly 2x speedup. Three lines of code enable it:
+The experiment used this SPMD placement pattern:
 
 ```python
 mesh = Mesh(create_device_mesh((2,)), ('data',))
 state = jax.device_put(state, NamedSharding(mesh, P()))
 inputs = with_sharding_constraint(inputs, NamedSharding(mesh, P('data')))
 ```
-
-### Benchmark Evaluation
-
-| Task | Score | Baseline |
-|------|-------|----------|
-| MMLU | 0.220 | 0.25 (random) |
-| ARC | 0.275 | 0.25 (random) |
-
-Near-random as expected for 19M params on stories. Pipeline validated end-to-end.
 
 ### Generated Samples
 
@@ -86,26 +60,9 @@ Near-random as expected for 19M params on stories. Pipeline validated end-to-end
 
 > **One day, the sun** was shining brightly. It was a sunny day and the park was happy. Then, a little boy saw the slide and ran over to it. "What is that?" he asked. "I don't know. What is inside?" the boy asked.
 
-### Inference Speed
-
-| Method | Speed | Notes |
-|--------|-------|-------|
-| Padded forward | 3.4 tok/s | Recomputes full sequence, single JIT shape |
-| **KV-cache** | **8.9 tok/s** | `dynamic_update_slice`, no recompilation |
-
-2.6x speedup with KV cache. The key fix: `jax.lax.dynamic_update_slice` for cache updates and `jax.lax.dynamic_slice` for RoPE — static shapes so JIT compiles once.
-
-## Full Pipeline Summary
-
-| Stage | Time | Detail |
-|-------|------|--------|
-| Data loading | 19s | 2.1M stories from HuggingFace |
-| Tokenizer | 5s | BPE vocab=8192 on 50K stories |
-| Tokenization | 98s | 500K stories → 106M tokens |
-| **Pretraining** | **50.5 min** | 5000 steps, val=2.20, 55K tok/s |
-| SFT | ~10 min | 1000 steps on conversations |
-| Eval | ~2 min | MMLU + ARC (batched on GPU) |
-| **Total** | **~65 min** | End-to-end on free Kaggle GPUs |
+The KV-cache implementation used static-shape dynamic updates to avoid
+token-by-token recompilation. No speed number from this unarchived run is
+published as a verified result.
 
 ## Lessons Learned
 
@@ -120,7 +77,7 @@ Near-random as expected for 19M params on stories. Pipeline validated end-to-end
 ## What's Next
 
 1. **Scale up**: Train on ClimbMix-400B on TPU v4-32 pod
-2. **Full RL**: GRPO on GSM8K/SpellingBee with tool use
+2. **Expand RL experiments**: GRPO on GSM8K/SpellingBee with tool use
 3. **`jax.lax.while_loop` sampler**: Eliminate Python loop overhead for generation
 
 ---

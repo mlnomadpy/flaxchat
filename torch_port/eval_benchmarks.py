@@ -8,9 +8,10 @@ Usage:
 """
 from __future__ import annotations
 
-import argparse, sys, math
+import argparse
+import sys
+import math
 from pathlib import Path
-from typing import List, Optional
 
 import numpy as np
 import torch
@@ -85,14 +86,12 @@ def eval_lambada(model, tokenizer, max_examples: int = 5000):
         words = text.strip().split()
         if len(words) < 2:
             continue
-        last_word = words[-1]
         context = " ".join(words[:-1])
 
         # Score the actual last word
         ctx_enc = tokenizer(context, add_special_tokens=False)["input_ids"]
         full_enc = tokenizer(text, add_special_tokens=False)["input_ids"]
         n_ctx = len(ctx_enc)
-        n_last = len(full_enc) - n_ctx
 
         ids = torch.tensor([full_enc], dtype=torch.long)
         if ids.shape[1] < 2:

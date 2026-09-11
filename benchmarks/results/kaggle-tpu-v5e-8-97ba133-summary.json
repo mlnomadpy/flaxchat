@@ -1,0 +1,64 @@
+{
+  "source_repository": "https://github.com/mlnomadpy/flaxchat.git",
+  "source_revision": "97ba1333bf46b51f85ca3d9099c8c2717438ce91",
+  "accelerator": "tpu",
+  "hardware": {
+    "backend": "tpu",
+    "device_kind": "TPU v5 lite",
+    "device_count": 8,
+    "host_count": 1
+  },
+  "pytest": {"passed": 273, "skipped": 2},
+  "limitations": [
+    "This run used one physical host and does not establish multi-host behavior.",
+    "The training pipeline is acceptance-scale and not a converged quality checkpoint."
+  ],
+  "checks": [
+    {
+      "name": "checkout-revision",
+      "return_code": 0,
+      "elapsed_seconds": 0.008233168999993268
+    },
+    {
+      "name": "install",
+      "return_code": 0,
+      "elapsed_seconds": 38.60389187499999
+    },
+    {
+      "name": "device-check",
+      "return_code": 0,
+      "elapsed_seconds": 21.554752248
+    },
+    {
+      "name": "pytest-all",
+      "return_code": 0,
+      "elapsed_seconds": 180.46943946699997
+    },
+    {
+      "name": "pretrain-smoke",
+      "return_code": 0,
+      "elapsed_seconds": 35.707388319000074
+    },
+    {
+      "name": "tinystories-e2e",
+      "return_code": 0,
+      "elapsed_seconds": 61.53724295999996
+    },
+    {
+      "name": "attention-benchmark",
+      "return_code": 0,
+      "elapsed_seconds": 21.71418935300005
+    },
+    {
+      "name": "training-scaling",
+      "return_code": 0,
+      "elapsed_seconds": 37.82848788900003
+    },
+    {
+      "name": "speculative-benchmark",
+      "return_code": 0,
+      "elapsed_seconds": 61.42773352800009
+    }
+  ],
+  "passed": true
+}
