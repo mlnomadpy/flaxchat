@@ -1,5 +1,20 @@
 # Security and generated-code execution
 
+## Repository secret scanning
+
+Run Gitleaks against every Git ref before publishing a source or migration
+archive:
+
+```bash
+gitleaks detect --source . --log-opts=--all --redact --no-banner
+```
+
+The checked-in `.gitleaks.toml` extends the default detector set and narrowly
+allowlists two reproducibility identifiers: the SHA-256 identity of the
+committed tokenizer and its literal byte-tokenization protocol name. Neither is
+a credential. New hashes and protocol identifiers remain subject to the default
+detectors.
+
 `flaxchat.execution.execute_code` is a best-effort reliability guard for code
 that an operator has already reviewed and trusts. It is **not a security
 sandbox**. The default is fail-closed: calls must pass `trusted=True`.

@@ -1,0 +1,11 @@
+title = "FlaxChat secret-scanning policy"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Deterministic tokenizer identity and protocol name"
+stopwords = [
+  "a4905c925f51a906076a9bda1c75cc4a0a9cfc1c303a5167cc943491839ffc16",
+  "byte_v1_pad0_bos1_eos2_utf8_offset3",
+]
