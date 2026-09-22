@@ -66,3 +66,55 @@ def test_fault_injection_targets_coordination_rank_despite_tpu_reordering():
     assert coordinator_process({'JAX_PROCESS_INDEX': '0'}, runtime_rank=3)
     assert not coordinator_process({'JAX_PROCESS_INDEX': '2'}, runtime_rank=0)
     assert coordinator_process({}, runtime_rank=0)
+
+
+def test_single_worker_does_not_claim_a_distributed_coordinator():
+    result = worker_command(['python', '-m', 'pytest'], rank=0, count=1,
+                            coordinator='host:123', directory='/tmp',
+                            timeout=60, distributed=True)
+    assert 'JAX_COORDINATOR_ADDRESS=' not in result
+    assert 'JAX_PROCESS_COUNT=' not in result
+    assert 'JAX_PROCESS_INDEX=' not in result
+
+
+def test_cpu_validation_isolates_coordinator_and_splash_precision():
+    from scripts.validate_encoder_tpu import stage_environment
+    source = dict(JAX_COORDINATOR_ADDRESS='host:123', JAX_PROCESS_INDEX='0',
+                  JAX_PROCESS_COUNT='2', TPU_WORKER_HOSTNAMES='a,b', TPU_WORKER_ID='0')
+    env = stage_environment(source, cpu=True)
+    assert not set(source) & set(env)
+    assert env['JAX_PLATFORMS'] == 'cpu'
+    assert source['JAX_PROCESS_COUNT'] == '2'
+    assert stage_environment({}, matmul_precision='default')['JAX_DEFAULT_MATMUL_PRECISION'] == 'default'
+
+
+def test_transport_wall_deadline_survives_host_sleep(tmp_path, monkeypatch):
+    import subprocess
+    import sys
+    import threading
+    from scripts import gcp_tpu_run as runner
+    launched = []
+    original = subprocess.Popen
+    def launch(*args, **kwargs):
+        process = original(*args, **kwargs)
+        launched.append(process)
+        return process
+    monkeypatch.setattr(runner.subprocess, 'Popen', launch)
+    wall = iter([1000., 1100.])
+    monkeypatch.setattr(runner.time, 'time', lambda: next(wall))
+    with (tmp_path / 'worker.log').open('w') as log:
+        code = runner.run_transport([sys.executable, '-c', 'import time; time.sleep(60)'],
+                                    log, 30, threading.Event())
+    assert code == 124
+    assert launched[0].poll() is not None
+
+
+def test_transport_preserves_failure_and_cancels_promptly(tmp_path):
+    import sys
+    import threading
+    from scripts.gcp_tpu_run import run_transport
+    cancelled = threading.Event()
+    with (tmp_path / 'worker.log').open('w') as log:
+        assert run_transport([sys.executable, '-c', 'raise SystemExit(7)'], log, 10, cancelled) == 7
+        cancelled.set()
+        assert run_transport([sys.executable, '-c', 'import time; time.sleep(60)'], log, 10, cancelled) == 124

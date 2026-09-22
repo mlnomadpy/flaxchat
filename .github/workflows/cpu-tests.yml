@@ -89,6 +89,9 @@ jobs:
         if: steps.scope.outputs.run_multidevice == 'true'
         run: |
           pixi run test-multidevice
+          XLA_FLAGS=--xla_force_host_platform_device_count=4 pixi run pytest tests/test_encoder_training.py -q
+          JAX_NUM_CPU_DEVICES=4 pixi run pytest tests/test_fused_cross_entropy.py tests/test_encoder.py -q -m 'not accelerator'
+          FLAXCHAT_RUN_DISTRIBUTED_CPU=1 pixi run pytest tests/test_encoder_training.py -k two_process -q
           pixi run pytest tests/test_checkpoint_topology.py -v
           XLA_FLAGS=--xla_force_host_platform_device_count=8 pixi run pytest tests/test_checkpoint.py tests/test_training_safety.py tests/test_harness_regressions.py tests/test_audit_followup.py tests/test_token_pool.py tests/test_training_quality_gate.py -q
           FLAXCHAT_RUN_DISTRIBUTED_CPU=1 pixi run pytest tests/test_distributed_cpu.py -q

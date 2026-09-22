@@ -16,6 +16,17 @@ FULL_TRIGGERS = {
 }
 
 TEST_GROUPS = {
+    "scripts/diagnose_encoder_projection.py": ("tests/test_encoder_projection_benchmark.py",),
+    "scripts/validate_projection_campaign.py": ("tests/test_encoder_projection_benchmark.py",),
+    "scripts/prepare_projection_fixture.py": ("tests/test_encoder_training.py", "tests/test_encoder_projection_benchmark.py"),
+    "scripts/benchmark_encoder_projection.py": ("tests/test_encoder_projection_benchmark.py", "tests/test_fused_cross_entropy.py"),
+    "scripts/compare_encoder_projection.py": ("tests/test_encoder_projection_benchmark.py",),
+    "scripts/validate_encoder_projection.py": ("tests/test_fused_cross_entropy.py", "tests/test_encoder.py", "tests/test_encoder_projection_benchmark.py"),
+    "scripts/convert_encoder_checkpoint.py": ("tests/test_encoder.py",),
+    "scripts/validate_encoder_checkpoint.py": ("tests/test_encoder.py",),
+    "scripts/train_encoder.py": ("tests/test_encoder_training.py", "tests/test_encoder.py"),
+    "scripts/prepare_encoder_data.py": ("tests/test_encoder_training.py",),
+    "scripts/evaluate_encoder.py": ("tests/test_encoder_training.py",),
     "scripts/compare_tpu_slices.py": ("tests/test_slice_comparison.py",),
     "scripts/audit_token_overlap.py": ("tests/test_contamination.py",),
     "scripts/evaluate_prepared_checkpoint.py": ("tests/test_prepared_evaluation.py", "tests/test_contamination.py"),
@@ -77,9 +88,10 @@ def select_scope(changed_paths: list[str], *, force_full: bool = False) -> dict[
                 selected.update(("tests/test_pipeline.py", "tests/test_stage_functions.py"))
 
     multidevice = forced or any(
-        path.startswith(("flaxchat/sharding", "flaxchat/checkpoint", "flaxchat/training", "flaxchat/common", "flaxchat/gpt"))
+        path.startswith(("flaxchat/sharding", "flaxchat/checkpoint", "flaxchat/training", "flaxchat/common", "flaxchat/gpt", "flaxchat/encoder", "flaxchat/mlm", "flaxchat/fused_cross_entropy"))
         or path in {"tests/test_sharding.py", "tests/test_checkpoint_topology.py", "scripts/train_gpt2.py",
-                    "tests/test_token_pool.py", "tests/test_distributed_cpu.py"}
+                    "tests/test_token_pool.py", "tests/test_distributed_cpu.py", "tests/test_encoder_training.py", "scripts/train_encoder.py",
+                    "tests/test_fused_cross_entropy.py", "tests/test_encoder.py"}
         or path in FULL_TRIGGERS
         for path in paths
     )

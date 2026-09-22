@@ -44,6 +44,7 @@ flaxchat is the complete LLM pipeline running natively on TPUs and GPUs with aut
 |-------|--------|-------------|
 | Tokenizer | `scripts/tok_train.py` | Train BPE, or select training-free ByT5/MrT5 bytes |
 | Pretrain | `scripts/pretrain.py` | Pretrain GPT on ClimbMix-400B or TinyStories |
+| Encoder MLM | `scripts/train_encoder.py` | ModernBERT/mmBERT continued masked pretraining; [guide and limits](docs/ENCODER_TRAINING.md) |
 | SFT | `scripts/sft.py` | Supervised fine-tuning on conversations |
 | RL | `scripts/rl.py` | GRPO/REINFORCE on GSM8K with tool use |
 | Eval | `scripts/eval.py` | CORE metric, MMLU, ARC, GSM8K, HumanEval |

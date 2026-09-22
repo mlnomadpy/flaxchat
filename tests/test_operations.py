@@ -187,3 +187,39 @@ def test_supervisor_retries_only_after_verified_cleanup_with_resume(tmp_path, mo
     ledger = RunLedger(tmp_path / 'ledger.json', 10).summary()
     assert ledger['reserved_usd'] == 6
     assert len(ledger['attempts']) == 2
+
+
+def test_supervisor_deadline_survives_host_sleep_and_clock_changes(monkeypatch):
+    from scripts import gcp_spot_supervisor as supervisor
+    monkeypatch.setattr(supervisor.time, 'monotonic', lambda: 100.)
+    monkeypatch.setattr(supervisor.time, 'time', lambda: 1000.)
+    assert supervisor.remaining_seconds(300., 1100.) == 100
+    with pytest.raises(TimeoutError, match='lease is expiring'):
+        supervisor.remaining_seconds(300., 1020.)
+    with pytest.raises(TimeoutError, match='lease is expiring'):
+        supervisor.remaining_seconds(120., 3000.)
+
+
+@pytest.mark.parametrize('queue', [None, {'state': {'state': 'FAILED'}},
+                                  {'state': {'state': 'DELETING'}}])
+def test_capacity_terminal_request_does_not_wait_or_recreate(monkeypatch, queue):
+    from scripts import gcp_spot_supervisor as supervisor
+    calls = []
+    def cloud(argv, **kwargs):
+        calls.append(argv)
+        return queue if argv[2] == 'queued-resources' else None
+    monkeypatch.setattr(supervisor, 'cloud', cloud)
+    monkeypatch.setattr(supervisor.time, 'sleep', lambda _: pytest.fail('terminal queue must fail promptly'))
+    with pytest.raises(RuntimeError, match='Spot request unavailable'):
+        supervisor.wait_for_ready('test', [], lambda: 300, 60)
+    assert all(argv[3] == 'describe' for argv in calls)
+
+
+def test_capacity_wait_counts_host_sleep(monkeypatch):
+    from scripts import gcp_spot_supervisor as supervisor
+    monkeypatch.setattr(supervisor.time, 'monotonic', lambda: 100.)
+    wall = iter([1000., 1100.])
+    monkeypatch.setattr(supervisor.time, 'time', lambda: next(wall))
+    monkeypatch.setattr(supervisor, 'cloud', lambda *a, **k: pytest.fail('wait already expired'))
+    with pytest.raises(TimeoutError, match='capacity wait budget'):
+        supervisor.wait_for_ready('test', [], lambda: 300, 60)

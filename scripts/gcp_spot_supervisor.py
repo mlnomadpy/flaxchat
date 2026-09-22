@@ -67,6 +67,43 @@ def command(value):
     return parsed
 
 
+def remaining_seconds(monotonic_deadline, wall_deadline):
+    # macOS monotonic time may exclude system sleep; the cloud lease does not.
+    seconds = int(min(monotonic_deadline - time.monotonic(), wall_deadline - time.time()))
+    if seconds < 30:
+        raise TimeoutError('Attempt lease is expiring')
+    return seconds
+
+
+def wait_for_ready(name, flags, remaining, capacity_wait_seconds=None):
+    """Bound capacity waiting separately from compute; never recreate a request."""
+    started, wall_started = time.monotonic(), time.time()
+    def time_left():
+        seconds = remaining()
+        if capacity_wait_seconds is not None:
+            elapsed = max(time.monotonic() - started, time.time() - wall_started)
+            seconds = min(seconds, capacity_wait_seconds - elapsed)
+            if seconds <= 0:
+                raise TimeoutError('Spot capacity wait budget exhausted')
+        return seconds
+    while True:
+        try:
+            node = cloud(['compute', 'tpus', 'tpu-vm', 'describe', name, *flags],
+                         timeout=min(60, time_left()))
+            if node and node['state'] == 'READY':
+                return
+            queue = cloud(['compute', 'tpus', 'queued-resources', 'describe', name, *flags],
+                          timeout=min(60, time_left()))
+            state = (queue or {}).get('state', {})
+            state = state.get('state') if isinstance(state, dict) else state
+            if queue is None or state in ('FAILED', 'SUSPENDED', 'DELETING'):
+                raise RuntimeError(f'Spot request unavailable: {state or "absent"}')
+        except subprocess.TimeoutExpired:
+            # A read timeout is not permission to submit a second allocation.
+            remaining()
+        time.sleep(max(0, min(10, time_left())))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', required=True)
@@ -78,6 +115,8 @@ def main(argv=None):
     parser.add_argument('--hourly-usd', type=float, required=True, help='Conservative whole-slice rate')
     parser.add_argument('--budget-usd', type=float, required=True)
     parser.add_argument('--attempt-seconds', type=int, default=1800)
+    parser.add_argument('--capacity-wait-seconds', type=int,
+                        help='Optional shorter capacity wait; expires through verified cleanup')
     parser.add_argument('--max-attempts', type=int, default=1)
     parser.add_argument('--setup', type=command, required=True)
     parser.add_argument('--workload', type=command, required=True)
@@ -89,6 +128,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 180 <= args.attempt_seconds <= 2400 or not 1 <= args.max_attempts <= 10:
         parser.error('Attempts must be 180–2400 seconds; count must be 1–10')
+    if args.capacity_wait_seconds is not None and not 1 <= args.capacity_wait_seconds <= args.attempt_seconds:
+        parser.error('Capacity wait must be positive and no longer than the attempt lease')
     if args.max_attempts > 1 and not args.resume_workload:
         parser.error('Retries require explicit durable-checkpoint resume argv')
     if args.acceptance_prefix and not args.acceptance_prefix.startswith('gs://'):
@@ -104,12 +145,10 @@ def main(argv=None):
         output = args.output / f'attempt-{index}'
         output.mkdir(exist_ok=False)
         deadline = time.monotonic() + args.attempt_seconds
+        wall_deadline = time.time() + args.attempt_seconds
         resource = f'projects/{args.project}/locations/{args.zone}/queuedResources/{name}'
-        def remaining(deadline=deadline):
-            seconds = int(deadline - time.monotonic())
-            if seconds < 30:
-                raise TimeoutError('Attempt lease is expiring')
-            return seconds
+        def remaining(deadline=deadline, wall_deadline=wall_deadline):
+            return remaining_seconds(deadline, wall_deadline)
         def arm(resource, seconds, output=output, name=name):
             receipt = output / 'guard.json'
             gcp_cleanup_guard.main(['--project', args.project, '--zone', args.zone, '--queue', name,
@@ -120,20 +159,7 @@ def main(argv=None):
                    '--node-id', name, '--accelerator-type', args.accelerator_type,
                    '--runtime-version', args.runtime_version, '--spot',
                    '--valid-until-duration', f'{args.attempt_seconds}s'], timeout=remaining())
-            while True:
-                try:
-                    node = cloud(['compute', 'tpus', 'tpu-vm', 'describe', name, *flags],
-                                 timeout=min(60, remaining()))
-                except subprocess.TimeoutExpired:
-                    # Provisioning reads can be temporarily unavailable. Keep
-                    # the existing guarded request, never submit another one.
-                    remaining()
-                    time.sleep(10)
-                    continue
-                if node and node['state'] == 'READY':
-                    break
-                remaining()
-                time.sleep(10)
+            wait_for_ready(name, flags, remaining, args.capacity_wait_seconds)
         def execute(argv, label, setup=False, single_worker=False, name=name, output=output):
             return gcp_tpu_run.main(['--project', args.project, '--zone', args.zone, '--node', name,
                  '--output', str(output / label), '--directory', '/tmp' if setup else args.directory,

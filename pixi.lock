@@ -1169,7 +1169,7 @@ packages:
 - pypi: ./
   name: flaxchat
   version: 0.1.1
-  sha256: 1893429f1d3b4b817dbb3f2e4fef3c61bdee42ed8dadd0fcf6373c204427193c
+  sha256: ef8b9784925e46a38b8578ff8972bb26a0f0b1cf04095084a8e5e74b8f43ef5a
   requires_dist:
   - jax>=0.9.0
   - flax>=0.12.0
@@ -1180,6 +1180,7 @@ packages:
   - rustbpe>=0.1.0,<0.2
   - pyyaml>=6.0
   - filelock>=3.0
+  - safetensors>=0.6.0 ; extra == 'encoder'
   - jax[tpu]>=0.9.0 ; extra == 'tpu'
   - tpuz>=0.1.0 ; extra == 'tpu'
   - jax[cuda12]>=0.9.0 ; extra == 'cuda12'

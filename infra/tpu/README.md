@@ -235,6 +235,11 @@ workflow survives loss of the launcher and verifies that the exact queued
 resource disappears after `force=true` deletion. Deployment sources are
 `cleanup_workflow.yaml`, `cleanup_role.yaml` and the project-specific
 `cleanup_condition.json`. The service account cannot provision compute.
+For v6e validation in `us-central1-a`, add the separate
+`cleanup_condition_v6.json` binding to the same cleanup role and service account;
+keep the existing zone binding intact. This grants cleanup only for
+`flaxchat-validation-*` nodes and queues in the new zone. Verify this binding
+before arming a v6e guard; a running workflow alone does not prove IAM coverage.
 
 Arm the workflow **before** creating a uniquely named `flaxchat-validation-*`
 queue. Do not reuse queue names, and set the queue's `valid-until-time` no later
@@ -253,6 +258,11 @@ accepts `--optimizer muon --accumulation-steps 2 --loss-chunk-size 16 --remat`
 for validation of the production optimizer and memory-saving path. Keep a local
 watchdog as a second control and always delete resources promptly on completion.
 Cloud API cleanup can be delayed; neither watchdog is an exact billing cap.
+
+For capacity experiments, `gcp_spot_supervisor --capacity-wait-seconds 600`
+sets a shorter wait inside the existing attempt lease. Expiry, a failed/deleting
+queue, or a disappeared request exits through verified queue and VM cleanup;
+none automatically creates another request. The wait accounts for host sleep.
 
 For training-only machines, the optional fourth setup argument `training`
 installs the pinned JAX stack and data dependencies without the validation web,
@@ -318,3 +328,9 @@ truncation, and reports individual predictions and a Wilson confidence interval.
 It is a diagnostic, not a full ARC/CORE result or paper reproduction. Local
 checkpoint copies avoid needing Python application-default cloud credentials;
 `gcloud` authentication alone does not configure those credentials.
+
+Local SSH transports also use the earlier wall/monotonic deadline, so laptop
+sleep cannot extend their wait. Cancellation signals stop private SSH process
+groups before the supervisor verifies queue/VM cleanup. Remote command timeouts
+and the independent Cloud Workflows guard remain necessary if the host sleeps,
+loses connectivity, or exits entirely.

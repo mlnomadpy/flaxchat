@@ -8,10 +8,13 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
+import os
 from pathlib import Path
 import re
 import shlex
+import signal
 import subprocess
+import threading
 import time
 import uuid
 
@@ -20,7 +23,7 @@ def worker_command(argv, *, rank, count, coordinator, directory, timeout, distri
     if not argv or timeout < 1 or not 0 <= rank < count:
         raise ValueError('Invalid worker command')
     environment = {"FLAXCHAT_COMPILATION_CACHE_DIR": directory.rstrip("/") + "/.jax-cache"}
-    if distributed:
+    if distributed and count > 1:
         environment.update({'JAX_COORDINATOR_ADDRESS': coordinator,
                        'JAX_PROCESS_COUNT': str(count), 'JAX_PROCESS_INDEX': str(rank)})
     command = ['timeout', '--signal=KILL', str(timeout), 'env']
@@ -44,6 +47,31 @@ def remote_returncode(log, execution_id, rank, transport_code):
         return transport_code
     codes = re.findall(rf'^FLAXCHAT_REMOTE_EXIT_{execution_id}_{rank}=(\d+)$', log, re.MULTILINE)
     return int(codes[0]) if len(codes) == 1 and 0 <= int(codes[0]) <= 255 else 125
+
+
+def run_transport(argv, log, timeout, cancelled):
+    """Bound SSH by wall time too, including laptop sleep; reap its process group."""
+    monotonic_deadline, wall_deadline = time.monotonic() + timeout, time.time() + timeout
+    with subprocess.Popen(argv, stdout=log, stderr=subprocess.STDOUT, start_new_session=True) as process:
+        try:
+            while True:
+                seconds = min(monotonic_deadline - time.monotonic(), wall_deadline - time.time())
+                if cancelled.is_set() or seconds <= 0:
+                    return 124
+                try:
+                    return process.wait(timeout=min(5, seconds))
+                except subprocess.TimeoutExpired:
+                    pass
+        finally:
+            if process.poll() is None:
+                try:
+                    if os.name == 'posix':
+                        os.killpg(process.pid, signal.SIGKILL)
+                    else:
+                        process.kill()
+                except ProcessLookupError:
+                    pass
+                process.wait()
 
 
 def main(argv=None):
@@ -83,28 +111,28 @@ def main(argv=None):
     summary['execution_id'] = execution_id
     report = args.output / 'summary.json'
     report.write_text(json.dumps(summary, indent=2))
+    cancelled = threading.Event()
     def run(rank):
         remote = worker_command(command, rank=rank, count=count, coordinator=coordinator,
                                 directory=args.directory, timeout=args.timeout,
                                 distributed=not args.single_worker and not args.setup, execution_id=execution_id)
         tick = time.monotonic()
         with (args.output / f'worker-{rank}.log').open('w') as log:
-            try:
-                result = subprocess.run(['gcloud', 'compute', 'tpus', 'tpu-vm', 'ssh', args.node,
+            code = run_transport(['gcloud', 'compute', 'tpus', 'tpu-vm', 'ssh', args.node,
                     '--project', args.project, '--zone', args.zone, '--worker', str(rank),
-                    '--quiet', '--command', remote], stdout=log, stderr=subprocess.STDOUT,
-                    timeout=args.timeout + 90)
-                code = result.returncode
-            except subprocess.TimeoutExpired:
-                code = 124
+                    '--quiet', '--command', remote], log, args.timeout + 90, cancelled)
         transport_code = code
         code = remote_returncode((args.output / f'worker-{rank}.log').read_text(), execution_id, rank, transport_code)
         return {'rank': rank, 'returncode': code, 'transport_returncode': transport_code, 'seconds': time.monotonic() - tick,
                 'remote_command': remote}
     with ThreadPoolExecutor(max_workers=len(ranks)) as executor:
-        for row in executor.map(run, ranks):
-            summary['workers'].append(row)
-            report.write_text(json.dumps(summary, indent=2))
+        try:
+            for row in executor.map(run, ranks):
+                summary['workers'].append(row)
+                report.write_text(json.dumps(summary, indent=2))
+        except BaseException:
+            cancelled.set()
+            raise
     summary['passed'] = all(row['returncode'] == 0 for row in summary['workers'])
     summary['finished_epoch'] = time.time()
     report.write_text(json.dumps(summary, indent=2) + '\n')
