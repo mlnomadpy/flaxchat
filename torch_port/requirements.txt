@@ -4,7 +4,7 @@
 
 # --- Inference (required) ---
 torch>=2.1
-numpy>=1.23
+numpy>=2.4.6
 
 # --- Conversion (only needed to run convert_flax_to_torch.py) ---
 # Already in the parent repo's pixi.toml; listed here for standalone use.
