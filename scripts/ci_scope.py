@@ -16,6 +16,9 @@ FULL_TRIGGERS = {
 }
 
 TEST_GROUPS = {
+    "scripts/compare_tpu_slices.py": ("tests/test_slice_comparison.py",),
+    "scripts/audit_token_overlap.py": ("tests/test_contamination.py",),
+    "scripts/evaluate_prepared_checkpoint.py": ("tests/test_prepared_evaluation.py", "tests/test_contamination.py"),
     "scripts/train_gpt2.py": ("tests/test_token_pool.py", "tests/test_finetuning_resume.py", "tests/test_training_quality_gate.py"),
     "scripts/validate_training_quality.py": ("tests/test_training_quality_gate.py",),
     "scripts/gcp_spot_supervisor.py": ("tests/test_operations.py", "tests/test_gcp_cleanup_guard.py"),

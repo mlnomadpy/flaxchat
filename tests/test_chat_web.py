@@ -99,3 +99,37 @@ def test_websocket_returns_sanitized_model_error():
 def test_web_settings_reject_nonpositive_bounds():
     with pytest.raises(ValueError, match="must be positive"):
         WebSettings(output_buffer_size=0)
+
+
+@pytest.mark.parametrize("next_request", [False, True])
+def test_disconnect_consumed_during_done_send_is_not_received_twice(next_request):
+    import asyncio
+    import json
+    from starlette.websockets import WebSocket
+
+    async def scenario():
+        incoming = asyncio.Queue()
+        incoming.put_nowait({'type': 'websocket.connect'})
+        incoming.put_nowait({'type': 'websocket.receive', 'text': json.dumps({'text': 'hi'})})
+        sent = []
+
+        async def send(event):
+            sent.append(event)
+            if event.get('text') == json.dumps({'type': 'done'}):
+                done_count = sum(e.get('text') == json.dumps({'type': 'done'}) for e in sent)
+                if next_request and done_count == 1:
+                    incoming.put_nowait({'type': 'websocket.receive', 'text': json.dumps({'text': 'again'})})
+                else:
+                    incoming.put_nowait({'type': 'websocket.disconnect', 'code': 1000})
+                # Force the background receiver to consume the disconnect
+                # before send() returns to the generation loop.
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+
+        app = create_app(_Service())
+        endpoint = next(route.endpoint for route in app.routes if getattr(route, 'path', None) == '/ws')
+        socket = WebSocket({'type': 'websocket', 'path': '/ws'}, incoming.get, send)
+        await asyncio.wait_for(endpoint(socket), timeout=2)
+        assert len([event for event in sent if event.get('text') == json.dumps({'type': 'done'})]) == (2 if next_request else 1)
+
+    asyncio.run(scenario())

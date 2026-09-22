@@ -258,3 +258,63 @@ For training-only machines, the optional fourth setup argument `training`
 installs the pinned JAX stack and data dependencies without the validation web,
 Torch and development packages. GCP worker commands set a local persistent JAX
 compilation cache. Record the actual installed environment for every campaign.
+
+### Matched smaller-slice benchmarks
+
+Keep the **global batch and token budget fixed** when comparing slice sizes. The
+planner accepts `--global-batch-size 16` independently of `--devices`; the batch
+must be divisible by the device count. For example, a four-chip single-host plan uses
+`--devices 4 --hosts 1 --fsdp 4 --global-batch-size 16`. A v5p-8 contains four
+chips. Pass the whole-slice hourly rate, not the per-chip rate.
+
+Compare completed, quality-gated summaries with:
+
+```bash
+python -m scripts.compare_tpu_slices \
+  --reference artifacts/large/training_summary.json \
+  --candidate artifacts/small/training_summary.json \
+  --reference-hourly 67.2 --candidate-hourly 16.8 \
+  --output artifacts/slice-comparison.json
+```
+
+The comparator rejects mismatched recipes, data/tokenizer identities, token
+budgets, checkpoint policies, resumed invocations, or failed loss gates. Prices
+are explicit inputs: refresh them before provisioning. Invocation estimates
+exclude setup and cleanup; the supervisor ledger covers the allocation lifecycle.
+Source and runtime identities remain visible for review.
+
+### Evaluation after the pilot
+
+Run an exact overlap audit without changing matched benchmark inputs:
+
+```bash
+python -m scripts.audit_token_overlap \
+  --token-manifest artifacts/fineweb-pool/manifest.json \
+  --output artifacts/overlap.json
+```
+
+The audit scans every training token position in bounded chunks, verifies hash
+matches against token IDs, and reports intact validation blocks that avoid
+matching 50-token spans. It does not detect all near-duplicates or semantic
+contamination.
+
+For a prepared-training checkpoint with the matching token pool and saved
+`tokenizer/` directory:
+
+```bash
+JAX_PLATFORMS=cpu FLAXCHAT_DTYPE=bfloat16 \
+python -m scripts.evaluate_prepared_checkpoint \
+  --checkpoint artifacts/pilot-checkpoint \
+  --token-manifest artifacts/fineweb-pool/manifest.json \
+  --max-examples 32 --holdout-blocks 8 \
+  --output artifacts/pilot-evaluation.json
+```
+
+This restores and integrity-checks model weights, measures loss on contiguous
+heldout blocks, and scores a deterministic sample of pinned ARC-Easy questions
+using zero-shot mean continuation likelihood. It excludes questions or answers
+with exact 13-token training overlap, records context exclusions without silent
+truncation, and reports individual predictions and a Wilson confidence interval.
+It is a diagnostic, not a full ARC/CORE result or paper reproduction. Local
+checkpoint copies avoid needing Python application-default cloud credentials;
+`gcloud` authentication alone does not configure those credentials.

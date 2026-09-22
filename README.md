@@ -332,3 +332,8 @@ Built on:
 ## License
 
 MIT
+
+The [four-chip Spot benchmark and recovery pilot](docs/GCP_SMALL_SLICE_BENCHMARK_2026-09-22.md)
+measured 72.5%/82.0% lower estimated invocation compute cost at 1K/4K than the
+matched 16-chip run, and exact recovery after a step-200 process kill. The sampled
+ARC-Easy result does not establish above-chance downstream quality.

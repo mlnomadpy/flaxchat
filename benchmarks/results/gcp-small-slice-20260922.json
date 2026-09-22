@@ -1,0 +1,1100 @@
+{
+  "campaign": "small-slice-0922",
+  "project": "tpubuilders",
+  "accelerator": "Spot v5p-8",
+  "devices": 4,
+  "hosts": 1,
+  "source": {
+    "archive_sha256": "720e66299ba8ae761b4d6243ea35eb538b98220c12ea029bd92283aea081abf5",
+    "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+    "base_commit": "4d7b79b8b9cce8a00bfb8676c41e4e440a715974"
+  },
+  "budget_usd": 25,
+  "reservation_usd": 21.6,
+  "comparisons": {
+    "1k": {
+      "status": "matched_recipe",
+      "reference": {
+        "devices": 16,
+        "hosts": 4,
+        "invocation_seconds": 99.62011092800003,
+        "tokens": 1802240,
+        "tokens_per_second": 18091.12621147913,
+        "compute_usd": 1.8595754039893342,
+        "usd_per_million_tokens": 1.0318134121922353,
+        "validation_loss": 7.387861251831055,
+        "hourly_rate_input": 67.2,
+        "source_python_sha256": "effcf924ad1122ebdc730ff7f90888f4b9f7aa6a18058e0bb2e613b0421d868c"
+      },
+      "candidate": {
+        "devices": 4,
+        "hosts": 1,
+        "invocation_seconds": 109.675639417,
+        "tokens": 1802240,
+        "tokens_per_second": 16432.454915057904,
+        "compute_usd": 0.5118196506126667,
+        "usd_per_million_tokens": 0.28399083951785925,
+        "validation_loss": 7.388721466064453,
+        "hourly_rate_input": 16.8,
+        "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df"
+      },
+      "throughput_ratio": 0.9083157523179086,
+      "compute_cost_ratio": 0.27523468503329496,
+      "validation_loss_delta": 0.0008602142333984375,
+      "runtime_equal": true,
+      "limitations": [
+        "Invocation cost excludes provisioning, setup, recovery experiments and cleanup.",
+        "Hourly prices are explicit estimates, not billed Spot charges.",
+        "Topology and reduction ordering differ; loss is reported, not assumed identical.",
+        "Source hashes are reported; review source differences before interpreting performance."
+      ]
+    },
+    "4k": {
+      "status": "matched_recipe",
+      "reference": {
+        "devices": 16,
+        "hosts": 4,
+        "invocation_seconds": 209.84051416500006,
+        "tokens": 7208960,
+        "tokens_per_second": 34354.47167429027,
+        "compute_usd": 3.9170229310800013,
+        "usd_per_million_tokens": 0.5433547878029564,
+        "validation_loss": 7.149886131286621,
+        "hourly_rate_input": 67.2,
+        "source_python_sha256": "effcf924ad1122ebdc730ff7f90888f4b9f7aa6a18058e0bb2e613b0421d868c"
+      },
+      "candidate": {
+        "devices": 4,
+        "hosts": 1,
+        "invocation_seconds": 151.38776758699998,
+        "tokens": 7208960,
+        "tokens_per_second": 47619.17105262242,
+        "compute_usd": 0.7064762487393333,
+        "usd_per_million_tokens": 0.09799974597436154,
+        "validation_loss": 7.154394149780273,
+        "hourly_rate_input": 16.8,
+        "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df"
+      },
+      "throughput_ratio": 1.3861127454991256,
+      "compute_cost_ratio": 0.18036050877663454,
+      "validation_loss_delta": 0.004508018493652344,
+      "runtime_equal": true,
+      "limitations": [
+        "Invocation cost excludes provisioning, setup, recovery experiments and cleanup.",
+        "Hourly prices are explicit estimates, not billed Spot charges.",
+        "Topology and reduction ordering differ; loss is reported, not assumed identical.",
+        "Source hashes are reported; review source differences before interpreting performance."
+      ]
+    }
+  },
+  "profiles": {
+    "pilot-baseline": {
+      "completed_steps": 400,
+      "start_step": 0,
+      "tokens": 6553600,
+      "new_committed_tokens": 6553600,
+      "initial_validation_loss": 12.013276100158691,
+      "final_validation_loss": 6.497579574584961,
+      "invocation_seconds": 123.14447433800001,
+      "steady_tokens_per_second": 197175.6249193535,
+      "end_to_end_tokens_per_second": 53218.79065407391,
+      "checkpoint_policy": {
+        "save_every": 200,
+        "interval_seconds": 300.0
+      },
+      "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+      "post_warmup_median_step_seconds": 0.08212698799999885,
+      "checkpoint_seconds": 56.68985826100004,
+      "device_memory_stats": [
+        {
+          "num_allocs": 319,
+          "bytes_in_use": 683945472,
+          "peak_bytes_in_use": 961201664,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 102001004032,
+          "largest_free_block_bytes": 98330156544
+        },
+        {
+          "num_allocs": 273,
+          "bytes_in_use": 648918528,
+          "peak_bytes_in_use": 960387072,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 102001004032,
+          "largest_free_block_bytes": 98368789504
+        },
+        {
+          "num_allocs": 260,
+          "bytes_in_use": 635351552,
+          "peak_bytes_in_use": 960387072,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 102001004032,
+          "largest_free_block_bytes": 98368789504
+        },
+        {
+          "num_allocs": 271,
+          "bytes_in_use": 647738880,
+          "peak_bytes_in_use": 960387072,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 102001004032,
+          "largest_free_block_bytes": 98368789504
+        }
+      ],
+      "quality": {
+        "passed": true,
+        "checks": {
+          "finite_nonnegative_loss": true,
+          "committed_requested_horizon": true,
+          "heldout_loss_improved": true,
+          "below_uniform_baseline": true,
+          "within_declared_threshold": true
+        },
+        "initial_validation_loss": 12.013276100158691,
+        "final_validation_loss": 6.497579574584961,
+        "uniform_loss": 10.82490511970208,
+        "max_validation_loss": 10.82490511970208,
+        "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+        "limitations": [
+          "Loss sanity only; no contamination, statistical-significance or downstream quality claim.",
+          "The threshold and held-out corpus must be chosen before comparing experiments."
+        ]
+      }
+    },
+    "pilot-resumed": {
+      "completed_steps": 400,
+      "start_step": 200,
+      "tokens": 6553600,
+      "new_committed_tokens": 3276800,
+      "initial_validation_loss": 6.7314534187316895,
+      "final_validation_loss": 6.497579574584961,
+      "invocation_seconds": 101.39274549000004,
+      "steady_tokens_per_second": 197883.2620432646,
+      "end_to_end_tokens_per_second": 32317.893989005137,
+      "checkpoint_policy": {
+        "save_every": 200,
+        "interval_seconds": 300.0
+      },
+      "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+      "post_warmup_median_step_seconds": 0.08214907399997173,
+      "checkpoint_seconds": 29.551225979999913,
+      "device_memory_stats": [
+        {
+          "num_allocs": 279,
+          "bytes_in_use": 640952320,
+          "peak_bytes_in_use": 961215488,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 101999104512,
+          "largest_free_block_bytes": 98366890496
+        },
+        {
+          "num_allocs": 258,
+          "bytes_in_use": 633648128,
+          "peak_bytes_in_use": 960365056,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 101999875072,
+          "largest_free_block_bytes": 98367661056
+        },
+        {
+          "num_allocs": 257,
+          "bytes_in_use": 633058304,
+          "peak_bytes_in_use": 960365056,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 101999875072,
+          "largest_free_block_bytes": 98367661056
+        },
+        {
+          "num_allocs": 280,
+          "bytes_in_use": 655473152,
+          "peak_bytes_in_use": 960365056,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 101999875072,
+          "largest_free_block_bytes": 98367661056
+        }
+      ],
+      "quality": {
+        "passed": true,
+        "checks": {
+          "finite_nonnegative_loss": true,
+          "committed_requested_horizon": true,
+          "heldout_loss_improved": true,
+          "below_uniform_baseline": true,
+          "within_declared_threshold": true
+        },
+        "initial_validation_loss": 6.7314534187316895,
+        "final_validation_loss": 6.497579574584961,
+        "uniform_loss": 10.82490511970208,
+        "max_validation_loss": 10.82490511970208,
+        "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+        "limitations": [
+          "Loss sanity only; no contamination, statistical-significance or downstream quality claim.",
+          "The threshold and held-out corpus must be chosen before comparing experiments."
+        ]
+      }
+    },
+    "sustained-1k": {
+      "completed_steps": 110,
+      "start_step": 0,
+      "tokens": 1802240,
+      "new_committed_tokens": 1802240,
+      "initial_validation_loss": 12.013276100158691,
+      "final_validation_loss": 7.388721466064453,
+      "invocation_seconds": 109.675639417,
+      "steady_tokens_per_second": 198278.04092290462,
+      "end_to_end_tokens_per_second": 16432.454915057904,
+      "checkpoint_policy": {
+        "save_every": 55,
+        "interval_seconds": 300.0
+      },
+      "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+      "post_warmup_median_step_seconds": 0.08216313649998597,
+      "checkpoint_seconds": 56.42059113800002,
+      "device_memory_stats": [
+        {
+          "num_allocs": 293,
+          "bytes_in_use": 656811520,
+          "peak_bytes_in_use": 961201664,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 102000972288,
+          "largest_free_block_bytes": 98330124800
+        },
+        {
+          "num_allocs": 268,
+          "bytes_in_use": 644789248,
+          "peak_bytes_in_use": 960387072,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 102001004032,
+          "largest_free_block_bytes": 98330156544
+        },
+        {
+          "num_allocs": 249,
+          "bytes_in_use": 588328448,
+          "peak_bytes_in_use": 960387072,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 102001004032,
+          "largest_free_block_bytes": 98330156544
+        },
+        {
+          "num_allocs": 249,
+          "bytes_in_use": 588328448,
+          "peak_bytes_in_use": 960387072,
+          "largest_alloc_size": 174010368,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 3458203648,
+          "peak_bytes_reserved": 3458203648,
+          "bytes_reservable_limit": 102001004032,
+          "largest_free_block_bytes": 98330156544
+        }
+      ],
+      "quality": {
+        "passed": true,
+        "checks": {
+          "finite_nonnegative_loss": true,
+          "committed_requested_horizon": true,
+          "heldout_loss_improved": true,
+          "below_uniform_baseline": true,
+          "within_declared_threshold": true
+        },
+        "initial_validation_loss": 12.013276100158691,
+        "final_validation_loss": 7.388721466064453,
+        "uniform_loss": 10.82490511970208,
+        "max_validation_loss": 10.82490511970208,
+        "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+        "limitations": [
+          "Loss sanity only; no contamination, statistical-significance or downstream quality claim.",
+          "The threshold and held-out corpus must be chosen before comparing experiments."
+        ]
+      }
+    },
+    "sustained-4k": {
+      "completed_steps": 110,
+      "start_step": 0,
+      "tokens": 7208960,
+      "new_committed_tokens": 7208960,
+      "initial_validation_loss": 12.00798225402832,
+      "final_validation_loss": 7.154394149780273,
+      "invocation_seconds": 151.38776758699998,
+      "steady_tokens_per_second": 85849.38845710391,
+      "end_to_end_tokens_per_second": 47619.17105262242,
+      "checkpoint_policy": {
+        "save_every": null,
+        "interval_seconds": 300.0
+      },
+      "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+      "post_warmup_median_step_seconds": 0.7622731585000224,
+      "checkpoint_seconds": 25.09395919000002,
+      "device_memory_stats": [
+        {
+          "num_allocs": 295,
+          "bytes_in_use": 700397568,
+          "peak_bytes_in_use": 1003818496,
+          "largest_alloc_size": 200414720,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 48515088384,
+          "peak_bytes_reserved": 48515088384,
+          "bytes_reservable_limit": 101983902208,
+          "largest_free_block_bytes": 53229765632
+        },
+        {
+          "num_allocs": 271,
+          "bytes_in_use": 691150848,
+          "peak_bytes_in_use": 1003175424,
+          "largest_alloc_size": 200414720,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 48515088384,
+          "peak_bytes_reserved": 48515088384,
+          "bytes_reservable_limit": 101983902208,
+          "largest_free_block_bytes": 53268398592
+        },
+        {
+          "num_allocs": 277,
+          "bytes_in_use": 697639424,
+          "peak_bytes_in_use": 1003175424,
+          "largest_alloc_size": 200414720,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 48515088384,
+          "peak_bytes_reserved": 48515088384,
+          "bytes_reservable_limit": 101983902208,
+          "largest_free_block_bytes": 53268398592
+        },
+        {
+          "num_allocs": 282,
+          "bytes_in_use": 702358016,
+          "peak_bytes_in_use": 1003175424,
+          "largest_alloc_size": 200414720,
+          "bytes_limit": 102786660352,
+          "bytes_reserved": 48515088384,
+          "peak_bytes_reserved": 48515088384,
+          "bytes_reservable_limit": 101983772672,
+          "largest_free_block_bytes": 53268269568
+        }
+      ],
+      "quality": {
+        "passed": true,
+        "checks": {
+          "finite_nonnegative_loss": true,
+          "committed_requested_horizon": true,
+          "heldout_loss_improved": true,
+          "below_uniform_baseline": true,
+          "within_declared_threshold": true
+        },
+        "initial_validation_loss": 12.00798225402832,
+        "final_validation_loss": 7.154394149780273,
+        "uniform_loss": 10.82490511970208,
+        "max_validation_loss": 10.82490511970208,
+        "source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+        "limitations": [
+          "Loss sanity only; no contamination, statistical-significance or downstream quality claim.",
+          "The threshold and held-out corpus must be chosen before comparing experiments."
+        ]
+      }
+    }
+  },
+  "recovery": {
+    "passed": true,
+    "equal": {
+      "model_state": true,
+      "optimizer_state": true,
+      "training_state": true
+    },
+    "fault": "SIGKILL after committed step 200",
+    "final_step": 400
+  },
+  "evaluation": {
+    "status": "complete",
+    "task": "arc_easy",
+    "dataset": "allenai/ai2_arc:ARC-Easy",
+    "revision": "210d026faf9955653af8916fad021475a3f00453",
+    "split": "test",
+    "seed": 1234,
+    "fewshot": 0,
+    "scoring": "mean_continuation_nll_common_token_prefix",
+    "max_length": 256,
+    "overlap_tokens": 13,
+    "candidate_content_sha256": "b2692004796fbe6865ef337cb7f5645f2590c8abc60b3131d559676298d71a01",
+    "data_identity": {
+      "manifest_sha256": "70008bd98060277053383e27945ec4bbd6bc3e8227e6a106bc9b7d009627dff7"
+    },
+    "checkpoint": "artifacts/small-slice-0922/pilot-checkpoint",
+    "checkpoint_step": 400,
+    "training_source_python_sha256": "1f7229cfaf413a28b526f31a4cffd657543b674b85d85bb1ad2d9d9eb24d76df",
+    "evaluation_source_python_sha256": "813a8725cde33bf584a1ea137413e68c34c599bd5441ba5886375ac4feba205b",
+    "clean_holdout": {
+      "loss": 6.054696619510651,
+      "block_losses": [
+        6.509467124938965,
+        6.5706353187561035,
+        6.108433723449707,
+        5.854619026184082,
+        5.91171932220459,
+        6.0634660720825195,
+        5.638247013092041,
+        5.780985355377197
+      ],
+      "block_starts": [
+        0,
+        1025,
+        2050,
+        3075,
+        4100,
+        5125,
+        6150,
+        7175
+      ],
+      "tokens": 8192,
+      "exclusion_span_tokens": 50
+    },
+    "sample_count": 32,
+    "sampled_count": 32,
+    "correct": 6,
+    "accuracy": 0.1875,
+    "random_choice_baseline": 0.25,
+    "confidence_interval_95": [
+      0.08889544689565954,
+      0.3530915520137596
+    ],
+    "records": [
+      {
+        "index": 30,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          9.398032188415527,
+          7.95393180847168,
+          9.053816795349121,
+          9.55866527557373
+        ],
+        "prediction": 1,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 59,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          8.533407211303711,
+          9.23740005493164,
+          10.179794311523438,
+          9.478263854980469
+        ],
+        "prediction": 0,
+        "correct": true,
+        "choice_count": 4
+      },
+      {
+        "index": 64,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          11.075858116149902,
+          9.87097454071045,
+          10.19403076171875,
+          10.908064842224121
+        ],
+        "prediction": 1,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 71,
+        "gold": 3,
+        "status": "scored",
+        "scores": [
+          10.414971351623535,
+          9.038107872009277,
+          12.631542205810547,
+          9.752887725830078
+        ],
+        "prediction": 1,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 126,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          8.622925758361816,
+          13.658032417297363,
+          10.705947875976562,
+          11.552001953125
+        ],
+        "prediction": 0,
+        "correct": true,
+        "choice_count": 4
+      },
+      {
+        "index": 143,
+        "gold": 3,
+        "status": "scored",
+        "scores": [
+          9.795684814453125,
+          11.146137237548828,
+          10.353752136230469,
+          9.21853256225586
+        ],
+        "prediction": 3,
+        "correct": true,
+        "choice_count": 4
+      },
+      {
+        "index": 188,
+        "gold": 1,
+        "status": "scored",
+        "scores": [
+          10.342802047729492,
+          8.511650085449219,
+          7.491988658905029,
+          6.8766865730285645
+        ],
+        "prediction": 3,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 264,
+        "gold": 2,
+        "status": "scored",
+        "scores": [
+          8.235432624816895,
+          6.719834327697754,
+          6.960999011993408,
+          8.32404613494873
+        ],
+        "prediction": 1,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 280,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          8.34121322631836,
+          7.253136157989502,
+          8.482406616210938,
+          7.941150665283203
+        ],
+        "prediction": 1,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 343,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          10.053059577941895,
+          11.483503341674805,
+          8.837596893310547,
+          8.712409973144531
+        ],
+        "prediction": 3,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 364,
+        "gold": 3,
+        "status": "scored",
+        "scores": [
+          8.851621627807617,
+          12.368291854858398,
+          10.635223388671875,
+          9.941389083862305
+        ],
+        "prediction": 0,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 371,
+        "gold": 3,
+        "status": "scored",
+        "scores": [
+          7.01698637008667,
+          5.4671196937561035,
+          5.499093055725098,
+          6.012386798858643
+        ],
+        "prediction": 1,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 373,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          5.487019062042236,
+          5.8267340660095215,
+          6.581949710845947,
+          8.169480323791504
+        ],
+        "prediction": 0,
+        "correct": true,
+        "choice_count": 4
+      },
+      {
+        "index": 403,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          6.736116886138916,
+          6.538403034210205,
+          7.204082012176514,
+          6.467214584350586
+        ],
+        "prediction": 3,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 468,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          9.724440574645996,
+          13.355649948120117,
+          7.926334381103516,
+          6.991892337799072
+        ],
+        "prediction": 3,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 478,
+        "gold": 3,
+        "status": "scored",
+        "scores": [
+          6.191096782684326,
+          6.7994866371154785,
+          6.428279399871826,
+          6.254446983337402
+        ],
+        "prediction": 0,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 608,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          6.049188137054443,
+          8.539908409118652,
+          7.9573974609375,
+          5.753721714019775
+        ],
+        "prediction": 3,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 749,
+        "gold": 1,
+        "status": "scored",
+        "scores": [
+          8.430032730102539,
+          8.005619049072266,
+          8.216819763183594,
+          8.751747131347656
+        ],
+        "prediction": 1,
+        "correct": true,
+        "choice_count": 4
+      },
+      {
+        "index": 969,
+        "gold": 3,
+        "status": "scored",
+        "scores": [
+          9.537214279174805,
+          8.783797264099121,
+          8.268927574157715,
+          9.300394058227539
+        ],
+        "prediction": 2,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 1023,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          9.70551586151123,
+          10.322652816772461,
+          9.069750785827637,
+          10.033102989196777
+        ],
+        "prediction": 2,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 1104,
+        "gold": 1,
+        "status": "scored",
+        "scores": [
+          7.074092864990234,
+          7.912877559661865,
+          7.675837516784668,
+          7.141845703125
+        ],
+        "prediction": 0,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 1417,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          9.707764625549316,
+          9.72223949432373,
+          8.91840648651123,
+          8.649365425109863
+        ],
+        "prediction": 3,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 1452,
+        "gold": 3,
+        "status": "scored",
+        "scores": [
+          7.892559051513672,
+          8.175311088562012,
+          6.312770843505859,
+          8.354485511779785
+        ],
+        "prediction": 2,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 1805,
+        "gold": 0,
+        "status": "scored",
+        "scores": [
+          12.426372528076172,
+          8.788135528564453,
+          9.761622428894043,
+          8.711546897888184
+        ],
+        "prediction": 3,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 1898,
+        "gold": 1,
+        "status": "scored",
+        "scores": [
+          8.232125282287598,
+          9.389015197753906,
+          7.418037414550781,
+          9.453143119812012
+        ],
+        "prediction": 2,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 1908,
+        "gold": 3,
+        "status": "scored",
+        "scores": [
+          9.998015403747559,
+          9.771955490112305,
+          7.369417667388916,
+          8.687112808227539
+        ],
+        "prediction": 2,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 1983,
+        "gold": 1,
+        "status": "scored",
+        "scores": [
+          10.616575241088867,
+          9.088594436645508,
+          9.505461692810059,
+          10.12790298461914
+        ],
+        "prediction": 1,
+        "correct": true,
+        "choice_count": 4
+      },
+      {
+        "index": 1993,
+        "gold": 1,
+        "status": "scored",
+        "scores": [
+          7.934854984283447,
+          11.877846717834473,
+          9.03835391998291,
+          9.364242553710938
+        ],
+        "prediction": 0,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 2060,
+        "gold": 3,
+        "status": "scored",
+        "scores": [
+          7.971608638763428,
+          11.297981262207031,
+          8.600164413452148,
+          9.448539733886719
+        ],
+        "prediction": 0,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 2109,
+        "gold": 2,
+        "status": "scored",
+        "scores": [
+          9.935551643371582,
+          11.947049140930176,
+          11.763717651367188,
+          9.882201194763184
+        ],
+        "prediction": 3,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 2216,
+        "gold": 2,
+        "status": "scored",
+        "scores": [
+          9.825057983398438,
+          9.015525817871094,
+          10.808611869812012,
+          9.986804008483887
+        ],
+        "prediction": 1,
+        "correct": false,
+        "choice_count": 4
+      },
+      {
+        "index": 2371,
+        "gold": 1,
+        "status": "scored",
+        "scores": [
+          7.666865825653076,
+          7.329794406890869,
+          6.943411350250244,
+          8.337940216064453
+        ],
+        "prediction": 2,
+        "correct": false,
+        "choice_count": 4
+      }
+    ],
+    "limitations": [
+      "Small zero-shot diagnostic; not full ARC or CORE replication.",
+      "Exact-span exclusion only; near-duplicates may remain.",
+      "Context and overlap exclusions change the evaluated sample."
+    ]
+  },
+  "overlap": {
+    "data_identity": {
+      "manifest_sha256": "70008bd98060277053383e27945ec4bbd6bc3e8227e6a106bc9b7d009627dff7"
+    },
+    "span_tokens": 50,
+    "train_tokens": 7208961,
+    "validation_tokens": 65537,
+    "matching_spans": [],
+    "clean_block_starts": [
+      0,
+      1025,
+      2050,
+      3075,
+      4100,
+      5125,
+      6150,
+      7175,
+      8200,
+      9225,
+      10250,
+      11275,
+      12300,
+      13325,
+      14350,
+      15375,
+      16400,
+      17425,
+      18450,
+      19475,
+      20500,
+      21525,
+      22550,
+      23575,
+      24600,
+      25625,
+      26650,
+      27675,
+      28700,
+      29725,
+      30750,
+      31775,
+      32800,
+      33825,
+      34850,
+      35875,
+      36900,
+      37925,
+      38950,
+      39975,
+      41000,
+      42025,
+      43050,
+      44075,
+      45100,
+      46125,
+      47150,
+      48175,
+      49200,
+      50225,
+      51250,
+      52275,
+      53300,
+      54325,
+      55350,
+      56375,
+      57400,
+      58425,
+      59450,
+      60475,
+      61500,
+      62525,
+      63550
+    ],
+    "block_tokens": 1025,
+    "status": "exact_span_audit_complete",
+    "limitations": [
+      "Exact token spans only; edited, semantic and shorter overlap may remain.",
+      "Clean blocks are relative only to this exact training pool.",
+      "Existing benchmark data is unchanged for matched comparisons."
+    ]
+  },
+  "ledger": {
+    "budget_usd": 25.0,
+    "attempts": {
+      "0": {
+        "resource": "projects/tpubuilders/locations/us-east5-a/queuedResources/flaxchat-validation-small-0922-0",
+        "reservation_usd": 21.6,
+        "whole_slice_hourly_usd": 16.8,
+        "max_seconds": 4200,
+        "ancillary_reserve_usd": 2.0,
+        "status": "resource_absent",
+        "events": [
+          {
+            "event": "guard_verified",
+            "time_unix": 1790078142.8877702,
+            "receipt": {
+              "lease": {
+                "project": "tpubuilders",
+                "zone": "us-east5-a",
+                "queue": "flaxchat-validation-small-0922-0",
+                "deadline": 1790080539.758969
+              },
+              "execution": "projects/540509768325/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/0ca4884c-2d17-4a39-a953-8ea79934e681",
+              "location": "us-central1"
+            }
+          },
+          {
+            "event": "provisioning",
+            "time_unix": 1790078142.888418
+          },
+          {
+            "event": "running",
+            "time_unix": 1790078334.939331
+          },
+          {
+            "event": "work_finished",
+            "time_unix": 1790079018.581963,
+            "returncode": 0
+          },
+          {
+            "event": "resource_absent",
+            "time_unix": 1790079103.273113
+          }
+        ],
+        "posted_usage_usd": null,
+        "promotional_credits_usd": null
+      }
+    }
+  },
+  "cost": {
+    "request_through_verified_absence_seconds": 960.3846950531006,
+    "conservative_compute_usd": 4.481795243581137,
+    "actual_billed_spot_usd": null,
+    "excludes_ancillary_charges": true,
+    "rate_basis": "4 chips x $4.20/chip-hour on-demand, not actual Spot pricing"
+  },
+  "validation": {
+    "cpu_full_suite": {
+      "passed": 571,
+      "skipped": 7,
+      "deselected": 4
+    },
+    "targeted_final": {
+      "passed": 52
+    },
+    "ci_fix_regressions": {
+      "passed": 21
+    },
+    "note": "Counts overlap. New evaluation tools validated locally, not in the frozen physical training source. Coverage instrumentation aborted locally; no new coverage percentage claimed."
+  },
+  "limitations": [
+    "One measured invocation per context and topology; not a repeated statistical performance study.",
+    "FSDP=4 versus prior FSDP=8; model, global batch, data, schedule and checkpoint policy match.",
+    "Fault injection kills a process after commit; not a real Spot VM replacement.",
+    "Exact token-span exclusion does not rule out semantic or edited duplicates.",
+    "ARC-Easy sample is a zero-shot diagnostic, not full benchmark or paper replication."
+  ]
+}

@@ -164,7 +164,7 @@ def test_pages_uses_default_branch_and_pr_builds_without_deploying():
     assert "mermaid@11.12.0" in source
     assert "jsdom@26.1.0" in source
     assert "scripts/check_mermaid.mjs" in source
-    assert 'echo "$GITHUB_SHA" > _site/revision.txt' in source
+    assert 'echo "$GITHUB_SHA" > docs/revision.txt' in source
     assert '"${PAGE_URL%/}/revision.txt?' in source
     assert 'if [ "$actual" = "$expected" ]' in source
 

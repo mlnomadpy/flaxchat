@@ -16,7 +16,7 @@ PROFILES = {'correctness': (2, 32, 8), 'context': (2, 1024, 4),
 
 
 def build_plan(*, devices, hosts, fsdp, profiles, hourly_usd, budget_usd, seconds_per_profile,
-               token_manifest, checkpoint_prefix):
+               token_manifest, checkpoint_prefix, global_batch_size=None):
     if min(devices, hosts, fsdp, seconds_per_profile) < 1 or devices % hosts or devices % fsdp:
         raise ValueError('Devices must divide evenly across hosts and FSDP mesh')
     if seconds_per_profile > 1800 or not all(math.isfinite(x) and x > 0 for x in (hourly_usd, budget_usd)):
@@ -28,26 +28,29 @@ def build_plan(*, devices, hosts, fsdp, profiles, hourly_usd, budget_usd, second
     ceiling = len(profiles) * seconds_per_profile / 3600 * hourly_usd
     if ceiling > budget_usd:
         raise ValueError('Worst-case compute estimate exceeds the supplied budget')
+    batch = devices if global_batch_size is None else global_batch_size
+    if batch < 1 or batch % devices:
+        raise ValueError("Global batch must be positive and divisible by the device count")
     rows = []
     for profile in profiles:
         depth, sequence, steps = PROFILES[profile]
-        tokens = devices * sequence * steps
+        tokens = batch * sequence * steps
         sustained = profile.startswith('sustained-')
         artifact_dir = f'artifacts/scale-{devices}/{profile}'
         rows.append({'profile': profile, 'status': 'not_run', 'timeout_seconds': seconds_per_profile,
-                     'train_tokens_required': tokens + 1, 'validation_tokens_required': devices * sequence + 1,
+                     'train_tokens_required': tokens + 1, 'validation_tokens_required': batch * sequence + 1,
                      'quality_gate_argv': (['.venv/bin/python', '-m', 'scripts.validate_training_quality',
                                            '--summary', f'{artifact_dir}/training_summary.json',
                                            '--output', f'{artifact_dir}/quality.json'] if sustained else None),
                      'argv': ['.venv/bin/python', '-m', 'scripts.train_gpt2', '--token-manifest', token_manifest,
-                              '--depth', str(depth), '--seq-len', str(sequence), '--global-batch-size', str(devices),
+                              '--depth', str(depth), '--seq-len', str(sequence), '--global-batch-size', str(batch),
                               '--tokens', str(tokens), '--warmup-steps', '10' if sustained else '1', '--fsdp', str(fsdp),
                               '--eval-every', str(steps), '--checkpoint-interval-seconds', '300',
                               '--ckpt-dir', f'{checkpoint_prefix.rstrip("/")}/{profile}',
                               '--artifact-dir', artifact_dir]
                               + (['--compute-dtype', 'bfloat16', '--remat', '--loss-chunk-size', '128'] if sustained else [])})
     return {'status': 'plan_only', 'devices': devices, 'hosts': hosts, 'fsdp': fsdp,
-            'compute_ceiling_usd': ceiling, 'hourly_price_input_usd': hourly_usd,
+            'global_batch_size': batch, 'compute_ceiling_usd': ceiling, 'hourly_price_input_usd': hourly_usd,
             'limitations': ['Estimate excludes provisioning, setup, storage and network; keep a reserve.',
                             'A timeout is not a cloud-resource deletion policy; arm the independent watchdog.',
                             'Training smoke profiles do not replace checkpoint/recovery or model-quality acceptance.'],
@@ -59,6 +62,7 @@ def main():
     parser.add_argument('--devices', type=int, required=True)
     parser.add_argument('--hosts', type=int, required=True)
     parser.add_argument('--fsdp', type=int, default=1)
+    parser.add_argument('--global-batch-size', type=int, help='Fixed global batch for matched cross-slice benchmarks')
     parser.add_argument('--profiles', nargs='+', choices=PROFILES, default=['correctness', 'context', 'gpt2'])
     parser.add_argument('--hourly-usd', type=float, required=True, help='Current price for the entire slice')
     parser.add_argument('--budget-usd', type=float, required=True)

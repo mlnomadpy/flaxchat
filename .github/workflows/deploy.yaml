@@ -49,15 +49,15 @@ jobs:
             "$RUNNER_TEMP/mermaid-parser/node_modules/mermaid/dist/mermaid.esm.min.mjs" \
             "$RUNNER_TEMP/mermaid-parser/node_modules/jsdom/lib/api.js"
 
+      - name: Record source revision in the published site
+        if: github.event_name != 'pull_request'
+        run: echo "$GITHUB_SHA" > docs/revision.txt
+
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697 # v1.0.13
         with:
           source: ./docs
           destination: ./_site
-
-      - name: Record source revision in the published site
-        if: github.event_name != 'pull_request'
-        run: echo "$GITHUB_SHA" > _site/revision.txt
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1

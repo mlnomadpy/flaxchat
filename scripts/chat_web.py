@@ -79,9 +79,11 @@ def create_app(service: ChatService, settings: WebSettings | None = None) -> Fas
     async def websocket_endpoint(websocket: WebSocket) -> None:
         await websocket.accept()
         cancelled = threading.Event()
+        pending_raw = None
         try:
-            while True:
-                raw = await websocket.receive_text()
+            while not cancelled.is_set():
+                raw = pending_raw if pending_raw is not None else await websocket.receive_text()
+                pending_raw = None
                 try:
                     message = json.loads(raw)
                 except json.JSONDecodeError:
@@ -139,9 +141,9 @@ def create_app(service: ChatService, settings: WebSettings | None = None) -> Fas
                                 return_when=asyncio.FIRST_COMPLETED,
                             )
                             if disconnect in completed:
-                                output.cancel()
                                 event = disconnect.result()
                                 if event["type"] == "websocket.disconnect":
+                                    output.cancel()
                                     cancelled.set()
                                     await worker
                                     return
@@ -149,7 +151,9 @@ def create_app(service: ChatService, settings: WebSettings | None = None) -> Fas
                                     _error("overloaded", "wait for generation to finish")
                                 )
                                 disconnect = asyncio.create_task(websocket.receive())
-                                continue
+                                if not output.done():
+                                    output.cancel()
+                                    continue
                             kind, text = output.result()
                             if kind == "done":
                                 await websocket.send_text(json.dumps({"type": "done"}))
@@ -163,6 +167,15 @@ def create_app(service: ChatService, settings: WebSettings | None = None) -> Fas
                         await worker
                     finally:
                         disconnect.cancel()
+                        received = disconnect.result() if disconnect.done() and not disconnect.cancelled() else None
+                        # The receiver may have consumed an event while the
+                        # final token/done send yielded. Never read past a
+                        # disconnect or silently drop the next request.
+                        if isinstance(received, dict):
+                            if received['type'] == 'websocket.disconnect':
+                                cancelled.set()
+                            else:
+                                pending_raw = received.get('text')
         except WebSocketDisconnect:
             cancelled.set()
         finally:
