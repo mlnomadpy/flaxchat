@@ -18,9 +18,10 @@ import json
 import time
 import math
 import argparse
+from pathlib import Path
 import subprocess
 from functools import partial
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 
 import jax
 import jax.numpy as jnp
@@ -28,7 +29,7 @@ import numpy as np
 from jax.sharding import NamedSharding, PartitionSpec as P
 from flax import nnx
 
-from flaxchat.gpt import GPT, attention_backend_metadata
+from flaxchat.gpt import GPT, attention_backend_metadata, training_attention_backend
 from flaxchat.config import FlaxChatConfig, GPTConfig
 from flaxchat.common import (
     compute_init, replicate_on_mesh,
@@ -45,6 +46,8 @@ from flaxchat.checkpoint import (
     save_checkpoint,
 )
 from flaxchat.engine import Engine
+from flaxchat.training import place_host_batch, gather_process_metadata
+from flaxchat.dataloader import _tokenizer_identity
 from flaxchat.training import (
     accumulation_dtype,
     apply_gradients_if_finite,
@@ -153,16 +156,19 @@ def run(request: PretrainRequest) -> StageResult:
     # Distributed init
     # ---------------------------------------------------------------------------
     # Compute init: distributed setup + mesh creation over ALL devices
+    from scripts.validate_tpu import source_digest
+    source_hash = source_digest(Path(__file__).resolve().parents[2])
     mesh = compute_init()
     master_process = jax.process_index() == 0
     num_devices = jax.device_count()
     if args.cpu_smoke:
         # Keep the smoke run to one forward/backward pass per update on any device
         # count. The batch dimension itself must also divide the data mesh.
-        args.device_batch_size = max(args.device_batch_size, num_devices)
         args.total_batch_size = args.device_batch_size * args.max_seq_len * num_devices
         user_config["device_batch_size"] = args.device_batch_size
         user_config["total_batch_size"] = args.total_batch_size
+
+    local_batch_size = args.device_batch_size * jax.local_device_count()
 
     # TPU peak FLOPS
     peak_flops = get_peak_flops()
@@ -204,7 +210,20 @@ def run(request: PretrainRequest) -> StageResult:
         window_pattern=args.window_pattern,
         vocab_size=vocab_size,
     )
-    model_config = config.model
+    from flaxchat.common import COMPUTE_DTYPE
+    dtype = ({"bf16": "bfloat16", "f32": "float32"}[config.tpu.precision]
+             if args.resolved_config is not None else jnp.dtype(COMPUTE_DTYPE).name)
+    if config.model.compute_dtype not in {"auto", dtype}:
+        raise ValueError("Model and TPU precision settings conflict")
+    model_config = replace(config.model, compute_dtype=dtype)
+    config.tpu.precision = "f32" if dtype == "float32" else "bf16"
+    selected_attention, attention_fallback = training_attention_backend(
+        model_config.attention_backend, jax.default_backend(), num_devices
+    )
+    model_config = replace(model_config, attention_backend=selected_attention)
+    config.model = model_config
+    if attention_fallback:
+        print0(attention_fallback)
     print0(f"Model config:\n{json.dumps(asdict(model_config), indent=2)}")
 
     model = GPT(model_config, rngs=nnx.Rngs(0))
@@ -300,6 +319,8 @@ def run(request: PretrainRequest) -> StageResult:
     # ---------------------------------------------------------------------------
     # Optimizer
     # ---------------------------------------------------------------------------
+    if config.tpu.fsdp != 1 or config.tpu.tensor_parallel != 1:
+        raise ValueError("Legacy pretrain currently supports data parallelism only; use scripts.train_gpt2 --fsdp for validated parameter sharding")
     config.training.embedding_lr = args.embedding_lr
     config.training.unembedding_lr = args.unembedding_lr
     config.training.matrix_lr = args.matrix_lr
@@ -315,7 +336,9 @@ def run(request: PretrainRequest) -> StageResult:
     # ---------------------------------------------------------------------------
     base_dir = get_base_dir()
     output_dirname = args.model_tag if args.model_tag else f"d{args.depth}"
-    checkpoint_dir = os.path.join(base_dir, "base_checkpoints", output_dirname)
+    checkpoint_dir = config.checkpoint.dir or os.path.join(base_dir, "base_checkpoints", output_dirname)
+    if jax.process_count() > 1 and not checkpoint_dir.startswith("gs://"):
+        raise ValueError("Multi-host pretraining requires checkpoint.dir on shared gs:// storage")
     step = 0
     microbatches_processed = 0
     successful_updates = 0
@@ -328,18 +351,28 @@ def run(request: PretrainRequest) -> StageResult:
             step=args.resume_from_step,
             optimizer=optimizer,
             load_training_state=True,
+            expected_identity={"resolved_config": config.to_dict(), "source_python_sha256": source_hash},
         )
         step = int(restored_training_state["update_step"])
         if step != args.resume_from_step:
             raise ValueError(
                 f"Checkpoint step mismatch: requested {args.resume_from_step}, restored {step}"
             )
-        resume_dataloader_state = restored_metadata.get("dataloader_state")
+        saved_states = restored_metadata.get("dataloader_states")
+        if saved_states is not None:
+            if len(saved_states) != jax.process_count():
+                raise ValueError("Legacy parquet resume requires the original process topology; use the prepared token-pool trainer for topology migration")
+            resume_dataloader_state = saved_states[jax.process_index()]
+        else:
+            if jax.process_count() != 1:
+                raise ValueError("Checkpoint lacks per-process loader states")
+            resume_dataloader_state = restored_metadata.get("dataloader_state")
         microbatches_processed = int(restored_metadata.get("microbatches_processed", 0))
         successful_updates = int(restored_metadata.get("successful_updates", step))
         skipped_updates = int(restored_metadata.get("skipped_updates", 0))
         print0(f"Resumed model, optimizer, and loader state from step {step}")
-    ckpt_manager = create_checkpoint_manager(checkpoint_dir, max_to_keep=3)
+    ckpt_manager = create_checkpoint_manager(checkpoint_dir, max_to_keep=config.checkpoint.max_to_keep,
+                                             async_checkpointing=config.checkpoint.async_checkpointing)
 
     # ---------------------------------------------------------------------------
     # Dataloader
@@ -350,13 +383,13 @@ def run(request: PretrainRequest) -> StageResult:
             for _ in range(consumed_batches):
                 rng.integers(
                     0, vocab_size,
-                    size=(args.device_batch_size, args.max_seq_len + 1),
+                    size=(local_batch_size, args.max_seq_len + 1),
                     dtype=np.int32,
                 )
             while True:
                 tokens = rng.integers(
                     0, vocab_size,
-                    size=(args.device_batch_size, args.max_seq_len + 1),
+                    size=(local_batch_size, args.max_seq_len + 1),
                     dtype=np.int32,
                 )
                 yield tokens[:, :-1], tokens[:, 1:], {
@@ -365,7 +398,7 @@ def run(request: PretrainRequest) -> StageResult:
         train_loader = _smoke_loader(microbatches_processed)
     else:
         train_loader = data_loader_bos_bestfit(
-            tokenizer, args.device_batch_size, args.max_seq_len, split="train",
+            tokenizer, local_batch_size, args.max_seq_len, split="train",
             resume_state_dict=resume_dataloader_state,
         )
 
@@ -391,7 +424,7 @@ def run(request: PretrainRequest) -> StageResult:
             grads,
         )
         grad_finite = jnp.isfinite(loss) & tree_all_finite(grads)
-        apply_gradients_if_finite(model, optimizer, grads, loss)
+        grad_finite = apply_gradients_if_finite(model, optimizer, grads, loss)
 
         grad_norm = jnp.sqrt(jax.tree.reduce(
             lambda x, y: x + jnp.sum(y ** 2), grads, initializer=0.0
@@ -415,7 +448,7 @@ def run(request: PretrainRequest) -> StageResult:
             dtype=accumulation_dtype(args.gradient_accumulation_dtype),
         )
         grad_finite = jnp.isfinite(avg_loss) & tree_all_finite(avg_grads)
-        apply_gradients_if_finite(model, optimizer, avg_grads, avg_loss)
+        grad_finite = apply_gradients_if_finite(model, optimizer, avg_grads, avg_loss)
 
         grad_norm = jnp.sqrt(jax.tree.reduce(
             lambda x, y: x + jnp.sum(y ** 2), avg_grads, initializer=0.0
@@ -429,177 +462,185 @@ def run(request: PretrainRequest) -> StageResult:
     # ---------------------------------------------------------------------------
     smooth_train_loss = 0.0
     total_training_time = 0.0
+    loop_started = time.monotonic()
+    initial_step = step
+    initial_successful_updates = successful_updates
     dataloader_state = resume_dataloader_state
 
     print0(f"\nStarting training for {num_iterations} steps...")
 
-    val_loader = data_loader_bos_bestfit(tokenizer, args.device_batch_size, args.max_seq_len, split="val") if args.eval_every > 0 else None
+    val_loader = data_loader_bos_bestfit(tokenizer, local_batch_size, args.max_seq_len, split="val") if args.eval_every > 0 else None
     val_loss = None
     min_val_loss = float('inf')
 
-    while True:
-        last_step = step == num_iterations
+    from flaxchat.prefetch import BackgroundPrefetcher
+    source_loader = train_loader
+    train_loader = BackgroundPrefetcher(lambda: next(source_loader), mesh, None, place=False)
+    try:
+        while True:
+            last_step = step == num_iterations
 
-        # Evaluate val loss
-        if args.eval_every > 0 and (last_step or step % args.eval_every == 0):
-            val_sum, val_count = 0.0, 0
-            eval_steps = max(1, args.eval_tokens // (args.device_batch_size * args.max_seq_len * num_devices))
-            for _ in range(eval_steps):
-                vi, vt, _ = next(val_loader) if val_loader else (None, None, None)
-                if vi is None:
-                    break
-                vi_j, vt_j = jnp.array(vi), jnp.array(vt)
-                vl = model(vi_j, vt_j)
-                val_sum += float(vl)
-                val_count += 1
-            if val_count > 0:
-                val_loss = val_sum / val_count
-                if val_loss < min_val_loss:
-                    min_val_loss = val_loss
-                print0(f"Step {step:05d} | Val loss: {val_loss:.6f}")
+            # Evaluate val loss
+            if args.eval_every > 0 and (last_step or step % args.eval_every == 0):
+                val_sum, val_count = 0.0, 0
+                eval_steps = max(1, args.eval_tokens // (args.device_batch_size * args.max_seq_len * num_devices))
+                for _ in range(eval_steps):
+                    vi, vt, _ = next(val_loader) if val_loader else (None, None, None)
+                    if vi is None:
+                        break
+                    vi_j, vt_j = place_host_batch(vi, mesh), place_host_batch(vt, mesh)
+                    vl = model(vi_j, vt_j)
+                    val_sum += float(vl)
+                    val_count += 1
+                if val_count > 0:
+                    val_loss = val_sum / val_count
+                    if val_loss < min_val_loss:
+                        min_val_loss = val_loss
+                    print0(f"Step {step:05d} | Val loss: {val_loss:.6f}")
 
-        # Sampling
-        if args.sample_every > 0 and master_process and (last_step or (step > 0 and step % args.sample_every == 0)):
-            prompts = [
-                "The capital of France is",
-                "The chemical symbol of gold is",
-                "The planets of the solar system are:",
-            ]
-            engine = Engine(model, tokenizer)
-            for prompt in prompts:
-                tokens = tokenizer(prompt, prepend="<|bos|>")
-                all_tokens, texts = engine.generate_batch(tokens, num_samples=1, max_tokens=16, temperature=0)
-                print0(texts[0])
+            # Sampling
+            if args.sample_every > 0 and (last_step or (step > 0 and step % args.sample_every == 0)):
+                prompts = [
+                    "The capital of France is",
+                    "The chemical symbol of gold is",
+                    "The planets of the solar system are:",
+                ]
+                engine = Engine(model, tokenizer)
+                for prompt in prompts:
+                    tokens = tokenizer(prompt, prepend="<|bos|>")
+                    all_tokens, texts = engine.generate_batch(tokens, num_samples=1, max_tokens=16, temperature=0)
+                    print0(texts[0])
 
-        # Save checkpoint
-        if last_step or (step > 0 and args.save_every > 0 and step % args.save_every == 0):
-            checkpoint_metadata = {
-                "step": step,
-                "model_config": asdict(model_config),
-                "resolved_config": config.to_dict(),
-                "user_config": user_config,
-                "total_batch_size": total_batch_size,
-                "tokenizer_identity": {
-                    "class": f"{type(tokenizer).__module__}.{type(tokenizer).__qualname__}",
-                    "vocab_size": vocab_size,
-                },
-                "data_manifest_identity": (
-                    dataloader_state.get("dataset_manifest", {}).get("sha256", "unavailable")
-                    if dataloader_state else "unavailable"
-                ),
-                "dataloader_state": dataloader_state,
-                "source_revision": source_revision,
-                "attention_backend": attention_backend_metadata(
-                    model_config.attention_backend, model_config.sequence_len
-                ),
-                "microbatches_processed": microbatches_processed,
-                "successful_updates": successful_updates,
-                "skipped_updates": skipped_updates,
-            }
-            save_checkpoint(
-                ckpt_manager, step, model, optimizer, checkpoint_metadata,
-                training_state={
-                    "update_step": jnp.asarray(step, dtype=jnp.int32),
-                    "microbatches_processed": jnp.asarray(
-                        microbatches_processed, dtype=jnp.int32
+            # Save checkpoint
+            if last_step or (step > 0 and args.save_every > 0 and step % args.save_every == 0):
+                checkpoint_metadata = {
+                    "step": step,
+                    "model_config": asdict(model_config),
+                    "resolved_config": config.to_dict(),
+                    "user_config": user_config,
+                    "total_batch_size": total_batch_size,
+                    "tokenizer_identity": _tokenizer_identity(tokenizer),
+                    "data_manifest_identity": (
+                        dataloader_state.get("dataset_manifest", {}).get("sha256", "unavailable")
+                        if dataloader_state else "unavailable"
                     ),
-                },
-            )
+                    "dataloader_state": dataloader_state,
+                    "dataloader_states": gather_process_metadata(dataloader_state),
+                    "source_revision": source_revision,
+                    "source_python_sha256": source_hash,
+                    "attention_backend": attention_backend_metadata(
+                        model_config.attention_backend, model_config.sequence_len
+                    ),
+                    "microbatches_processed": microbatches_processed,
+                    "successful_updates": successful_updates,
+                    "skipped_updates": skipped_updates,
+                }
+                save_checkpoint(
+                    ckpt_manager, step, model, optimizer, checkpoint_metadata,
+                    training_state={
+                        "update_step": jax.device_put(jnp.asarray(step, dtype=jnp.int32), NamedSharding(mesh, P())),
+                        "microbatches_processed": jax.device_put(jnp.asarray(
+                            microbatches_processed, dtype=jnp.int32
+                        ), NamedSharding(mesh, P())),
+                    },
+                )
 
-        if last_step:
-            break
+            if last_step:
+                break
 
-        # ------- Single training step (with gradient accumulation) -------
-        t0 = time.time()
+            # ------- Single training step (with gradient accumulation) -------
+            t0 = time.time()
 
-        if grad_accum_steps == 1:
-            # Fast path: no accumulation needed
-            inputs_np, targets_np, dataloader_state = next(train_loader)
-            # For multi-host: each host loads its own shard, create global array
-            if jax.process_count() > 1:
-                data_sharding = NamedSharding(mesh, P('data'))
-                inputs = jax.make_array_from_process_local_data(data_sharding, inputs_np)
-                targets = jax.make_array_from_process_local_data(data_sharding, targets_np)
-            else:
-                inputs = jnp.array(inputs_np)
-                targets = jnp.array(targets_np)
-            loss, grad_norm, grad_finite = train_step(model, optimizer, inputs, targets)
-            microbatches_processed += 1
-        else:
-            # Gradient accumulation: collect micro-batches then scan
-            micro_inputs_list = []
-            micro_targets_list = []
-            for _ in range(grad_accum_steps):
+            if grad_accum_steps == 1:
+                # Fast path: no accumulation needed
                 inputs_np, targets_np, dataloader_state = next(train_loader)
-                micro_inputs_list.append(inputs_np)
-                micro_targets_list.append(targets_np)
-            all_inputs = jnp.array(np.stack(micro_inputs_list))   # (num_accum, B, T)
-            all_targets = jnp.array(np.stack(micro_targets_list))  # (num_accum, B, T)
-            loss, grad_norm, grad_finite = train_step_grad_accum(
-                model, optimizer, all_inputs, all_targets, grad_accum_steps
-            )
-            microbatches_processed += grad_accum_steps
+                inputs = place_host_batch(inputs_np, mesh)
+                targets = place_host_batch(targets_np, mesh)
+                if inputs.size != total_batch_size:
+                    raise ValueError("Placed global batch does not match the declared token budget")
+                loss, grad_norm, grad_finite = train_step(model, optimizer, inputs, targets)
+                microbatches_processed += 1
+            else:
+                # Gradient accumulation: collect micro-batches then scan
+                micro_inputs_list = []
+                micro_targets_list = []
+                for _ in range(grad_accum_steps):
+                    inputs_np, targets_np, dataloader_state = next(train_loader)
+                    micro_inputs_list.append(inputs_np)
+                    micro_targets_list.append(targets_np)
+                all_inputs = place_host_batch(np.stack(micro_inputs_list), mesh, batch_axis=1)   # (num_accum, B, T)
+                all_targets = place_host_batch(np.stack(micro_targets_list), mesh, batch_axis=1)  # (num_accum, B, T)
+                if all_inputs.size != total_batch_size:
+                    raise ValueError("Accumulated global batch does not match the declared token budget")
+                loss, grad_norm, grad_finite = train_step_grad_accum(
+                    model, optimizer, all_inputs, all_targets, grad_accum_steps
+                )
+                microbatches_processed += grad_accum_steps
 
-        # Force sync for timing
-        loss_val = float(loss)
-        update_succeeded = bool(grad_finite)
-        successful_updates += int(update_succeeded)
-        skipped_updates += int(not update_succeeded)
-        t1 = time.time()
-        dt = t1 - t0
+            # Force sync for timing
+            loss_val = float(loss)
+            update_succeeded = bool(grad_finite)
+            if not update_succeeded:
+                raise FloatingPointError("Nonfinite update rejected; restore the last committed checkpoint")
+            successful_updates += int(update_succeeded)
+            skipped_updates += int(not update_succeeded)
+            t1 = time.time()
+            dt = t1 - t0
 
-        # Logging
-        ema_beta = 0.9
-        smooth_train_loss = ema_beta * smooth_train_loss + (1 - ema_beta) * loss_val
-        debiased_loss = smooth_train_loss / (1 - ema_beta ** (step + 1))
+            # Logging
+            ema_beta = 0.9
+            smooth_train_loss = ema_beta * smooth_train_loss + (1 - ema_beta) * loss_val
+            debiased_loss = smooth_train_loss / (1 - ema_beta ** (step + 1))
 
-        if step > 10:
             total_training_time += dt
 
-        pct_done = 100 * step / num_iterations
-        tok_per_sec = int(total_batch_size / dt) if dt > 0 else 0
-        flops_per_sec = num_flops_per_token * total_batch_size / dt if dt > 0 else 0
-        mfu = 100 * flops_per_sec / (peak_flops * num_devices) if peak_flops < float('inf') else 0
+            pct_done = 100 * step / num_iterations
+            tok_per_sec = int(total_batch_size / dt) if dt > 0 else 0
+            flops_per_sec = num_flops_per_token * total_batch_size / dt if dt > 0 else 0
+            mfu = 100 * flops_per_sec / (peak_flops * num_devices) if peak_flops < float('inf') else 0
 
-        steps_done = step - 10
-        if steps_done > 0:
-            avg_time = total_training_time / steps_done
-            eta_seconds = (num_iterations - step) * avg_time
-            eta_str = f" | eta: {eta_seconds / 60:.1f}m"
-        else:
-            eta_str = ""
+            steps_done = step - initial_step + 1
+            if steps_done > 0:
+                avg_time = total_training_time / steps_done
+                eta_seconds = (num_iterations - step) * avg_time
+                eta_str = f" | eta: {eta_seconds / 60:.1f}m"
+            else:
+                eta_str = ""
 
-        epoch_info = f"ep:{dataloader_state['epoch']} pq:{dataloader_state['pq_idx']} rg:{dataloader_state['rg_idx']}"
-        print0(
-            f"step {step:05d}/{num_iterations:05d} ({pct_done:.2f}%) | "
-            f"loss: {debiased_loss:.6f} | dt: {dt * 1000:.0f}ms | "
-            f"tok/s: {tok_per_sec:,} | mfu: {mfu:.1f}% | "
-            f"{epoch_info}{eta_str}"
-        )
+            epoch_info = f"ep:{dataloader_state['epoch']} pq:{dataloader_state['pq_idx']} rg:{dataloader_state['rg_idx']}"
+            print0(
+                f"step {step:05d}/{num_iterations:05d} ({pct_done:.2f}%) | "
+                f"loss: {debiased_loss:.6f} | dt: {dt * 1000:.0f}ms | "
+                f"tok/s: {tok_per_sec:,} | mfu: {mfu:.1f}% | "
+                f"{epoch_info}{eta_str}"
+            )
 
-        if step % 100 == 0:
-            wandb_run.log({
-                "step": step,
-                "train/loss": debiased_loss,
-                "train/dt": dt,
-                "train/tok_per_sec": tok_per_sec,
-                "train/mfu": mfu,
-                "train/grad_norm": float(grad_norm),
-                "train/microbatches_processed": microbatches_processed,
-                "train/successful_updates": successful_updates,
-                "train/skipped_updates": skipped_updates,
-            })
+            if step % 100 == 0:
+                wandb_run.log({
+                    "step": step,
+                    "train/loss": debiased_loss,
+                    "train/dt": dt,
+                    "train/tok_per_sec": tok_per_sec,
+                    "train/mfu": mfu,
+                    "train/grad_norm": float(grad_norm),
+                    "train/microbatches_processed": microbatches_processed,
+                    "train/successful_updates": successful_updates,
+                    "train/skipped_updates": skipped_updates,
+                })
 
-        step += 1
+            step += 1
 
-        # GC management (like nanochat)
-        if step == 1:
-            gc.collect()
+            # GC management (like nanochat)
+            if step == 1:
+                gc.collect()
+
+    finally:
+        train_loader.stop()
+        ckpt_manager.wait_until_finished()
+        ckpt_manager.close()
 
     # Cleanup
     print0(f"\nTraining complete! Total time: {total_training_time / 60:.1f}m")
-    ckpt_manager.wait_until_finished()
-    ckpt_manager.close()
     wandb_run.finish()
     return StageResult(
         stage="pretrain",
@@ -609,6 +650,9 @@ def run(request: PretrainRequest) -> StageResult:
             "successful_updates": successful_updates,
             "skipped_updates": skipped_updates,
             "training_seconds": total_training_time,
+            "loop_wall_seconds": time.monotonic() - loop_started,
+            "new_committed_tokens": (successful_updates - initial_successful_updates) * total_batch_size,
+            "end_to_end_tokens_per_second": ((successful_updates - initial_successful_updates) * total_batch_size / (time.monotonic() - loop_started)),
         },
         artifact_paths=(checkpoint_dir,),
     )

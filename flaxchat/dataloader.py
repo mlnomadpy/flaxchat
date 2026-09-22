@@ -55,11 +55,11 @@ def _dataset_manifest(split: str, paths: list[str]) -> dict:
     for path in paths:
         try:
             stat = os.stat(path)
-            files.append({
-                "path": os.path.abspath(path),
-                "size": stat.st_size,
-                "mtime_ns": stat.st_mtime_ns,
-            })
+            digest = hashlib.sha256()
+            with open(path, 'rb') as handle:
+                for block in iter(lambda: handle.read(1024 * 1024), b''):
+                    digest.update(block)
+            files.append({"size": stat.st_size, "sha256": digest.hexdigest()})
         except OSError:
             # Remote and mocked paths still receive a stable ordered identity.
             files.append({"path": path})
@@ -80,6 +80,18 @@ def _tokenizer_identity(tokenizer) -> dict:
     for method, key in (("get_vocab_size", "vocab_size"), ("get_bos_token_id", "bos_token_id")):
         if hasattr(tokenizer, method):
             identity[key] = int(getattr(tokenizer, method)())
+    backend = getattr(tokenizer, "tokenizer", None)
+    if backend is not None and hasattr(backend, "to_str"):
+        identity['rules_sha256'] = hashlib.sha256(backend.to_str().encode()).hexdigest()
+    elif hasattr(tokenizer, 'enc'):
+        import pickle
+        identity['rules_sha256'] = hashlib.sha256(pickle.dumps(tokenizer.enc)).hexdigest()
+    elif hasattr(tokenizer, 'id_to_token') and hasattr(tokenizer, 'get_vocab_size'):
+        vocabulary = [tokenizer.id_to_token(i) for i in range(tokenizer.get_vocab_size())]
+        identity['vocabulary_sha256'] = hashlib.sha256(json.dumps(vocabulary, sort_keys=True).encode()).hexdigest()
+    elif hasattr(tokenizer, 'decode') and hasattr(tokenizer, 'get_vocab_size'):
+        vocabulary = [tokenizer.decode([i]) for i in range(tokenizer.get_vocab_size())]
+        identity['vocabulary_sha256'] = hashlib.sha256(json.dumps(vocabulary).encode()).hexdigest()
     return identity
 
 
@@ -177,7 +189,7 @@ def data_loader_bos_bestfit(
         "sequence_length": T,
         "buffer_size": buffer_size,
         "tokenizer_batch_size": tokenizer_batch_size,
-        "policy": "bos_bestfit_v2",
+        "policy": "bos_bestfit_preserve_tail_v3",
     }
     topology = {
         "process_count": jax.process_count(),
@@ -225,6 +237,7 @@ def data_loader_bos_bestfit(
                     index = min(range(len(doc_buffer)), key=lambda i: len(doc_buffer[i]))
                     doc = doc_buffer.pop(index)
                     row_buffer[row_idx, pos:pos + remaining] = doc[:remaining]
+                    doc_buffer.append(doc[remaining:])
                     pos += remaining
 
         inputs = row_buffer[:, :-1].copy()

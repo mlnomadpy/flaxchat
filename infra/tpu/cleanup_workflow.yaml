@@ -1,0 +1,66 @@
+# Durable expiry controller. Deploy in the resource's own project with a
+# dedicated service account granted TPU queued-resource/node get/delete only.
+main:
+  params: [lease]
+  steps:
+    - validate:
+        switch:
+          - condition: ${lease.project != sys.get_env("GOOGLE_CLOUD_PROJECT_ID") or not text.match_regex(lease.queue, "^flaxchat-validation-[a-z0-9-]+$") or not text.match_regex(lease.zone, "^[a-z]+-[a-z0-9]+-[a-z]$") or lease.deadline <= sys.now() or lease.deadline > sys.now() + 7200}
+            raise: "Invalid resource lease"
+    - wait_for_expiry:
+        call: sys.sleep
+        args:
+          seconds: ${lease.deadline - sys.now()}
+    - initialize:
+        assign:
+          - resource: ${"https://tpu.googleapis.com/v2/projects/" + lease.project + "/locations/" + lease.zone + "/queuedResources/" + lease.queue}
+          - attempts: 0
+    - delete_resource:
+        try:
+          call: http.delete
+          args:
+            url: ${resource}
+            query:
+              force: true
+            auth:
+              type: OAuth2
+          result: deletion
+        except:
+          as: error
+          steps:
+            - absent:
+                switch:
+                  - condition: ${map.get(error, "code") == 404}
+                    return: "Resource absent"
+            - retry_later:
+                next: retry_delete
+    # Re-read the actual resource: an accepted long-running operation is not
+    # proof that deletion finished. Repeat until absent, or fail visibly.
+    - retry_delete:
+        assign:
+          - attempts: ${attempts + 1}
+    - exhausted:
+        switch:
+          - condition: ${attempts >= 60}
+            raise: "Resource deletion did not finish within 30 minutes"
+    - backoff:
+        call: sys.sleep
+        args:
+          seconds: 30
+    - verify_absent:
+        try:
+          call: http.get
+          args:
+            url: ${resource}
+            auth:
+              type: OAuth2
+          result: resource_state
+        except:
+          as: error
+          steps:
+            - absent_after_delete:
+                switch:
+                  - condition: ${map.get(error, "code") == 404}
+                    return: "Resource deleted"
+    - continue_cleanup:
+        next: delete_resource

@@ -24,6 +24,43 @@ from flaxchat.checkpoint import (
 from flaxchat.gpt import GPT
 
 
+def test_integrity_hash_preserves_reordered_mesh_and_partial_chunk():
+    import numpy as np
+    from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
+    from flaxchat.checkpoint import _state_manifest
+
+    if jax.device_count() < 2:
+        pytest.skip('Requires multiple devices for reordered checkpoint mesh')
+    mesh = Mesh(np.asarray(jax.devices()[::-1]), ('fsdp',))
+    # More than one 1-MiB chunk, with a partial final chunk.
+    values = np.arange(262144 + 8 * jax.device_count(), dtype=np.float32)
+    sharded = jax.device_put(values, NamedSharding(mesh, P('fsdp')))
+    assert _state_manifest({'weight': sharded}) == _state_manifest({'weight': values})
+    empty = jax.device_put(values[:0], NamedSharding(mesh, P('fsdp')))
+    assert _state_manifest({'weight': empty}) == _state_manifest({'weight': values[:0]})
+
+
+def test_sharded_manifest_reuses_reader_without_reusing_content():
+    import numpy as np
+    from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
+    from flaxchat.checkpoint import _chunk_reader, _state_manifest
+
+    if jax.device_count() < 2:
+        pytest.skip('Requires multiple devices for sharded hashing')
+    mesh = Mesh(np.asarray(jax.devices()), ('fsdp',))
+    sharding = NamedSharding(mesh, P('fsdp'))
+    values = np.arange(8 * jax.device_count(), dtype=np.float32)
+    _chunk_reader.cache_clear()
+    first = _state_manifest({'weight': jax.device_put(values, sharding)})
+    before = _chunk_reader.cache_info()
+    changed = _state_manifest({'weight': jax.device_put(values + 1, sharding)})
+    after = _chunk_reader.cache_info()
+    assert after.misses == before.misses == 1
+    assert after.hits == before.hits + 1
+    assert changed != first
+    assert changed == _state_manifest({'weight': values + 1})
+
+
 # ---------------------------------------------------------------------------
 # Tests for create_checkpoint_manager
 # ---------------------------------------------------------------------------
@@ -344,3 +381,12 @@ class TestRestoreModelFromCheckpoint:
         meta = restore_model_from_checkpoint(model, ckpt_dir)
         assert meta["epoch"] == 3
         assert meta["loss"] == 1.23
+
+
+def test_gcs_checkpoint_path_is_preserved():
+    from unittest.mock import patch
+    from flaxchat.checkpoint import create_checkpoint_manager
+    with patch('flaxchat.checkpoint.ocp.CheckpointManager') as manager, patch('flaxchat.checkpoint.os.makedirs') as mkdir:
+        create_checkpoint_manager('gs://test-bucket/checkpoints', async_checkpointing=False)
+    assert manager.call_args.kwargs['directory'] == 'gs://test-bucket/checkpoints'
+    mkdir.assert_not_called()

@@ -12,8 +12,12 @@ def _record(index: int) -> dict:
     return {
         "passed": True,
         "source_revision": "a" * 40,
+        "source_python_sha256": "e" * 64,
+        "hostname": f"worker-{index}",
         "environment_sha256": "b" * 64,
         "topology": {
+            "backend": "tpu",
+            "local_device_count": 8,
             "process_index": index,
             "process_count": 2,
             "device_count": 16,
@@ -24,7 +28,7 @@ def _record(index: int) -> dict:
                 struct.pack(f"<{len(global_order)}i", *global_order)
             ).hexdigest(),
         },
-        "training": {"loss": 1.25},
+        "training": {"loss": 39.375, "gradient": -52.5, "updated_parameter": .5525},
     }
 
 
@@ -70,3 +74,25 @@ def test_summary_rejects_single_host_and_invalid_cost():
         validate_records([_record(0)], cost_usd=0.1)
     with pytest.raises(ValueError, match="finite non-negative"):
         validate_records([_record(0), _record(1)], cost_usd=float("nan"))
+
+
+@pytest.mark.parametrize('mutation', ['cpu', 'same_host', 'wrong_gradient', 'wrong_devices', 'empty', 'bad_sha'])
+def test_physical_acceptance_rejects_false_positive_evidence(mutation):
+    records = [_record(0), _record(1)]
+    if mutation == 'cpu':
+        for record in records:
+            record['topology']['backend'] = 'cpu'
+    elif mutation == 'same_host':
+        records[1]['hostname'] = records[0]['hostname']
+    elif mutation == 'wrong_gradient':
+        for record in records:
+            record['training']['gradient'] = 0.
+    elif mutation == 'wrong_devices':
+        records[0]['topology']['local_device_count'] = 1
+    elif mutation == 'empty':
+        records[0]['data']['local_indices'] = []
+    else:
+        for record in records:
+            record['source_revision'] = 'main'
+    with pytest.raises(ValueError):
+        validate_records(records, cost_usd=0.)

@@ -23,10 +23,17 @@ class GPTConfig:
     window_pattern: str = "SSSL"
     tie_embeddings: bool = False
     use_scan: bool = False
+    use_remat: bool = False
+    loss_chunk_size: int = 0  # token chunks; 0 retains the full-logits reference
     attention_backend: str = "auto"  # auto | xla | splash
     standard_gpt: bool = False
+    compute_dtype: str = "auto"  # auto | float32 | bfloat16 | float16
 
     def __post_init__(self):
+        if self.compute_dtype not in {"auto", "float32", "bfloat16", "float16"}:
+            raise ValueError("Unsupported compute_dtype")
+        if self.loss_chunk_size < 0:
+            raise ValueError("loss_chunk_size must be non-negative")
         if self.sequence_len <= 0:
             raise ValueError("sequence_len must be positive")
         if self.vocab_size <= 0:

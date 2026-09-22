@@ -32,8 +32,16 @@ def apply_gradients_if_finite(model, optimizer, grads, loss):
     finite = jnp.isfinite(loss) & tree_all_finite(grads)
 
     def update(model, optimizer, grads):
+        before_model = jax.tree.map(jnp.copy, nnx.state(model))
+        before_optimizer = jax.tree.map(jnp.copy, nnx.state(optimizer))
         optimizer.update(model, grads)
-        return jnp.array(True)
+        candidate_model, candidate_optimizer = nnx.state(model), nnx.state(optimizer)
+        accepted = tree_all_finite(candidate_model) & tree_all_finite(candidate_optimizer)
+        def choose(new, old):
+            return jnp.where(accepted, new, old)
+        nnx.update(model, jax.tree.map(choose, candidate_model, before_model))
+        nnx.update(optimizer, jax.tree.map(choose, candidate_optimizer, before_optimizer))
+        return accepted
 
     def skip(model, optimizer, grads):
         del model, optimizer, grads
@@ -65,3 +73,74 @@ def gradients_for_microbatches(model, all_inputs, all_targets, dtype=jnp.float32
     count = all_inputs.shape[0]
     averaged = jax.tree.map(lambda grad: grad / count, accumulated)
     return jnp.mean(losses), averaged
+
+
+def place_host_batch(array, mesh, *, batch_axis=0):
+    """Place process-local rows into one global batch, including accumulation.
+
+    Every process contributes local_device_count * per_device_batch rows.
+    Accumulation uses axis 1; the microstep axis is replicated.
+    """
+    from jax.sharding import NamedSharding, PartitionSpec
+    axes = [None] * array.ndim
+    axes[batch_axis] = 'data'
+    sharding = NamedSharding(mesh, PartitionSpec(*axes))
+    return jax.make_array_from_process_local_data(sharding, array)
+
+
+def gather_process_metadata(value):
+    """Collect small JSON resume metadata in rank order on every worker."""
+    import json
+    import numpy as np
+    from jax.experimental import multihost_utils
+    if jax.process_count() == 1:
+        return [value]
+    encoded = json.dumps(value, sort_keys=True).encode()
+    sizes = np.asarray(multihost_utils.process_allgather(np.asarray(len(encoded), np.int32))).reshape(-1)
+    payload = np.zeros(int(sizes.max()), np.uint8)
+    payload[:len(encoded)] = np.frombuffer(encoded, np.uint8)
+    gathered = np.asarray(multihost_utils.process_allgather(payload)).reshape(len(sizes), -1)
+    return [json.loads(bytes(row[:size])) for row, size in zip(gathered, sizes, strict=True)]
+
+
+def initialize_sharded(factory, mesh, *, fsdp=1):
+    """Compile initialization directly into target shardings, without full leaves.
+
+    The factory may return a model or (model, optimizer). Abstract evaluation
+    determines layout before any parameter or optimizer buffer is allocated.
+    """
+    from jax.sharding import NamedSharding, PartitionSpec as P
+    if fsdp < 1 or mesh.size % fsdp:
+        raise ValueError('fsdp must divide the mesh size')
+    abstract = nnx.eval_shape(factory)
+    graph, state = nnx.split(abstract)
+    def layout(leaf):
+        shape = getattr(leaf, 'shape', ())
+        spec = P('fsdp') if len(shape) >= 2 and fsdp > 1 and shape[0] % fsdp == 0 else P()
+        return NamedSharding(mesh, spec)
+    shardings = jax.tree.map(layout, state)
+    @jax.jit(out_shardings=shardings)
+    def initialize():
+        return nnx.split(factory())[1]
+    return nnx.merge(graph, initialize())
+
+
+def pretraining_optimizer(model, *, kind, learning_rate, warmup_steps, steps):
+    """One optimizer recipe shared by training and portable checkpoint restore."""
+    import optax
+    schedule = (optax.warmup_cosine_decay_schedule(0., learning_rate, warmup_steps, steps,
+                                                  end_value=learning_rate * .05)
+                if warmup_steps else optax.cosine_decay_schedule(learning_rate, steps, alpha=.05))
+    if kind == 'muon':
+        from flaxchat.config import FlaxChatConfig
+        from flaxchat.optim import setup_optimizer
+        config = FlaxChatConfig(model=model.config)
+        config.training.matrix_lr = learning_rate
+        optimizer = setup_optimizer(model, config, weight_decay_scaled=.01,
+                                    lr_schedule_fn=lambda step: schedule(step) / learning_rate)
+    elif kind == 'adamw':
+        optimizer = nnx.Optimizer(model, optax.chain(optax.clip_by_global_norm(1.),
+                                  optax.adamw(schedule, weight_decay=.01)), wrt=nnx.Param)
+    else:
+        raise ValueError(f'Unsupported optimizer recipe: {kind}')
+    return optimizer, schedule

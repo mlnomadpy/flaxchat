@@ -37,6 +37,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gpt-sequence-length", type=int, default=1024)
     parser.add_argument("--gpt-lr", type=float, default=6e-4)
     parser.add_argument("--tokenizer", default="gpt2")
+    parser.add_argument("--token-manifest", help="Prepared manifest under /kaggle/input")
+    parser.add_argument("--token-dataset", help="Kaggle owner/dataset containing prepared tokens")
     parser.add_argument("--max-vocab-size", type=int, default=60_000)
     parser.add_argument("--dataset", default="HuggingFaceFW/fineweb-edu")
     parser.add_argument("--dataset-subset", default="sample-10BT")
@@ -55,6 +57,8 @@ def build_launch_spec(args: argparse.Namespace) -> LaunchSpec:
     workload = getattr(args, "workload", "tinystories")
     artifact_dir = args.artifact_dir
     if workload == "fineweb-gpt2":
+        if not getattr(args, "token_manifest", None) or not getattr(args, "token_dataset", None):
+            raise ValueError("FineWeb requires --token-manifest and --token-dataset; prepare tokens on CPU first")
         if args.max_vocab_size > 60_000:
             raise ValueError("--max-vocab-size must not exceed 60000 for FineWeb GPT-2")
         if artifact_dir == "artifacts/tinystories":
@@ -66,10 +70,8 @@ def build_launch_spec(args: argparse.Namespace) -> LaunchSpec:
             "--seq-len", str(args.gpt_sequence_length),
             "--tokens", str(args.tokens),
             "--lr", str(args.gpt_lr),
-            "--tokenizer", args.tokenizer,
+            "--token-manifest", args.token_manifest,
             "--max-vocab-size", str(args.max_vocab_size),
-            "--dataset", args.dataset,
-            "--dataset-subset", args.dataset_subset,
             "--save-every", str(args.save_every),
             "--ckpt-dir", f"{artifact_dir}/checkpoints",
             "--artifact-dir", artifact_dir,
@@ -77,6 +79,7 @@ def build_launch_spec(args: argparse.Namespace) -> LaunchSpec:
         )
         resolved_config = {
             "workload": workload, "depth": args.gpt_depth,
+            "token_manifest": args.token_manifest, "token_dataset": args.token_dataset,
             "batch_per_device": args.batch_per_device,
             "sequence_length": args.gpt_sequence_length, "tokens": args.tokens,
             "tokenizer": args.tokenizer, "max_vocab_size": args.max_vocab_size,
@@ -131,7 +134,7 @@ def render_bundle(spec: LaunchSpec, kernel_id: str, destination: Path) -> None:
         "enable_gpu": str(spec.accelerator == "gpu").lower(),
         "enable_tpu": str(spec.accelerator == "tpu").lower(),
         "enable_internet": "true",
-        "dataset_sources": [],
+        "dataset_sources": [spec.resolved_config["token_dataset"]] if spec.resolved_config.get("token_dataset") else [],
         "competition_sources": [],
         "kernel_sources": [],
         "model_sources": [],

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from typing import cast
+
+from flaxchat.training import apply_gradients_if_finite
+
 from flax import nnx
 import jax
 import jax.numpy as jnp
@@ -23,9 +27,9 @@ def preference_loss(logits, targets, advantages):
 
 
 @nnx.jit
-def train_step(model, optimizer, inputs, targets, advantages):
+def train_step(model, optimizer, inputs, targets, advantages) -> jax.Array:
     loss, gradients = nnx.value_and_grad(
         lambda current: preference_loss(current(inputs), targets, advantages)
     )(model)
-    optimizer.update(model, gradients)
-    return loss
+    updated = apply_gradients_if_finite(model, optimizer, gradients, loss)
+    return cast(jax.Array, jnp.where(updated, loss, jnp.nan))

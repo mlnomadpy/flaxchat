@@ -15,6 +15,7 @@ Usage:
 
 import threading
 import queue
+import copy
 
 import jax
 import jax.numpy as jnp
@@ -27,7 +28,7 @@ class PrefetchWorkerError(RuntimeError):
 class BackgroundPrefetcher:
     """Prefetch batches in a background thread while TPU computes."""
 
-    def __init__(self, data_fn, mesh, batch_sharding, prefetch_count=2):
+    def __init__(self, data_fn, mesh, batch_sharding, prefetch_count=2, *, place=True):
         """
         Args:
             data_fn: callable that returns (inputs, targets) numpy arrays.
@@ -40,6 +41,7 @@ class BackgroundPrefetcher:
         """
         if prefetch_count < 1:
             raise ValueError("prefetch_count must be positive")
+        self.place = place
         self.data_fn = data_fn
         self.mesh = mesh
         self.batch_sharding = batch_sharding
@@ -59,39 +61,33 @@ class BackgroundPrefetcher:
                 try:
                     arrays = self.data_fn()
                 except StopIteration:
-                    self._queue.put(_SENTINEL)
+                    self._put(_SENTINEL)
                     return
 
                 # Place on device in the background thread.
-                on_device = tuple(
+                on_device = (tuple(
                     jax.device_put(jnp.asarray(a), self.batch_sharding)
                     for a in arrays
-                )
+                ) if self.place else copy.deepcopy(arrays))
 
-                # Block until there is room in the queue, but check the stop
-                # event periodically so we can shut down cleanly.
-                while not self._stop_event.is_set():
-                    try:
-                        self._queue.put(on_device, timeout=0.1)
-                        break
-                    except queue.Full:
-                        continue
+                self._put(on_device)
         except Exception as error:
-            # Preserve the original failure and deliver it once capacity is
-            # available. Consumers must never mistake corruption for EOF.
-            while not self._stop_event.is_set():
-                try:
-                    self._queue.put((_WORKER_ERROR, error), timeout=0.1)
-                    return
-                except queue.Full:
-                    continue
+            self._put((_WORKER_ERROR, error))
+
+    def _put(self, item):
+        while not self._stop_event.is_set():
+            try:
+                self._queue.put(item, timeout=0.1)
+                return
+            except queue.Full:
+                continue
 
     # ── iterator protocol ────────────────────────────────────────────────
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self._exhausted:
+        if self._exhausted or self._stop_event.is_set():
             raise StopIteration
 
         item = self._queue.get()

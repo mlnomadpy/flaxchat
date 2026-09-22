@@ -1,0 +1,5 @@
+{
+  "title": "flaxchat-validation-resources-only",
+  "description": "Only named FlaxChat validation resources in the v5p and v4 test zones",
+  "expression": "resource.name.startsWith('projects/tpubuilders/locations/us-east5-a/queuedResources/flaxchat-validation-') || resource.name.startsWith('projects/tpubuilders/locations/us-east5-a/nodes/flaxchat-validation-') || resource.name.startsWith('projects/tpubuilders/locations/us-central2-b/queuedResources/flaxchat-validation-') || resource.name.startsWith('projects/tpubuilders/locations/us-central2-b/nodes/flaxchat-validation-')"
+}

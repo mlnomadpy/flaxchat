@@ -29,6 +29,10 @@ from jax.sharding import PartitionSpec as P
 from flaxchat.config import GPTConfig
 from flaxchat.common import COMPUTE_DTYPE, print0
 
+def compute_dtype(config):
+    return COMPUTE_DTYPE if config.compute_dtype == "auto" else getattr(jnp, config.compute_dtype)
+
+
 # Compat: nnx.List/Dict exist in Flax 0.12+, plain list/dict work in 0.11
 _NNX_LIST = getattr(nnx, 'List', list)
 _NNX_DICT = getattr(nnx, 'Dict', dict)
@@ -59,6 +63,16 @@ def _resolve_attention_backend(
             )
         return "splash", None
     return policy, None
+
+
+def training_attention_backend(requested: str, backend: str, device_count: int):
+    """Select exact attention supported by automatic data-mesh partitioning."""
+    if requested == "auto" and backend == "tpu" and device_count > 1:
+        return "xla", (
+            "Mosaic Splash kernels cannot be automatically partitioned across "
+            "the data mesh; using exact XLA attention for distributed training"
+        )
+    return requested, None
 
 
 def attention_backend_metadata(
@@ -170,14 +184,14 @@ def rms_norm(x):
 # ---------------------------------------------------------------------------
 # Rotary Embeddings
 # ---------------------------------------------------------------------------
-def precompute_rotary_embeddings(seq_len: int, head_dim: int, base: float = 100000.0):
+def precompute_rotary_embeddings(seq_len: int, head_dim: int, base: float = 100000.0, dtype=None):
     """Precompute cos/sin for RoPE. Returns (cos, sin) of shape (1, seq_len, 1, head_dim//2)."""
     channel_range = jnp.arange(0, head_dim, 2, dtype=jnp.float32)
     inv_freq = 1.0 / (base ** (channel_range / head_dim))
     t = jnp.arange(seq_len, dtype=jnp.float32)
     freqs = jnp.outer(t, inv_freq)
-    cos = jnp.cos(freqs).astype(COMPUTE_DTYPE)
-    sin = jnp.sin(freqs).astype(COMPUTE_DTYPE)
+    cos = jnp.cos(freqs).astype(COMPUTE_DTYPE if dtype is None else dtype)
+    sin = jnp.sin(freqs).astype(COMPUTE_DTYPE if dtype is None else dtype)
     cos = cos[None, :, None, :]
     sin = sin[None, :, None, :]
     return cos, sin
@@ -211,13 +225,13 @@ class CausalSelfAttention(nnx.Module):
         self._has_ve = not config.standard_gpt and has_ve(layer_idx, config.n_layer)
 
         head_dim = config.n_embd // config.n_head
-        self.c_q = nnx.Linear(config.n_embd, config.n_head * head_dim, use_bias=False, rngs=rngs)
-        self.c_k = nnx.Linear(config.n_embd, config.n_kv_head * head_dim, use_bias=False, rngs=rngs)
-        self.c_v = nnx.Linear(config.n_embd, config.n_kv_head * head_dim, use_bias=False, rngs=rngs)
-        self.c_proj = nnx.Linear(config.n_embd, config.n_embd, use_bias=False, rngs=rngs)
+        self.c_q = nnx.Linear(config.n_embd, config.n_head * head_dim, use_bias=False, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
+        self.c_k = nnx.Linear(config.n_embd, config.n_kv_head * head_dim, use_bias=False, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
+        self.c_v = nnx.Linear(config.n_embd, config.n_kv_head * head_dim, use_bias=False, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
+        self.c_proj = nnx.Linear(config.n_embd, config.n_embd, use_bias=False, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
 
         if self._has_ve:
-            self.ve_gate = nnx.Linear(12, config.n_kv_head, use_bias=False, rngs=rngs)
+            self.ve_gate = nnx.Linear(12, config.n_kv_head, use_bias=False, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
 
     def __call__(self, x, ve, cos, sin, window_size):
         B, T, C = x.shape
@@ -259,8 +273,8 @@ class CausalSelfAttention(nnx.Module):
 # ---------------------------------------------------------------------------
 class MLP(nnx.Module):
     def __init__(self, config: GPTConfig, *, rngs: nnx.Rngs):
-        self.c_fc = nnx.Linear(config.n_embd, 4 * config.n_embd, use_bias=False, rngs=rngs)
-        self.c_proj = nnx.Linear(4 * config.n_embd, config.n_embd, use_bias=False, rngs=rngs)
+        self.c_fc = nnx.Linear(config.n_embd, 4 * config.n_embd, use_bias=False, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
+        self.c_proj = nnx.Linear(4 * config.n_embd, config.n_embd, use_bias=False, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
 
     def __call__(self, x):
         x = self.c_fc(x)
@@ -307,7 +321,7 @@ class Block(nnx.Module):
 # ---------------------------------------------------------------------------
 class GPT(nnx.Module):
     def __init__(self, config: GPTConfig, *, rngs: nnx.Rngs,
-                 pad_vocab_size_to: int = 64, use_remat: bool = False):
+                 pad_vocab_size_to: int = 64, use_remat: bool | None = None):
         """
         Args:
             config: Model config
@@ -315,6 +329,7 @@ class GPT(nnx.Module):
             pad_vocab_size_to: Pad vocab for tensor core efficiency
             use_remat: Enable gradient checkpointing (saves memory, slower)
         """
+        use_remat = config.use_remat if use_remat is None else use_remat
         # Store config and non-trainable data
         self.config: GPTConfig = nnx.data(config)
         window_sizes = self._compute_window_sizes(config)
@@ -326,7 +341,7 @@ class GPT(nnx.Module):
         self.padded_vocab_size: int = nnx.data(padded_vocab_size)
 
         # Token embedding
-        self.wte = nnx.Embed(padded_vocab_size, config.n_embd, rngs=rngs)
+        self.wte = nnx.Embed(padded_vocab_size, config.n_embd, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
 
         # Transformer blocks
         self.blocks = _NNX_LIST([Block(config, i, rngs=rngs, use_remat=use_remat)
@@ -335,7 +350,7 @@ class GPT(nnx.Module):
         # Language model head (tied or untied)
         self._tie_embeddings = config.tie_embeddings
         if not config.tie_embeddings:
-            self.lm_head = nnx.Linear(config.n_embd, padded_vocab_size, use_bias=False, rngs=rngs)
+            self.lm_head = nnx.Linear(config.n_embd, padded_vocab_size, use_bias=False, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
         else:
             self.lm_head = None  # use wte.embedding.T
 
@@ -343,7 +358,7 @@ class GPT(nnx.Module):
         if not config.standard_gpt:
             self.resid_lambdas = nnx.Param(jnp.ones(config.n_layer))
             self.x0_lambdas = nnx.Param(jnp.zeros(config.n_layer))
-            self.smear_gate = nnx.Linear(24, 1, use_bias=False, rngs=rngs)
+            self.smear_gate = nnx.Linear(24, 1, use_bias=False, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
             self.smear_lambda = nnx.Param(jnp.zeros(1))
             self.backout_lambda = nnx.Param(0.2 * jnp.ones(1))
 
@@ -351,14 +366,14 @@ class GPT(nnx.Module):
         # the standard GPT path used by the FineWeb trainer.
         head_dim = config.n_embd // config.n_head
         kv_dim = config.n_kv_head * head_dim
-        self.value_embeds = _NNX_DICT({str(i): nnx.Embed(padded_vocab_size, kv_dim, rngs=rngs)
+        self.value_embeds = _NNX_DICT({str(i): nnx.Embed(padded_vocab_size, kv_dim, dtype=compute_dtype(config), param_dtype=jnp.float32, rngs=rngs)
                                        for i in range(config.n_layer)
                                        if not config.standard_gpt and has_ve(i, config.n_layer)})
 
         # Precompute rotary embeddings (stored as non-node data)
         rotary_seq_len = config.sequence_len * 10
         head_dim = config.n_embd // config.n_head
-        cos, sin = precompute_rotary_embeddings(rotary_seq_len, head_dim)
+        cos, sin = precompute_rotary_embeddings(rotary_seq_len, head_dim, dtype=compute_dtype(config))
         self.rope_cos: jax.Array = nnx.data(cos)
         self.rope_sin: jax.Array = nnx.data(sin)
 
@@ -371,11 +386,13 @@ class GPT(nnx.Module):
         n_embd = config.n_embd
         n_layer = config.n_layer
 
-        # Embedding: normal(0, 0.8)
+        # A tied table is also the output projection. The extension recipe's
+        # 0.8 input scale produces overconfident random logits when reused as
+        # a standard GPT head. Keep the legacy untied recipe unchanged.
+        embedding_std = 0.02 if config.standard_gpt and config.tie_embeddings else 0.8
         self.wte.embedding[...] = jax.random.normal(
             rngs.params(), self.wte.embedding[...].shape
-        ) * 0.8
-        self.wte.embedding[...] = self.wte.embedding[...].astype(COMPUTE_DTYPE)
+        ) * embedding_std
 
         # lm_head: normal(0, 0.001) — skip if tied
         if self.lm_head is not None:
@@ -413,7 +430,6 @@ class GPT(nnx.Module):
             ve.embedding[...] = jax.random.uniform(
                 rngs.params(), ve.embedding[...].shape, minval=-s, maxval=s
             )
-            ve.embedding[...] = ve.embedding[...].astype(COMPUTE_DTYPE)
 
     @staticmethod
     def _compute_window_sizes(config: GPTConfig):
@@ -436,7 +452,7 @@ class GPT(nnx.Module):
         x_backout = None
         for i, block in enumerate(self.blocks):
             if not self.config.standard_gpt:
-                x = self.resid_lambdas[...][i] * x + self.x0_lambdas[...][i] * x0
+                x = self.resid_lambdas[...][i].astype(x.dtype) * x + self.x0_lambdas[...][i].astype(x.dtype) * x0
             ve_key = str(i)
             ve = self.value_embeds[ve_key](idx).astype(x.dtype) if ve_key in self.value_embeds else None
             x = block(x, ve, cos, sin, self.window_sizes[i])
@@ -445,54 +461,29 @@ class GPT(nnx.Module):
         return x, x_backout
 
     def _forward_scan(self, x, x0, idx, cos, sin, n_layer, backout_layer):
-        """Scan-based forward pass: O(1) XLA compile time, constant memory.
+        """Scan with per-layer switch dispatch (compiles each distinct block).
 
-        Uses jax.lax.scan over layer indices. Per-layer data (lambdas, window
-        sizes, value embeddings) are pre-stacked into arrays and indexed
-        dynamically. Blocks are dispatched via jax.lax.switch so XLA only
-        needs to compile a single block body.
+        Embeddings are looked up inside the selected branch, avoiding a stacked
+        activation for every layer. This is not a constant-size compiled body.
         """
-        resid_lambdas = self.resid_lambdas[...]
-        x0_lambdas = self.x0_lambdas[...]
-
-        # Precompute ALL value embeddings stacked: (n_layer, B, T, kv_dim).
-        # Non-VE layers get zeros; the block's _has_ve guard skips them.
-        head_dim = self.config.n_embd // self.config.n_head
-        kv_dim = self.config.n_kv_head * head_dim
-        B, T = idx.shape
-        ve_list = []
-        for i in range(n_layer):
-            ve_key = str(i)
-            if ve_key in self.value_embeds:
-                ve_list.append(self.value_embeds[ve_key](idx).astype(x.dtype))
-            else:
-                ve_list.append(jnp.zeros((B, T, kv_dim), dtype=x.dtype))
-        ve_all = jnp.stack(ve_list, axis=0)  # (n_layer, B, T, kv_dim)
-
-        # Build per-block dispatch functions for jax.lax.switch.
-        # Each branch closes over its own Block module and window_size.
         branches = []
         for i in range(n_layer):
-            block = self.blocks[i]
-            ws = self.window_sizes[i]
-            # Capture block and ws by value via default arg
-            branches.append(
-                lambda x_, ve_, cos_=cos, sin_=sin, b=block, w=ws: b(x_, ve_, cos_, sin_, w)
-            )
+            def branch(x_, i=i):
+                if not self.config.standard_gpt:
+                    x_ = (self.resid_lambdas[...][i].astype(x_.dtype) * x_
+                          + self.x0_lambdas[...][i].astype(x_.dtype) * x0)
+                key = str(i)
+                ve = self.value_embeds[key](idx).astype(x_.dtype) if key in self.value_embeds else None
+                block = self.blocks[i]
+                def forward(h):
+                    return block._forward(h, ve, cos, sin, self.window_sizes[i])
+                return jax.checkpoint(forward)(x_) if block._use_remat else forward(x_)
+            branches.append(branch)
 
         def scan_body(carry, layer_idx):
             x_c, x0_c, x_backout_c = carry
 
-            # Per-layer residual scaling
-            rl = jax.lax.dynamic_index_in_dim(resid_lambdas, layer_idx, keepdims=False)
-            xl = jax.lax.dynamic_index_in_dim(x0_lambdas, layer_idx, keepdims=False)
-            x_c = rl * x_c + xl * x0_c
-
-            # Value embedding for this layer
-            ve_i = jax.lax.dynamic_index_in_dim(ve_all, layer_idx, axis=0, keepdims=False)
-
-            # Dispatch to the correct block via lax.switch
-            x_c = jax.lax.switch(layer_idx, branches, x_c, ve_i)
+            x_c = jax.lax.switch(layer_idx, branches, x_c)
 
             # Capture backout at the right layer
             x_backout_c = jnp.where(
@@ -515,7 +506,7 @@ class GPT(nnx.Module):
         sin = self.rope_sin[:, :T]
 
         x = self.wte(idx)
-        x = x.astype(COMPUTE_DTYPE)
+        x = x.astype(compute_dtype(config))
         x = rms_norm(x)
         x = _maybe_shard(x, P('data', None, None))
 
@@ -537,26 +528,40 @@ class GPT(nnx.Module):
             x = x - self.backout_lambda[...].astype(x.dtype) * x_backout
         x = rms_norm(x)
 
-        softcap = 15.0
-        if self._tie_embeddings:
-            logits = x @ self.wte.embedding[...].T
-        else:
-            logits = self.lm_head(x)
-        logits = logits[..., :config.vocab_size]
-        logits = logits.astype(jnp.float32)
-        logits = softcap * jnp.tanh(logits / softcap)
+        def project(hidden):
+            if self._tie_embeddings:
+                logits = hidden @ self.wte.embedding[...].astype(hidden.dtype).T
+            else:
+                logits = self.lm_head(hidden)
+            logits = logits[..., :config.vocab_size].astype(jnp.float32)
+            return 15.0 * jnp.tanh(logits / 15.0)
 
-        if targets is not None:
-            log_probs = jax.nn.log_softmax(logits, axis=-1)
-            mask = (targets >= 0).astype(jnp.float32)
-            safe_targets = jnp.where(targets >= 0, targets, 0)
-            loss = -jnp.take_along_axis(
-                log_probs, safe_targets[..., None], axis=-1
-            )[..., 0]
-            loss = jnp.sum(loss * mask) / jnp.maximum(jnp.sum(mask), 1.0)
-            return loss
+        def token_losses(hidden, labels):
+            log_probs = jax.nn.log_softmax(project(hidden), axis=-1)
+            safe = jnp.maximum(labels, 0)
+            losses = -jnp.take_along_axis(log_probs, safe[..., None], axis=-1)[..., 0]
+            return jnp.where(labels >= 0, losses, 0.0)
+
+        if targets is None:
+            return project(x)
+        if config.loss_chunk_size:
+            # Rematerialize each projection during backward so vocabulary-sized
+            # activations are bounded by chunk size in both passes.
+            chunk = config.loss_chunk_size
+            count = B * T
+            pad = (-count) % chunk
+            hidden = jnp.pad(x.reshape(count, -1), ((0, pad), (0, 0)))
+            labels = jnp.pad(targets.reshape(-1), (0, pad), constant_values=-1)
+            hidden = hidden.reshape(-1, chunk, x.shape[-1])
+            labels = labels.reshape(-1, chunk)
+            @jax.checkpoint
+            def accumulate(total, batch):
+                features, token_ids = batch
+                return total + token_losses(features, token_ids).sum(), None
+            total, _ = jax.lax.scan(accumulate, jnp.float32(0), (hidden, labels))
         else:
-            return logits
+            total = token_losses(x, targets).sum()
+        return total / jnp.maximum(jnp.sum(targets >= 0), 1)
 
     def estimate_flops(self) -> int:
         config = self.config

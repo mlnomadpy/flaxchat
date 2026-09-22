@@ -44,7 +44,17 @@ def _is_multi_process_environment(environment: Mapping[str, str]) -> bool:
 
 def _initialize_distributed_if_needed() -> None:
     if _is_multi_process_environment(os.environ) and not jax.distributed.is_initialized():
-        jax.distributed.initialize()
+        keys = ('JAX_COORDINATOR_ADDRESS', 'JAX_PROCESS_COUNT', 'JAX_PROCESS_INDEX')
+        if all(os.environ.get(key) for key in keys):
+            jax.distributed.initialize(
+                coordinator_address=os.environ[keys[0]],
+                num_processes=int(os.environ[keys[1]]),
+                process_id=int(os.environ[keys[2]]),
+                initialization_timeout=180,
+                heartbeat_timeout_seconds=30,
+            )
+        else:
+            jax.distributed.initialize()
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +76,9 @@ def _detect_compute_dtype():
 
 def _initialize_runtime():
     """Initialize distributed JAX before backend discovery chooses precision."""
+    cache_dir = os.environ.get("FLAXCHAT_COMPILATION_CACHE_DIR")
+    if cache_dir:
+        jax.config.update("jax_compilation_cache_dir", cache_dir)
     _initialize_distributed_if_needed()
     return _detect_compute_dtype()
 
@@ -219,7 +232,18 @@ def replicate_on_mesh(state, mesh: Mesh | None = None):
     if mesh is None:
         mesh = get_mesh()
     replicated = NamedSharding(mesh, P())
-    return jax.device_put(state, replicated)
+    return jax.tree.map(lambda leaf: place_array(leaf, replicated), state)
+
+
+def place_array(array, sharding):
+    """Place identical host-initialized values on a possibly multi-host mesh."""
+    if jax.process_count() > 1 and (
+        not isinstance(array, jax.Array) or array.is_fully_addressable
+    ):
+        import numpy as np
+        local = np.asarray(array)
+        return jax.make_array_from_callback(local.shape, sharding, lambda index: local[index])
+    return jax.device_put(array, sharding)
 
 
 def replicate_optimizer_state(optimizer, mesh: Mesh | None = None):
@@ -355,6 +379,8 @@ def get_peak_flops(device_kind: str | None = None) -> float:
             return float('inf')
 
     kind = device_kind.lower()
+    if kind == "tpu v5":  # PJRT reports v5p with this exact device kind.
+        return 459e12
 
     # TPU peak bf16 FLOPS per chip
     _TPU_PEAK_FLOPS = {

@@ -155,3 +155,14 @@ class TestComputeInit:
         ):
             assert compute_init() == "mesh"
         initialize.assert_not_called()
+
+
+def test_explicit_distributed_launcher_arguments(monkeypatch):
+    from flaxchat.common import _initialize_distributed_if_needed
+    monkeypatch.setenv('JAX_COORDINATOR_ADDRESS', '10.0.0.1:12345')
+    monkeypatch.setenv('JAX_PROCESS_COUNT', '2')
+    monkeypatch.setenv('JAX_PROCESS_INDEX', '1')
+    with patch('flaxchat.common.jax.distributed.is_initialized', return_value=False), patch('flaxchat.common.jax.distributed.initialize') as initialize:
+        _initialize_distributed_if_needed()
+    initialize.assert_called_once_with(coordinator_address='10.0.0.1:12345', num_processes=2,
+                                      process_id=1, initialization_timeout=180, heartbeat_timeout_seconds=30)

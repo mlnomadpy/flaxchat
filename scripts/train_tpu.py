@@ -9,7 +9,8 @@ from pathlib import Path
 import shlex
 import subprocess
 import time
-from contextlib import suppress
+import math
+import threading
 
 from flaxchat.launch import LaunchSpec
 
@@ -40,8 +41,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--secrets", nargs="*", default=["WANDB_API_KEY", "HF_TOKEN"])
     parser.add_argument("--notify")
     parser.add_argument("--recover", action="store_true")
-    parser.add_argument("--teardown", action="store_true")
+    parser.add_argument("--teardown", action="store_true", default=True)
+    parser.add_argument("--keep-resource", action="store_false", dest="teardown", help="Explicitly retain the resource after the run")
     parser.add_argument("--max-cost", type=float)
+    parser.add_argument("--hourly-rate", type=float, help="Verified total slice USD/hour, required with --max-cost")
     parser.add_argument("--start-after")
     parser.add_argument("--collect", nargs="*")
     parser.add_argument("--run-once", action="store_true")
@@ -76,7 +79,8 @@ def build_launch_spec(
         },
         artifacts=tuple(args.collect or ()),
         secret_names=tuple(args.secrets),
-        budget={"max_cost_usd": args.max_cost} if args.max_cost else {},
+        budget={"max_cost_usd": args.max_cost} if args.max_cost is not None else {},
+        budget_hours=(args.max_cost / args.hourly_rate if args.max_cost is not None and args.hourly_rate else None),
         recovery=args.recover or bool(args.gcs),
         teardown="always" if args.run_once or args.teardown else "never",
     )
@@ -90,28 +94,45 @@ def run_adapter(args, spec: LaunchSpec, vm, gcs) -> int:
         return 0
     if args.save_profile:
         vm.save_profile(args.save_profile)
-    if args.run_once:
-        vm.run_once(
-            command,
-            sync=".",
-            collect_files=args.collect,
-            gcs=gcs,
-            notify_url=args.notify,
-        )
-        return 0
+    if args.max_cost is not None:
+        if not math.isfinite(args.max_cost) or args.max_cost <= 0:
+            raise ValueError("--max-cost must be finite and positive")
+        if args.hourly_rate is None or not math.isfinite(args.hourly_rate) or args.hourly_rate <= 0:
+            raise ValueError("--max-cost requires a verified finite positive --hourly-rate for the entire slice")
+        if not args.teardown:
+            raise ValueError("A budgeted run cannot retain an allocated resource")
+    # Waiting must happen before allocation, including the run-once path.
+    if args.start_after:
+        now = datetime.datetime.now()
+        hour, minute = map(int, args.start_after.split(":"))
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target <= now:
+            target += datetime.timedelta(days=1)
+        time.sleep((target - now).total_seconds())
+    expired = threading.Event()
+    cleanup_errors = []
+    def expire():
+        expired.set()
+        try:
+            vm.down()
+        except Exception as error:
+            cleanup_errors.append(error)
+    def check_deadline():
+        if expired.is_set():
+            raise TimeoutError("Allocation budget expired; cleanup was requested")
+    guard = None
     provision_attempted = False
     try:
         provision_attempted = True
+        if args.max_cost is not None:
+            guard = threading.Timer(args.max_cost / args.hourly_rate * 3600, expire)
+            guard.daemon = True
+            guard.start()
         vm.up_queued() if args.queued else vm.up()
+        check_deadline()
         vm.setup(extra_pip="flaxchat")
         vm.verify()
-        if args.start_after:
-            now = datetime.datetime.now()
-            hour, minute = map(int, args.start_after.split(":"))
-            target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-            if target <= now:
-                target += datetime.timedelta(days=1)
-            time.sleep((target - now).total_seconds())
+        check_deadline()
         if args.repo:
             vm.clone_repo(args.repo, install=True)
         if gcs:
@@ -124,20 +145,23 @@ def run_adapter(args, spec: LaunchSpec, vm, gcs) -> int:
             )
         else:
             vm.run(command, sync=".", secrets=args.secrets)
-        if args.max_cost:
-            vm.set_budget(args.max_cost, notify_url=args.notify)
-        elif args.recover:
+        check_deadline()
+        if args.recover:
             vm.watch_notify(command, notify_url=args.notify) if args.notify else vm.watch(command)
         else:
             vm.logs(follow=True)
+        check_deadline()
         vm.cost_summary()
         if args.collect:
             vm.collect(args.collect)
         return 0
     finally:
+        if guard is not None:
+            guard.cancel()
         if spec.teardown == "always" and provision_attempted:
-            with suppress(Exception):
-                vm.down()
+            vm.down()
+        if cleanup_errors:
+            raise RuntimeError("Budget watchdog resource deletion failed") from cleanup_errors[0]
 
 
 def main(argv: list[str] | None = None) -> int:

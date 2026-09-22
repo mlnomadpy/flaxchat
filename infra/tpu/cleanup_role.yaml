@@ -1,0 +1,6 @@
+title: FlaxChat validation TPU cleanup
+description: Read and delete TPU validation resources from the guarded cleanup workflow.
+stage: GA
+includedPermissions:
+  - tpu.nodes.get
+  - tpu.nodes.delete

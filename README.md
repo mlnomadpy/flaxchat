@@ -9,6 +9,16 @@ Exact accelerator measurements and their limitations are in
 [docs/RESULTS.md](docs/RESULTS.md).
 The current engineering risks, refactoring target, and prioritized backlog are
 in [docs/SYSTEM_AUDIT_2026-09-03.md](docs/SYSTEM_AUDIT_2026-09-03.md).
+The [Spot TPU validation report](docs/TPU_VALIDATION_2026-09-21.md) records the
+prepared-data training fixes, interruption recovery, and
+[complete TPU test inventory](docs/TPU_TEST_INVENTORY_2026-09-21.md).
+The [GCP multi-host campaign](docs/GCP_MULTIHOST_VALIDATION_2026-09-21.md) records
+physical worker acceptance, FSDP recovery, scale coverage, and remaining limits.
+The [follow-up audit fixes](docs/HARNESS_AUDIT_FIXES_2026-09-22.md) cover update
+rollback, artifact identity, streaming shards, CI and bounded Spot supervision.
+The [training-readiness follow-up](docs/HARNESS_READINESS_FIXES_2026-09-22.md)
+records tied-head initialization, checkpoint overhead, four-host launcher fixes,
+physical qualification, and posted billing evidence.
 Supported Python and accelerator combinations are in
 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
@@ -185,6 +195,29 @@ The dataset is streamed from an immutable revision. The output directory
 contains the trained tokenizer, complete Orbax state, generated sample, stage
 metrics, source/config/data hashes, licensing metadata, and `run_manifest.json`.
 Use `--smoke` for the committed offline corpus.
+
+### FineWeb from prepared tokens
+
+Prepare the bounded token pool on CPU before allocating a TPU. The preparation
+process needs `datasets` and `transformers`; the trainer reads only local files.
+
+```bash
+python -m scripts.prepare_token_pool \
+  --output artifacts/fineweb-pool \
+  --revision 87f09149ef4734204d70ed1d046ddc9ca3f2b8f9 \
+  --tokenizer-revision 607a30d783dfa663caf39e06633721c8d4cfcd7e \
+  --train-tokens 1000001 --validation-tokens 65537
+python -m scripts.train_gpt2 \
+  --token-manifest artifacts/fineweb-pool/manifest.json \
+  --depth 12 --batch-per-device 1 --seq-len 1024 \
+  --tokens 1M --warmup-steps 10
+```
+
+Use `--resume` with the same training configuration and checkpoint directory.
+`--stop-after` stops at an absolute update count without changing the planned
+learning-rate schedule. This prepared-token trainer currently supports one
+physical host; its batch is sharded over all devices on that host. Larger token
+budgets require preparing enough data first; exhaustion is a hard error.
 
 ### Full pipeline on TPU pod
 

@@ -5,6 +5,8 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 import optax
+import numpy as np
+import pytest
 from flax import nnx
 
 from flaxchat.common import COMPUTE_DTYPE
@@ -52,12 +54,40 @@ def test_fp32_microbatch_accumulation_matches_large_batch(tiny_config):
         # Splitting the batch changes BF16 reduction order on TPU. Accumulation
         # remains FP32, but each individual microbatch gradient originates from
         # BF16 compute and is therefore only comparable at BF16 precision.
-        atol, rtol = 2e-4, 2e-2
+        # Elementwise relative error is ill-conditioned for gradients near
+        # cancellation. Bound the full gradient's relative L2 error instead,
+        # and record its magnitude. FP32 algebra is tested independently below.
+        micro = np.concatenate([np.asarray(x).reshape(-1) for x in _arrays(micro_grads)])
+        full = np.concatenate([np.asarray(x, dtype=np.float32).reshape(-1) for x in _arrays(full_grads)])
+        relative_error = np.linalg.norm(micro - full) / np.linalg.norm(full)
+        print(f'BF16 accumulated/full gradient relative L2 error: {relative_error:.8g}')
+        assert np.isfinite(relative_error) and relative_error < 0.02
+        assert all(x.dtype == jnp.float32 for x in _arrays(micro_grads))
+        return
     else:
         atol, rtol = 2e-5, 2e-4
     for micro, full in zip(_arrays(micro_grads), _arrays(full_grads)):
         assert micro.dtype == jnp.float32
         assert jnp.allclose(micro, full.astype(jnp.float32), atol=atol, rtol=rtol)
+
+
+@pytest.mark.parametrize('count', [1, 2, 4])
+def test_accumulation_matches_independent_fp32_reference(count):
+    """Catch missing division, dropped microbatches and wrong gradient sums."""
+    class Regression(nnx.Module):
+        def __init__(self):
+            self.weight = nnx.Param(jnp.asarray([[0.25], [-0.5]], jnp.float32))
+        def __call__(self, inputs, targets):
+            return jnp.mean((inputs @ self.weight[...] - targets) ** 2)
+    model = Regression()
+    inputs = jnp.arange(16, dtype=jnp.float32).reshape(8, 2) / 8
+    targets = jnp.arange(8, dtype=jnp.float32).reshape(8, 1) / 3
+    loss, grads = gradients_for_microbatches(
+        model, inputs.reshape(count, -1, 2), targets.reshape(count, -1, 1))
+    residual = inputs @ model.weight[...] - targets
+    expected = 2 * inputs.T @ residual / len(inputs)
+    np.testing.assert_allclose(grads.weight[...], expected, atol=2e-6, rtol=2e-6)
+    np.testing.assert_allclose(loss, jnp.mean(residual ** 2), atol=2e-6, rtol=2e-6)
 
 
 def test_single_microbatch_path_is_supported(tiny_model, random_batch):

@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 import re
 import struct
+import socket
 import subprocess
 import sys
 import time
@@ -31,12 +32,18 @@ def source_revision(root: Path) -> str:
     return revision
 
 
-def validate_records(records: list[dict[str, Any]], *, cost_usd: float) -> dict[str, Any]:
+def validate_records(records: list[dict[str, Any]], *, cost_usd: float | None) -> dict[str, Any]:
     """Fail closed and build the committed summary from collected worker records."""
-    if cost_usd < 0 or not math.isfinite(cost_usd):
+    if cost_usd is not None and (cost_usd < 0 or not math.isfinite(cost_usd)):
         raise ValueError("cost_usd must be a finite non-negative value")
     if len(records) < 2:
         raise ValueError("physical multi-host acceptance requires at least two records")
+    for record in records:
+        if not SHA40.fullmatch(record['source_revision']):
+            raise ValueError('Source revision must be an immutable SHA')
+        for key in ('source_python_sha256', 'environment_sha256'):
+            if not re.fullmatch('[0-9a-f]{64}', record[key]):
+                raise ValueError(f'Invalid {key}')
     indexes = sorted(int(record["topology"]["process_index"]) for record in records)
     expected = list(range(len(records)))
     if indexes != expected:
@@ -48,6 +55,9 @@ def validate_records(records: list[dict[str, Any]], *, cost_usd: float) -> dict[
         "process_count": {int(record["topology"]["process_count"]) for record in records},
         "device_count": {int(record["topology"]["device_count"]) for record in records},
         "loss": {float(record["training"]["loss"]) for record in records},
+        "gradient": {float(record["training"]["gradient"]) for record in records},
+        "updated_parameter": {float(record["training"]["updated_parameter"]) for record in records},
+        "source_python_sha256": {record["source_python_sha256"] for record in records},
     }
     mismatches = {name: values for name, values in fields.items() if len(values) != 1}
     if mismatches:
@@ -55,7 +65,15 @@ def validate_records(records: list[dict[str, Any]], *, cost_usd: float) -> dict[
     process_count = fields["process_count"].pop()
     if process_count != len(records):
         raise ValueError(f"reported process_count {process_count} != records {len(records)}")
+    if any(record['topology'].get('backend') != 'tpu' for record in records):
+        raise ValueError('Physical acceptance requires TPU on every worker')
+    if len({record['hostname'] for record in records}) != process_count:
+        raise ValueError('Physical acceptance requires distinct worker hosts')
+    if sum(record['topology']['local_device_count'] for record in records) != next(iter(fields['device_count'])):
+        raise ValueError('Local device counts do not sum to global devices')
     local_batches = [set(record["data"]["local_indices"]) for record in records]
+    if any(not batch for batch in local_batches):
+        raise ValueError('Every worker must contribute a nonempty batch')
     if any(
         len(batch) != len(record["data"]["local_indices"])
         for batch, record in zip(local_batches, records, strict=True)
@@ -78,10 +96,17 @@ def validate_records(records: list[dict[str, Any]], *, cost_usd: float) -> dict[
     losses = fields["loss"]
     if not all(math.isfinite(loss) for loss in losses):
         raise ValueError("worker loss must be finite")
+    mean_square = sum(index ** 2 for index in combined) / len(combined)
+    for name, expected_value in [('loss', 2.25 * mean_square),
+                                 ('gradient', -3.0 * mean_square),
+                                 ('updated_parameter', .5 + .003 * mean_square)]:
+        if not math.isclose(next(iter(fields[name])), expected_value, rel_tol=1e-5):
+            raise ValueError(f'Incorrect synchronized {name}')
     return {
         "format_version": 1,
         "status": "probe_passed",
         "source_revision": fields["source_revision"].pop(),
+        "source_python_sha256": fields['source_python_sha256'].pop(),
         "environment_sha256": fields["environment_sha256"].pop(),
         "topology": {
             "process_count": process_count,
@@ -98,6 +123,7 @@ def validate_records(records: list[dict[str, Any]], *, cost_usd: float) -> dict[
             "all_workers_passed": True,
         },
         "cost_usd": cost_usd,
+        "cost_status": 'unavailable' if cost_usd is None else 'operator_supplied',
         "limitations": [
             "This fail-fast probe covers initialization, topology, host-local data order, a synchronized gradient update, and sharding only.",
             "Cross-topology checkpoint restore and interrupted-run resume remain mandatory later phases of issue #12.",
@@ -108,7 +134,7 @@ def validate_records(records: list[dict[str, Any]], *, cost_usd: float) -> dict[
 
 def run_probe(args: argparse.Namespace) -> int:
     # Importing flaxchat.common initializes distributed JAX before any backend query.
-    from flaxchat.common import compute_init
+    from flaxchat.common import compute_init, replicate_on_mesh
 
     mesh = compute_init()
     import jax
@@ -117,6 +143,7 @@ def run_probe(args: argparse.Namespace) -> int:
     from jax.sharding import NamedSharding, PartitionSpec as P
     import numpy as np
 
+    from scripts.validate_tpu import source_digest
     started = time.time()
     process_count = jax.process_count()
     process_index = jax.process_index()
@@ -126,17 +153,25 @@ def run_probe(args: argparse.Namespace) -> int:
         )
     if args.require_tpu and jax.default_backend() != "tpu":
         raise RuntimeError(f"physical acceptance requires TPU, got {jax.default_backend()}")
-    local_indices = np.arange(
-        process_index * args.local_batch,
-        (process_index + 1) * args.local_batch,
-        dtype=np.int32,
-    )
-    gathered = np.asarray(multihost_utils.process_allgather(local_indices, tiled=True)).reshape(-1)
     expected = np.arange(process_count * args.local_batch, dtype=np.int32)
-    np.testing.assert_array_equal(gathered, expected)
     data_sharding = NamedSharding(mesh, P("data", None))
-    local_inputs = local_indices.astype(np.float32).reshape(args.local_batch, 1)
-    inputs = jax.make_array_from_process_local_data(data_sharding, local_inputs)
+    global_shape = (len(expected), 1)
+    ranges = set()
+    for index in data_sharding.addressable_devices_indices_map(global_shape).values():
+        if index is None:
+            raise RuntimeError('An addressable device has no global batch index')
+        ranges.add((index[0].start or 0, index[0].stop or len(expected)))
+    ranges = sorted(ranges)
+    local_indices = np.concatenate([np.arange(start, stop, dtype=np.int32) for start, stop in ranges])
+    gathered = np.asarray(multihost_utils.process_allgather(local_indices, tiled=True)).reshape(-1)
+    np.testing.assert_array_equal(np.sort(gathered), expected)
+    def read_rows(index):
+        if index is None:
+            raise RuntimeError('Missing global batch index')
+        return expected[index[0]].astype(np.float32).reshape(-1, 1)
+    inputs = jax.make_array_from_callback(global_shape, data_sharding, read_rows)
+    np.testing.assert_array_equal(np.asarray(multihost_utils.process_allgather(inputs, tiled=True)),
+                                  expected.reshape(-1, 1))
 
     @jax.jit
     def update(weight, batch):
@@ -147,16 +182,25 @@ def run_probe(args: argparse.Namespace) -> int:
         loss, gradient = jax.value_and_grad(loss_fn)(weight)
         return loss, gradient, weight - 1e-3 * gradient
 
-    loss, gradient, updated = update(jnp.asarray(0.5, dtype=jnp.float32), inputs)
+    weight = replicate_on_mesh(jnp.asarray(0.5, dtype=jnp.float32), mesh)
+    loss, gradient, updated = update(weight, inputs)
     loss, gradient, updated = jax.block_until_ready((loss, gradient, updated))
-    losses = np.asarray(multihost_utils.process_allgather(loss, tiled=False)).reshape(-1)
+    losses = np.asarray(multihost_utils.process_allgather(np.asarray(loss), tiled=False)).reshape(-1)
     if not np.all(np.isfinite(losses)) or not np.allclose(losses, losses[0]):
         raise RuntimeError(f"worker losses are not finite and matching: {losses.tolist()}")
+    mean_square = np.mean(expected.astype(np.float64) ** 2)
+    np.testing.assert_allclose(float(loss), 2.25 * mean_square, rtol=1e-5)
+    np.testing.assert_allclose(float(gradient), -3.0 * mean_square, rtol=1e-5)
+    np.testing.assert_allclose(float(updated), 0.5 + .003 * mean_square, rtol=1e-5)
+    if inputs.shape != (process_count * args.local_batch, 1):
+        raise RuntimeError('Unexpected global batch shape')
     revision = source_revision(args.repository)
     record = {
         "format_version": 1,
         "passed": True,
         "source_revision": revision,
+        "source_python_sha256": source_digest(args.repository),
+        "hostname": socket.gethostname(),
         "environment_sha256": file_sha256(args.environment_file),
         "command": sys.argv,
         "location": {"project": args.project, "zone": args.zone, "slice": args.slice},
@@ -177,7 +221,7 @@ def run_probe(args: argparse.Namespace) -> int:
             "gradient": float(gradient),
             "updated_parameter": float(updated),
             "input_shape": list(inputs.shape),
-            "input_sharding": str(inputs.sharding.spec),
+            "input_sharding": str(inputs.sharding),
             "addressable_shards": len(inputs.addressable_shards),
         },
         "elapsed_seconds": time.time() - started,
@@ -216,7 +260,7 @@ def build_parser() -> argparse.ArgumentParser:
     report = subparsers.add_parser("summarize")
     report.add_argument("--input-dir", required=True, type=Path)
     report.add_argument("--output", required=True, type=Path)
-    report.add_argument("--cost-usd", required=True, type=float)
+    report.add_argument("--cost-usd", type=float, help='Actual billed cost; omit while billing is pending')
     return parser
 
 

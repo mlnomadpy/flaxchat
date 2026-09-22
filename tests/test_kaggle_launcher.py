@@ -193,6 +193,8 @@ def test_fineweb_gpt2_bundle_uses_gpt2_tokenizer_below_vocab_ceiling(tmp_path):
         accelerator="tpu",
         artifact_dir="artifacts/tinystories",
         workload="fineweb-gpt2",
+        token_manifest="/kaggle/input/fineweb-tokens/manifest.json",
+        token_dataset="owner/fineweb-tokens",
         layers=2,
         steps=3,
         batch_size=4,

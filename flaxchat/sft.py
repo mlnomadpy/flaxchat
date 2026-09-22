@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import cast
 import json
 import os
+
+from flaxchat.training import apply_gradients_if_finite
 
 from flax import nnx
 import jax
@@ -48,9 +51,9 @@ def make_sft_batch(conversations, tokenizer, batch_size, max_seq_len, rng_key):
 
 
 @nnx.jit
-def train_step(model, optimizer, inputs, targets):
+def train_step(model, optimizer, inputs, targets) -> jax.Array:
     loss, gradients = nnx.value_and_grad(
         lambda current: current(inputs, targets)
     )(model)
-    optimizer.update(model, gradients)
-    return loss
+    updated = apply_gradients_if_finite(model, optimizer, gradients, loss)
+    return cast(jax.Array, jnp.where(updated, loss, jnp.nan))

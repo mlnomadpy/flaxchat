@@ -20,7 +20,7 @@ from collections import deque
 import jax
 import jax.numpy as jnp
 
-from flaxchat.gpt import rms_norm, apply_rotary_emb, COMPUTE_DTYPE
+from flaxchat.gpt import rms_norm, apply_rotary_emb
 from flaxchat.execution import execute_generated_code
 
 
@@ -39,7 +39,13 @@ def _get_replicated_sharding():
 def _get_model_sharding(model):
     """Use the model's real placement instead of an unrelated global mesh."""
     try:
-        return model.wte.embedding[...].sharding
+        from jax.sharding import NamedSharding, PartitionSpec
+        placement = model.wte.embedding[...].sharding
+        # Inference inputs/caches replicate over the model's device set; they
+        # must not inherit a vocabulary-axis partition from an FSDP embedding.
+        if isinstance(placement, NamedSharding):
+            return NamedSharding(placement.mesh, PartitionSpec())
+        return placement
     except (AttributeError, TypeError):
         return _get_replicated_sharding()
 
@@ -84,24 +90,26 @@ def _single_step_forward(model, token_id, pos, k_cache, v_cache, prev_emb):
     sin = jax.lax.dynamic_slice(model.rope_sin, (0, pos, 0, 0), (1, 1, 1, head_dim // 2))
 
     # Embed
-    x = model.wte(token_id).astype(COMPUTE_DTYPE)  # (1, 1, n_embd)
+    x = model.wte(token_id).astype(model.wte.dtype)  # (1, 1, n_embd)
     x = rms_norm(x)
 
     # Smear with previous embedding
-    gate = model.smear_lambda[...].astype(x.dtype) * jax.nn.sigmoid(model.smear_gate(x[:, :, :24]))
-    x = x + gate * prev_emb
     new_prev_emb = x
+    if not config.standard_gpt:
+        gate = model.smear_lambda[...].astype(x.dtype) * jax.nn.sigmoid(model.smear_gate(x[:, :, :24]))
+        x = x + gate * prev_emb
 
     x0 = x
     backout_layer = n_layer // 2
     x_backout = jnp.zeros_like(x)
 
     for i, block in enumerate(model.blocks):
-        x = model.resid_lambdas[...][i] * x + model.x0_lambdas[...][i] * x0
+        if not config.standard_gpt:
+            x = model.resid_lambdas[...][i].astype(x.dtype) * x + model.x0_lambdas[...][i].astype(x.dtype) * x0
 
         # Value embeddings
         ve_key = str(i)
-        if hasattr(model.value_embeds, ve_key):
+        if ve_key in model.value_embeds:
             ve = model.value_embeds[ve_key](token_id).astype(x.dtype)
         else:
             ve = None
@@ -125,10 +133,10 @@ def _single_step_forward(model, token_id, pos, k_cache, v_cache, prev_emb):
 
         # Update cache at position `pos` using dynamic_update_slice (static shapes, no recompilation)
         k_cache = jax.lax.dynamic_update_slice(
-            k_cache, k_new[None].astype(COMPUTE_DTYPE), (i, 0, pos, 0, 0)
+            k_cache, k_new[None].astype(model.wte.dtype), (i, 0, pos, 0, 0)
         )
         v_cache = jax.lax.dynamic_update_slice(
-            v_cache, v_new[None].astype(COMPUTE_DTYPE), (i, 0, pos, 0, 0)
+            v_cache, v_new[None].astype(model.wte.dtype), (i, 0, pos, 0, 0)
         )
 
         # Attention: Q(1,1) x K(1,max_len) -> use full cache with position mask
@@ -169,11 +177,12 @@ def _single_step_forward(model, token_id, pos, k_cache, v_cache, prev_emb):
         # Backout: use lax.cond to avoid Python if inside traced code
         x_backout = jnp.where(i == backout_layer, x, x_backout)
 
-    x = x - model.backout_lambda[...].astype(x.dtype) * x_backout
+    if not config.standard_gpt:
+        x = x - model.backout_lambda[...].astype(x.dtype) * x_backout
     x = rms_norm(x)
 
     if model._tie_embeddings:
-        logits = x @ model.wte.embedding[...].T
+        logits = x @ model.wte.embedding[...].astype(x.dtype).T
     else:
         logits = model.lm_head(x)
     logits = logits[..., :config.vocab_size].astype(jnp.float32)
@@ -188,7 +197,7 @@ def _single_step_forward(model, token_id, pos, k_cache, v_cache, prev_emb):
 # ---------------------------------------------------------------------------
 def generate(model, tokens, max_tokens=256, temperature=1.0, top_k=None, seed=42):
     """Padded generation — simple but slow."""
-    sharding = _get_replicated_sharding()
+    sharding = _get_model_sharding(model)
     key = jax.random.key(seed)
     total_len = len(tokens) + max_tokens
     generated = list(tokens)
@@ -231,9 +240,9 @@ def generate_with_cache(
     head_dim = config.n_embd // config.n_head
 
     cache_shape = (n_layer, 1, total_len, n_kv_head, head_dim)
-    k_cache = _to_device(jnp.zeros(cache_shape, dtype=COMPUTE_DTYPE), sharding)
-    v_cache = _to_device(jnp.zeros(cache_shape, dtype=COMPUTE_DTYPE), sharding)
-    prev_emb = _to_device(jnp.zeros((1, 1, config.n_embd), dtype=COMPUTE_DTYPE), sharding)
+    k_cache = _to_device(jnp.zeros(cache_shape, dtype=model.wte.dtype), sharding)
+    v_cache = _to_device(jnp.zeros(cache_shape, dtype=model.wte.dtype), sharding)
+    prev_emb = _to_device(jnp.zeros((1, 1, config.n_embd), dtype=model.wte.dtype), sharding)
 
     generated = list(tokens)
     pos = jnp.int32(0)
@@ -252,8 +261,10 @@ def generate_with_cache(
     for _ in range(max_tokens):
         if cancelled is not None and cancelled():
             break
-        tkl, tki = jax.lax.top_k(logits, min(top_k, logits.shape[-1]))
-        cur = jnp.full_like(logits, -1e9).at[0, tki[0]].set(tkl[0])
+        cur = logits
+        if top_k is not None and top_k > 0:
+            tkl, tki = jax.lax.top_k(logits, min(top_k, logits.shape[-1]))
+            cur = jnp.full_like(logits, -1e9).at[0, tki[0]].set(tkl[0])
         if temperature > 0:
             key, sk = jax.random.split(key)
             nid = jax.random.categorical(sk, cur / temperature, axis=-1)
@@ -294,7 +305,7 @@ def generate_fast(model, tokens, max_tokens=256, temperature=1.0, top_k=40,
         list of int — prompt + generated tokens (up to prompt_len + max_tokens)
     """
     config = model.config
-    sharding = _get_replicated_sharding()
+    sharding = _get_model_sharding(model)
     prompt_len = len(tokens)
     total_len = prompt_len + max_tokens
     n_layer = config.n_layer
@@ -307,9 +318,9 @@ def generate_fast(model, tokens, max_tokens=256, temperature=1.0, top_k=40,
     tokens_buf = _to_device(tokens_buf, sharding)
 
     cache_shape = (n_layer, 1, total_len, n_kv_head, head_dim)
-    k_cache = _to_device(jnp.zeros(cache_shape, dtype=COMPUTE_DTYPE), sharding)
-    v_cache = _to_device(jnp.zeros(cache_shape, dtype=COMPUTE_DTYPE), sharding)
-    prev_emb = _to_device(jnp.zeros((1, 1, config.n_embd), dtype=COMPUTE_DTYPE), sharding)
+    k_cache = _to_device(jnp.zeros(cache_shape, dtype=model.wte.dtype), sharding)
+    v_cache = _to_device(jnp.zeros(cache_shape, dtype=model.wte.dtype), sharding)
+    prev_emb = _to_device(jnp.zeros((1, 1, config.n_embd), dtype=model.wte.dtype), sharding)
 
     rng_key = jax.random.key(seed)
 
@@ -400,20 +411,20 @@ def generate_fast(model, tokens, max_tokens=256, temperature=1.0, top_k=40,
 def _init_kv_cache(model, total_len):
     """Allocate empty KV cache and prev_emb for a model."""
     config = model.config
-    sharding = _get_replicated_sharding()
+    sharding = _get_model_sharding(model)
     n_layer = config.n_layer
     n_kv_head = config.n_kv_head
     head_dim = config.n_embd // config.n_head
     cache_shape = (n_layer, 1, total_len, n_kv_head, head_dim)
-    k_cache = _to_device(jnp.zeros(cache_shape, dtype=COMPUTE_DTYPE), sharding)
-    v_cache = _to_device(jnp.zeros(cache_shape, dtype=COMPUTE_DTYPE), sharding)
-    prev_emb = _to_device(jnp.zeros((1, 1, config.n_embd), dtype=COMPUTE_DTYPE), sharding)
+    k_cache = _to_device(jnp.zeros(cache_shape, dtype=model.wte.dtype), sharding)
+    v_cache = _to_device(jnp.zeros(cache_shape, dtype=model.wte.dtype), sharding)
+    prev_emb = _to_device(jnp.zeros((1, 1, config.n_embd), dtype=model.wte.dtype), sharding)
     return k_cache, v_cache, prev_emb
 
 
 def _prefill(model, tokens, k_cache, v_cache, prev_emb):
     """Run prefill for a list of prompt tokens. Returns (logits, k, v, prev_emb, pos)."""
-    sharding = _get_replicated_sharding()
+    sharding = _get_model_sharding(model)
     pos = jnp.int32(0)
     logits = None
     for t in range(len(tokens)):
@@ -466,7 +477,7 @@ def generate_speculative(model, draft_model, tokens, max_tokens=256,
     if len(tokens) + max_tokens > draft_model.config.sequence_len:
         raise ValueError("prompt plus max_tokens exceeds the draft model sequence length")
 
-    sharding = _get_replicated_sharding()
+    sharding = _get_model_sharding(model)
     key = jax.random.key(seed)
     vocab_size = model.config.vocab_size
     total_len = len(tokens) + max_tokens + draft_steps  # extra room for draft overshoot
@@ -747,7 +758,7 @@ class Engine:
         assert isinstance(tokens, list) and isinstance(tokens[0], int), "expecting list of ints"
         model = self.model
         config = model.config
-        sharding = _get_replicated_sharding()
+        sharding = _get_model_sharding(model)
         key = jax.random.key(seed)
 
         # Resolve special token ids for the tool use state machine
@@ -768,9 +779,9 @@ class Engine:
 
         # 1) Prefill with batch=1
         cache_shape = (n_layer, 1, total_len, n_kv_head, head_dim)
-        k_cache = _to_device(jnp.zeros(cache_shape, dtype=COMPUTE_DTYPE), sharding)
-        v_cache = _to_device(jnp.zeros(cache_shape, dtype=COMPUTE_DTYPE), sharding)
-        prev_emb = _to_device(jnp.zeros((1, 1, config.n_embd), dtype=COMPUTE_DTYPE), sharding)
+        k_cache = _to_device(jnp.zeros(cache_shape, dtype=model.wte.dtype), sharding)
+        v_cache = _to_device(jnp.zeros(cache_shape, dtype=model.wte.dtype), sharding)
+        prev_emb = _to_device(jnp.zeros((1, 1, config.n_embd), dtype=model.wte.dtype), sharding)
 
         pos = jnp.int32(0)
         for t in range(len(tokens)):

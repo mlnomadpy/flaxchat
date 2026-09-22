@@ -5,8 +5,8 @@ Port of nanochat's MuonAdamW:
 - AdamW for embeddings, lm_head, scalars
 - Muon (Polar Express + NorMuon variance reduction) for matrix params
 
-Since optax doesn't natively support Muon, we implement it as a custom
-GradientTransformation and compose with optax.multi_transform.
+This custom NorMuon/cautious-decay variant is composed with AdamW using
+optax.multi_transform; it intentionally differs from optax.contrib.muon.
 """
 
 import math
@@ -60,7 +60,7 @@ def _polar_express(g, ns_steps):
 
 
 def muon(
-    learning_rate: float = 0.02,
+    learning_rate: float | optax.Schedule = 0.02,
     momentum: float = 0.95,
     ns_steps: int = 5,
     beta2: float = 0.9,
@@ -95,10 +95,11 @@ def muon(
 
     def update_fn(updates, state, params=None):
         count = state.count
+        step_lr = learning_rate(count) if callable(learning_rate) else learning_rate
 
         def _update_leaf(grad, mom, sm, param):
             if param is None or grad.ndim != 2:
-                return -learning_rate * grad, mom, sm
+                return -step_lr * grad, mom, sm
 
             # Nesterov momentum
             new_mom = mom * momentum + grad * (1 - momentum)
@@ -122,7 +123,7 @@ def muon(
             g = g * final_scale.astype(g.dtype)
 
             # Scale LR for aspect ratio
-            lr = learning_rate * max(1.0, param.shape[0] / param.shape[1]) ** 0.5
+            lr = step_lr * max(1.0, param.shape[0] / param.shape[1]) ** 0.5
 
             # Cautious weight decay + update
             mask = (g * param) >= 0
@@ -222,7 +223,7 @@ def setup_optimizer(
 
     # Muon for matrix params
     muon_opt = muon(
-        learning_rate=training.matrix_lr * batch_lr_scale,
+        learning_rate=_lr(training.matrix_lr * batch_lr_scale),
         momentum=0.95,
         ns_steps=5,
         beta2=0.9,
@@ -258,28 +259,19 @@ def setup_optimizer(
             state,
         )
 
-    try:
-        tx = optax.multi_transform(
-            transforms={
-                'lm_head': adamw_lm_head,
-                'embedding': adamw_embedding,
-                'value_embeds': adamw_value_embeds,
-                'resid': adamw_resid,
-                'x0': adamw_x0,
-                'smear': adamw_smear,
-                'muon': muon_opt,
-            },
-            param_labels=param_label_fn,
-        )
-        optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
-    except TypeError:
-        # Fallback for Flax 0.11 where nnx.Optimizer can't handle Muon's NamedTuple state.
-        # Use simple AdamW for all params instead.
-        tx = optax.adamw(
-            learning_rate=training.matrix_lr * batch_lr_scale,
-            b1=0.9, b2=0.95, weight_decay=weight_decay_scaled,
-        )
-        optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
+    tx = optax.multi_transform(
+        transforms={
+            'lm_head': adamw_lm_head,
+            'embedding': adamw_embedding,
+            'value_embeds': adamw_value_embeds,
+            'resid': adamw_resid,
+            'x0': adamw_x0,
+            'smear': adamw_smear,
+            'muon': muon_opt,
+        },
+        param_labels=param_label_fn,
+    )
+    optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
     return optimizer
 
 

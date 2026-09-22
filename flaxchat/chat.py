@@ -11,12 +11,12 @@ from pathlib import Path
 from flax import nnx
 
 from flaxchat.artifact import resolve_artifact_path, verify_artifact
-from flaxchat.checkpoint import load_checkpoint_metadata, restore_model_from_checkpoint
+from flaxchat.checkpoint import load_checkpoint_metadata, restore_model_from_checkpoint, validate_checkpoint_tokenizer
 from flaxchat.common import get_base_dir
 from flaxchat.config import FlaxChatConfig, GenerationConfig
 from flaxchat.engine import generate_with_cache
 from flaxchat.gpt import GPT
-from flaxchat.tokenizer import get_tokenizer, load_tokenizer, tokenizer_artifact_path
+from flaxchat.tokenizer import get_tokenizer, load_tokenizer
 
 
 class ChatService:
@@ -115,22 +115,15 @@ def load_chat_service(
         raise ValueError("checkpoint metadata does not contain a model configuration")
     config = FlaxChatConfig.from_dict({"model": model_values})
     identity = metadata.get("tokenizer_identity")
-    expected_vocab = identity.get("vocab_size") if isinstance(identity, dict) else None
-    if expected_vocab is not None and expected_vocab != tokenizer.get_vocab_size():
-        raise ValueError(
-            f"tokenizer vocabulary mismatch: checkpoint={expected_vocab}, "
-            f"runtime={tokenizer.get_vocab_size()}"
-        )
-    if isinstance(identity, str) and tokenizer_path:
-        tokenizer_file = tokenizer_artifact_path(tokenizer_path)
-        with open(tokenizer_file, "rb") as handle:
-            actual_hash = hashlib.sha256(handle.read()).hexdigest()
-        if actual_hash != identity:
-            raise ValueError("tokenizer hash does not match checkpoint metadata")
+    validate_checkpoint_tokenizer(metadata, tokenizer,
+        tokenizer_path=tokenizer_path or os.path.join(get_base_dir(), 'tokenizer'))
+    if metadata.get('step') is None:
+        raise ValueError('Checkpoint metadata must identify a concrete step')
     model = GPT(config.model, rngs=nnx.Rngs(0))
     restore_model_from_checkpoint(
         model,
         checkpoint_dir,
+        step=metadata['step'],
         expected_identity={
             "resolved_config": metadata.get("resolved_config", model_values),
             "tokenizer": identity,

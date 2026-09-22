@@ -115,3 +115,16 @@ def test_all_stage_requests_accept_one_validated_resolved_config():
     for request_type in (PretrainRequest, SFTRequest, RLRequest, EvalRequest):
         request = request_type(resolved_config=config)
         assert request.resolved_config is config
+
+
+@pytest.mark.integration
+def test_pretrain_smoke_resolves_frozen_model_configuration(tmp_path, monkeypatch):
+    from flaxchat.stages import pretrain
+    monkeypatch.setattr(pretrain, 'get_base_dir', lambda: str(tmp_path))
+    request = PretrainRequest.from_namespace(build_pretrain_parser().parse_args(['--cpu-smoke']))
+    result = pretrain.run(request)
+    assert result.exit_code == 0
+    assert result.metrics['successful_updates'] == 2
+    assert result.metrics['skipped_updates'] == 0
+    if jax.default_backend() == 'tpu' and jax.device_count() > 1:
+        assert result.resolved_config['model']['attention_backend'] == 'xla'

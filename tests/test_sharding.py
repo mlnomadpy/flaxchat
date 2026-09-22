@@ -53,3 +53,22 @@ def test_optimizer_state_inherits_replicated_parameter_sharding():
     assert all(
         leaf.sharding.is_equivalent_to(expected, leaf.ndim) for leaf in arrays
     )
+
+
+@pytest.mark.parametrize('mode', ['generate', 'generate_with_cache', 'generate_fast', 'generate_speculative'])
+def test_inference_uses_model_devices_not_global_mesh(tiny_model, mode):
+    """A fresh/restored model can live on one device despite an eight-device mesh."""
+    from flaxchat import engine
+    setup_mesh()
+    placement = jax.sharding.SingleDeviceSharding(jax.local_devices()[0])
+    nnx.update(tiny_model, jax.device_put(nnx.state(tiny_model), placement))
+    prompt = [1, 2, 3]
+    expected = engine.generate_with_cache(tiny_model, prompt, max_tokens=2, temperature=0)
+    kwargs = {'max_tokens': 2, 'temperature': 0}
+    if mode == 'generate_fast':
+        kwargs['eos_token'] = -1
+    if mode == 'generate_speculative':
+        actual = engine.generate_speculative(tiny_model, tiny_model, prompt, draft_steps=1, **kwargs)
+    else:
+        actual = getattr(engine, mode)(tiny_model, prompt, **kwargs)
+    assert actual == expected

@@ -1,6 +1,12 @@
 from scripts.ci_scope import select_scope
 
 
+def test_prepared_trainer_change_requires_distributed_validation():
+    scope = select_scope(['scripts/train_gpt2.py'])
+    assert scope['run_multidevice']
+    assert 'tests/test_token_pool.py' in scope['tests']
+
+
 def test_core_change_keeps_full_validation_and_relevant_expensive_checks():
     scope = select_scope(["flaxchat/checkpoint.py", "flaxchat/engine.py"])
     assert scope["mode"] == "full"

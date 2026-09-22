@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 import argparse
 import json
+import math
 from pathlib import Path
 import re
 import subprocess
@@ -36,9 +37,9 @@ class LaunchSpec:
             raise ValueError("source_revision must be a full lowercase 40-character Git SHA")
         if not self.argv or any(not part for part in self.argv):
             raise ValueError("argv must contain non-empty command arguments")
-        if self.budget_hours is not None and self.budget_hours <= 0:
+        if self.budget_hours is not None and (not math.isfinite(self.budget_hours) or self.budget_hours <= 0):
             raise ValueError("budget_hours must be positive")
-        if any(value <= 0 for value in self.budget.values()):
+        if any(not math.isfinite(value) or value <= 0 for value in self.budget.values()):
             raise ValueError("budget values must be positive")
         if any("=" in name or not name for name in self.secret_names):
             raise ValueError("secret_names must contain names, never values")
@@ -77,7 +78,8 @@ def execute_launch_spec(
     spec: LaunchSpec, extra_argv: tuple[str, ...] = ()
 ) -> subprocess.CompletedProcess[str]:
     """Execute the structured argv without introducing a shell boundary."""
-    return subprocess.run((*spec.argv, *extra_argv), check=False, text=True)
+    return subprocess.run((*spec.argv, *extra_argv), check=False, text=True,
+                          timeout=spec.budget_hours * 3600 if spec.budget_hours else None)
 
 
 def main(argv: list[str] | None = None) -> int:

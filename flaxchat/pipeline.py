@@ -19,7 +19,7 @@ import optax
 from flaxchat.checkpoint import create_checkpoint_manager, save_checkpoint
 from flaxchat.common import compute_init, replicate_on_mesh, replicate_optimizer_state
 from flaxchat.engine import generate_with_cache
-from flaxchat.gpt import GPT, attention_backend_metadata
+from flaxchat.gpt import GPT, attention_backend_metadata, training_attention_backend
 from flaxchat.config import GPTConfig
 from flaxchat.tokenizer import HuggingFaceTokenizer
 from flaxchat.rl import train_step as preference_train_step
@@ -87,13 +87,7 @@ def _source_revision() -> str:
 
 
 def _pipeline_attention_backend(requested: str, backend: str, device_count: int):
-    """Resolve the distributed-training backend without silent semantic changes."""
-    if requested == "auto" and backend == "tpu" and device_count > 1:
-        return "xla", (
-            "Mosaic Splash kernels cannot be automatically partitioned across "
-            "the data mesh; using exact XLA attention for distributed training"
-        )
-    return requested, None
+    return training_attention_backend(requested, backend, device_count)
 
 
 def load_tinystories(max_train_stories: int, max_validation_stories: int):

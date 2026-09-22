@@ -29,8 +29,8 @@ class Task:
         raise NotImplementedError
 
     def __len__(self):
-        stop = self.num_examples() if self.stop is None else self.stop
-        span = stop - self.start
+        stop = self.num_examples() if self.stop is None else min(self.stop, self.num_examples())
+        span = max(0, stop - self.start)
         return (span + self.step - 1) // self.step
 
     def __getitem__(self, index: int):

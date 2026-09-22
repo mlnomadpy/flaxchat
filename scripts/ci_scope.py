@@ -16,6 +16,14 @@ FULL_TRIGGERS = {
 }
 
 TEST_GROUPS = {
+    "scripts/train_gpt2.py": ("tests/test_token_pool.py", "tests/test_finetuning_resume.py", "tests/test_training_quality_gate.py"),
+    "scripts/validate_training_quality.py": ("tests/test_training_quality_gate.py",),
+    "scripts/gcp_spot_supervisor.py": ("tests/test_operations.py", "tests/test_gcp_cleanup_guard.py"),
+    "scripts/gcp_cleanup_guard.py": ("tests/test_gcp_cleanup_guard.py",),
+    "scripts/gcp_tpu_run.py": ("tests/test_gcp_tpu_run.py",),
+    "scripts/gcp_tpu_preflight.py": ("tests/test_gcp_tpu_preflight.py",),
+    "scripts/tpu_scale_plan.py": ("tests/test_tpu_scale_plan.py",),
+    "infra/tpu/spot_watchdog.py": ("tests/test_spot_watchdog.py",),
     "benchmarks/": (
         "tests/test_benchmark_compare.py",
         "tests/test_benchmark_protocol.py",
@@ -49,7 +57,8 @@ def _is_test(path: str) -> bool:
 def select_scope(changed_paths: list[str], *, force_full: bool = False) -> dict[str, object]:
     """Return deterministic workflow outputs for the supplied repository paths."""
     paths = sorted({path.strip() for path in changed_paths if path.strip()})
-    full = force_full or not paths or any(
+    forced = force_full or not paths
+    full = forced or any(
         path in FULL_TRIGGERS or path.startswith("flaxchat/") or path.startswith("tasks/")
         for path in paths
     )
@@ -64,13 +73,14 @@ def select_scope(changed_paths: list[str], *, force_full: bool = False) -> dict[
             if path.startswith("scripts/") and path not in TEST_GROUPS:
                 selected.update(("tests/test_pipeline.py", "tests/test_stage_functions.py"))
 
-    multidevice = full and any(
-        path.startswith(("flaxchat/sharding", "flaxchat/checkpoint"))
-        or path in {"tests/test_sharding.py", "tests/test_checkpoint_topology.py"}
+    multidevice = forced or any(
+        path.startswith(("flaxchat/sharding", "flaxchat/checkpoint", "flaxchat/training", "flaxchat/common", "flaxchat/gpt"))
+        or path in {"tests/test_sharding.py", "tests/test_checkpoint_topology.py", "scripts/train_gpt2.py",
+                    "tests/test_token_pool.py", "tests/test_distributed_cpu.py"}
         or path in FULL_TRIGGERS
         for path in paths
     )
-    e2e = full and any(
+    e2e = forced or any(
         path.startswith(("flaxchat/engine", "flaxchat/gpt", "flaxchat/stages/"))
         or path.startswith("tasks/")
         or path in FULL_TRIGGERS
@@ -79,8 +89,8 @@ def select_scope(changed_paths: list[str], *, force_full: bool = False) -> dict[
     return {
         "mode": "full" if full else "targeted",
         "tests": sorted(selected),
-        "run_audit": full and any(path in {"pyproject.toml", "pixi.toml", "pixi.lock"} for path in paths),
-        "run_build": full and any(path == "pyproject.toml" or path.startswith("flaxchat/") for path in paths),
+        "run_audit": forced or (full and any(path in {"pyproject.toml", "pixi.toml", "pixi.lock"} for path in paths)),
+        "run_build": forced or (full and any(path == "pyproject.toml" or path.startswith("flaxchat/") for path in paths)),
         "run_multidevice": multidevice,
         "run_e2e": e2e,
     }

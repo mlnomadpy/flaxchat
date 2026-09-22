@@ -1,0 +1,4560 @@
+{
+  "recorded_at_utc": "2026-09-22T10:01:55.189758+00:00",
+  "status": "reliability_passed_quality_gate_failed_resources_deleted",
+  "final_local_source_python_sha256": "2536925ff4c3e22c9270d2d908c6fc5e3416f6f8b4b906d7fabd469800af551c",
+  "physical_source": {
+    "source_python_sha256": "5f14eae3afaa8a029dfe2118a87a4f599500dff4064a9a2ed786ce48c9871609",
+    "archive_sha256": "8cdd194e09e98e4ffc8b6e0fe0c0cecb4a5b6275c844be5acbe6b1878d2e8d35",
+    "archive_bytes": 4142535,
+    "base_commit": "c311b63a7ff035e7539155ae0955b60d8c9de29e"
+  },
+  "physical_source_limitations": [
+    "Final artifact-loader/BOS compatibility changes have separate CPU, eight-device and BF16 evidence.",
+    "The standalone quality gate was added and CPU-tested after the physical campaign; the physical summary was then evaluated retrospectively."
+  ],
+  "physical_unit_tests": {
+    "passed": 526,
+    "skipped": 4,
+    "seconds": 255.69,
+    "hosts": 1,
+    "chips": 4,
+    "inventory": [
+      {
+        "test": "tests.test_attention_accelerator::test_splash_matches_xla_forward_and_gradient[False-32]",
+        "status": "passed",
+        "seconds": 3.729,
+        "message": ""
+      },
+      {
+        "test": "tests.test_attention_accelerator::test_splash_matches_xla_forward_and_gradient[False-128]",
+        "status": "passed",
+        "seconds": 0.312,
+        "message": ""
+      },
+      {
+        "test": "tests.test_attention_accelerator::test_splash_matches_xla_forward_and_gradient[True-32]",
+        "status": "passed",
+        "seconds": 0.898,
+        "message": ""
+      },
+      {
+        "test": "tests.test_attention_accelerator::test_splash_matches_xla_forward_and_gradient[True-128]",
+        "status": "passed",
+        "seconds": 0.338,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_finite_gradients_overflow_rolls_back_every_state[adam]",
+        "status": "passed",
+        "seconds": 0.23,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_finite_gradients_overflow_rolls_back_every_state[sgd]",
+        "status": "passed",
+        "seconds": 0.057,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_invalid_likelihood_never_scores_correct[nan]",
+        "status": "passed",
+        "seconds": 0.529,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_invalid_likelihood_never_scores_correct[inf]",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_unlimited_and_excessive_task_limits",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_forced_ci_really_runs_all_gates",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_explicit_model_precision_controls_projection_and_cache[float32]",
+        "status": "passed",
+        "seconds": 5.351,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_explicit_model_precision_controls_projection_and_cache[bfloat16]",
+        "status": "passed",
+        "seconds": 2.832,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_same_shape_wrong_architecture_rejected",
+        "status": "passed",
+        "seconds": 0.449,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_same_vocabulary_size_different_tokenizer_rejected",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_shard_boundaries_and_lazy_integrity",
+        "status": "passed",
+        "seconds": 0.029,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_failed_stream_never_publishes_pool",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_eval_default_runs_full_task_and_clamps_limit[mmlu]",
+        "status": "passed",
+        "seconds": 0.058,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_eval_default_runs_full_task_and_clamps_limit[gsm8k]",
+        "status": "passed",
+        "seconds": 0.057,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_eval_default_runs_full_task_and_clamps_limit[arc]",
+        "status": "passed",
+        "seconds": 0.056,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_incomplete_core_exits_unsuccessfully",
+        "status": "passed",
+        "seconds": 0.019,
+        "message": ""
+      },
+      {
+        "test": "tests.test_audit_followup::test_process_loss_during_save_preserves_last_committed_checkpoint",
+        "status": "passed",
+        "seconds": 1.193,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_compare::test_compare_requires_identical_controls",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_compare::test_compare_reports_normalized_throughput",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_compare::test_record_schema_fails_closed",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_compare::test_record_rejects_placeholder_revision_and_nonfinite_values",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_compare::test_record_rejects_boolean_and_fractional_integer_fields",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_compare::test_comparison_rejects_duplicate_frameworks",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_compare::test_superlinear_efficiency_is_valid",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_compare::test_parameter_counts_may_differ_inside_declared_tolerance",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_compare::test_protocol_hash_uses_exact_file_bytes",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_benchmark_protocol::test_pinned_baseline_plans_match_canonical_protocol",
+        "status": "passed",
+        "seconds": 0.006,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat::test_generation_is_seed_deterministic",
+        "status": "passed",
+        "seconds": 5.44,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat::test_context_limit_fails_before_generation",
+        "status": "passed",
+        "seconds": 0.036,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat::test_empty_prompt_is_rejected",
+        "status": "passed",
+        "seconds": 0.035,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat::test_generate_text_stops_at_assistant_end",
+        "status": "passed",
+        "seconds": 0.035,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat::test_stream_honors_cancellation_before_decode",
+        "status": "passed",
+        "seconds": 0.065,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat::test_stream_preserves_byte_tokenizer_unicode",
+        "status": "passed",
+        "seconds": 0.035,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat::test_loader_rejects_unknown_checkpoint_type_before_io",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat_web::test_import_has_no_model_loading",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat_web::test_application_factory_health_and_websocket_protocol",
+        "status": "passed",
+        "seconds": 0.103,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat_web::test_websocket_rejects_oversized_input",
+        "status": "passed",
+        "seconds": 0.005,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat_web::test_websocket_disconnect_cancels_silent_generation",
+        "status": "passed",
+        "seconds": 0.015,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat_web::test_websocket_returns_sanitized_model_error",
+        "status": "passed",
+        "seconds": 0.006,
+        "message": ""
+      },
+      {
+        "test": "tests.test_chat_web::test_web_settings_reject_nonpositive_bounds",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint::test_integrity_hash_preserves_reordered_mesh_and_partial_chunk",
+        "status": "passed",
+        "seconds": 0.115,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestCreateCheckpointManager::test_async_policy_is_honored[True]",
+        "status": "passed",
+        "seconds": 0.004,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestCreateCheckpointManager::test_async_policy_is_honored[False]",
+        "status": "passed",
+        "seconds": 0.004,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestCreateCheckpointManager::test_creates_directory",
+        "status": "passed",
+        "seconds": 0.004,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestCreateCheckpointManager::test_returns_manager",
+        "status": "passed",
+        "seconds": 0.004,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestCreateCheckpointManager::test_max_to_keep",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestCreateCheckpointManager::test_existing_directory_ok",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestCreateCheckpointManager::test_relative_directory_is_normalized_for_tensorstore",
+        "status": "passed",
+        "seconds": 0.004,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestSaveLoadRoundTrip::test_save_and_load_latest",
+        "status": "passed",
+        "seconds": 0.538,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestSaveLoadRoundTrip::test_save_and_load_specific_step",
+        "status": "passed",
+        "seconds": 0.244,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestSaveLoadRoundTrip::test_load_no_checkpoints_raises",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestSaveLoadRoundTrip::test_param_values_preserved",
+        "status": "passed",
+        "seconds": 0.82,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestSaveLoadRoundTrip::test_manifest_detects_modified_state_before_mutation",
+        "status": "passed",
+        "seconds": 0.106,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestSaveLoadRoundTrip::test_partial_checkpoint_fails_before_mutating_model",
+        "status": "passed",
+        "seconds": 0.637,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestSaveLoadRoundTrip::test_interrupted_training_matches_uninterrupted_training",
+        "status": "passed",
+        "seconds": 3.029,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestRestoreModelFromCheckpoint::test_restores_in_place",
+        "status": "passed",
+        "seconds": 0.203,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint.TestRestoreModelFromCheckpoint::test_returns_metadata",
+        "status": "passed",
+        "seconds": 0.151,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint::test_gcs_checkpoint_path_is_preserved",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_checkpoint_topology::test_checkpoint_restores_from_eight_devices_to_one",
+        "status": "passed",
+        "seconds": 2.904,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_core_change_keeps_full_validation_and_relevant_expensive_checks",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_benchmark_change_only_selects_benchmark_tests",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_changed_test_runs_without_global_coverage_job",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_dependency_change_runs_full_audit",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_manual_dispatch_forces_full_validation",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_kaggle_monitor_change_only_runs_its_contract_tests",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_accelerator_template_change_runs_launcher_contract_only",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_release_workflow_change_runs_policy_tests_without_full_suite",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_non_cpu_workflow_changes_run_only_policy_tests",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_ci_scope::test_ci_selector_and_artifact_verifier_have_precise_test_routes",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeDtype::test_dtype_is_valid",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeDtype::test_reason_is_string",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestGetBaseDir::test_returns_string",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestGetPeakFlops::test_known_tpu",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestGetPeakFlops::test_unknown_device",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestGetPeakFlops::test_case_insensitive",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestDummyWandb::test_log_noop",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_setup_mesh_registers_global_mesh",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_runtime_initializes_before_backend_discovery",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_multi_process_launchers_are_detected[environment0]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_multi_process_launchers_are_detected[environment1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_multi_process_launchers_are_detected[environment2]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_multi_process_launchers_are_detected[environment3]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_multi_process_launchers_are_detected[environment4]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_multi_process_launchers_are_detected[environment5]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_single_process_markers_are_not_distributed[environment0]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_single_process_markers_are_not_distributed[environment1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_single_process_markers_are_not_distributed[environment2]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_single_process_markers_are_not_distributed[environment3]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_single_process_markers_are_not_distributed[environment4]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_single_process_markers_are_not_distributed[environment5]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_distributed_initialization_precedes_topology_queries",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_initialized_launcher_is_not_initialized_twice",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common.TestComputeInit::test_kaggle_single_host_does_not_initialize_distributed",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_common::test_explicit_distributed_launcher_arguments",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestGPTConfig::test_defaults",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_defaults",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_from_depth_12",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_from_depth_24",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_from_depth_with_overrides",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_from_dict",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_from_dict_with_depth",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_from_yaml",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_from_json",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_to_dict",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_roundtrip",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_nested_field_is_rejected[model]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_nested_field_is_rejected[training]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_nested_field_is_rejected[tpu]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_nested_field_is_rejected[checkpoint]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_nested_field_is_rejected[logging]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_nested_field_is_rejected[tokenizer]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_nested_field_is_rejected[data]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_nested_field_is_rejected[evaluation]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_nested_field_is_rejected[generation]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_unknown_depth_override_is_rejected",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_depth_can_be_combined_with_training_section",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_model_contract_is_rejected[kwargs0-divisible by n_head]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_model_contract_is_rejected[kwargs1-divisible by n_kv_head]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_model_contract_is_rejected[kwargs2-window_pattern]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_model_contract_is_rejected[kwargs3-attention_backend]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_tpu_contract_is_rejected",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_mutable_section_contract_is_rejected[section0-device_batch_size]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_mutable_section_contract_is_rejected[section1-warmdown_ratio]",
+        "status": "passed",
+        "seconds": 0.006,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_mutable_section_contract_is_rejected[section2-max_to_keep]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_mutable_section_contract_is_rejected[section3-fsdp]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_mutable_section_contract_is_rejected[section4-log_interval]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_mutable_section_contract_is_rejected[section5-vocab_size]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_mutable_section_contract_is_rejected[section6-max_per_task]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_config.TestFlaxChatConfig::test_invalid_mutable_section_contract_is_rejected[section7-temperature]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDocumentBatches::test_two_hosts_are_disjoint_and_resume_global_order",
+        "status": "passed",
+        "seconds": 0.007,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDocumentBatches::test_yields_text_batches",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDocumentBatches::test_resume_state",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDocumentBatches::test_multi_host_sharding",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDocumentBatches::test_val_split_uses_last_shard",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_corrupt_document_is_not_skipped",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_resume_reproduces_exact_next_batches[1]",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_resume_reproduces_exact_next_batches[2]",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_resume_reproduces_exact_next_batches[5]",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_resume_reproduces_exact_next_batches[9]",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_resume_rejects_changed_topology_or_packing",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_output_shapes",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_targets_are_shifted_inputs",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_state_dict_returned",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderBOSBestFit::test_invalid_split_raises",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataloader.TestDataLoaderNoState::test_omits_state_dict",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataset::test_dataset_url_is_pinned_to_immutable_revision",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataset::test_download_shard_uses_canonical_name",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataset::test_download_shard_rejects_out_of_range_ids[-1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataset::test_download_shard_rejects_out_of_range_ids[6542]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataset::test_download_range_is_validated_before_network_access[-1-1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataset::test_download_range_is_validated_before_network_access[2-1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_dataset::test_download_range_is_validated_before_network_access[0-6543]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_distributed_cpu::test_two_process_initialization_collective_and_canonical_batch",
+        "status": "skipped",
+        "seconds": 0.0,
+        "message": "Opt-in localhost processes: FLAXCHAT_RUN_DISTRIBUTED_CPU=1"
+      },
+      {
+        "test": "tests.test_distributed_cpu::test_two_process_sharded_checkpoint_integrity",
+        "status": "skipped",
+        "seconds": 0.0,
+        "message": "Opt-in localhost processes: FLAXCHAT_RUN_DISTRIBUTED_CPU=1"
+      },
+      {
+        "test": "tests.test_docs::test_validator_reports_missing_targets_and_unclosed_fences",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_docs::test_validator_extracts_mermaid_blocks_for_the_real_parser",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_docs::test_validator_rejects_empty_mermaid_blocks",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerate::test_basic_generation",
+        "status": "passed",
+        "seconds": 2.286,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerate::test_greedy_deterministic",
+        "status": "passed",
+        "seconds": 2.149,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerate::test_top_k",
+        "status": "passed",
+        "seconds": 0.587,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerate::test_single_token_prompt",
+        "status": "passed",
+        "seconds": 2.094,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerate::test_shakespeare_generation",
+        "status": "passed",
+        "seconds": 2.374,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerateWithCache::test_cache_uses_model_placement",
+        "status": "passed",
+        "seconds": 0.036,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerateWithCache::test_basic_cached_generation",
+        "status": "passed",
+        "seconds": 1.552,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerateWithCache::test_greedy_deterministic",
+        "status": "passed",
+        "seconds": 0.945,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerateWithCache::test_matches_simple_generate",
+        "status": "passed",
+        "seconds": 3.023,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerateWithCache::test_top_k_cached",
+        "status": "passed",
+        "seconds": 0.226,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerateFast::test_fast_generation_basic",
+        "status": "passed",
+        "seconds": 1.316,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerateFast::test_fast_greedy_deterministic",
+        "status": "passed",
+        "seconds": 1.835,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestGenerateFast::test_fast_matches_cached",
+        "status": "passed",
+        "seconds": 1.393,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestSpeculativeDecoding::test_speculative_basic",
+        "status": "passed",
+        "seconds": 5.979,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestSpeculativeDecoding::test_speculative_greedy_matches",
+        "status": "passed",
+        "seconds": 1.475,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestSpeculativeDecoding::test_speculative_greedy_matches_after_rejection",
+        "status": "passed",
+        "seconds": 1.986,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestSpeculativeDecoding::test_speculative_validates_decode_window",
+        "status": "passed",
+        "seconds": 0.059,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestCalculator::test_basic_math",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestCalculator::test_string_count",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestCalculator::test_rejects_dangerous",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestCalculator::test_rejects_power",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestCalculator::test_comma_removal",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_engine.TestExecuteCode::test_execute_code_tool",
+        "status": "passed",
+        "seconds": 1.062,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval::test_multiple_choice_prompt_matches_golden_reference",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval::test_language_model_prompt_matches_golden_reference",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval::test_multiple_choice_label_and_scores_match_golden_reference",
+        "status": "passed",
+        "seconds": 0.095,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestForwardModel::test_output_shapes",
+        "status": "passed",
+        "seconds": 2.469,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestForwardModel::test_last_position_nan",
+        "status": "passed",
+        "seconds": 2.347,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestForwardModel::test_losses_positive",
+        "status": "passed",
+        "seconds": 0.173,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestFindCommonLength::test_common_prefix",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestFindCommonLength::test_no_common_prefix",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestFindCommonLength::test_common_suffix",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestFindCommonLength::test_identical_sequences",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestCoreProtocol::test_declared_fewshot_count_and_manifest",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestCoreProtocol::test_task_failure_invalidates_aggregate",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_eval.TestRenderMC::test_basic",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecutionResult::test_default_fields",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecutionResult::test_custom_fields",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_container_contract_is_fail_closed",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_missing_runtime_is_structured_failure",
+        "status": "passed",
+        "seconds": 0.037,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_generated_code_requires_valid_operator_configuration",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_parent_bounds_untrusted_output",
+        "status": "passed",
+        "seconds": 0.017,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_bounded_runner_captures_success_and_failure",
+        "status": "passed",
+        "seconds": 0.036,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_bounded_runner_kills_timeout",
+        "status": "passed",
+        "seconds": 0.104,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_bounded_runner_times_out_while_child_ignores_large_stdin",
+        "status": "passed",
+        "seconds": 0.106,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_bounded_runner_kills_descendants_holding_output_descriptors",
+        "status": "passed",
+        "seconds": 0.103,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_isolated_runner_always_attempts_named_container_cleanup",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_adversarial_payloads_fail_closed_without_backend[open('/tmp/escape', 'w').write('x')]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_adversarial_payloads_fail_closed_without_backend[from pathlib import Path; Path('/tmp/escape').write_text('x')]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_adversarial_payloads_fail_closed_without_backend[import socket; socket.create_connection(('example.com', 80))]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_adversarial_payloads_fail_closed_without_backend[import ctypes; ctypes.CDLL(None)]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_adversarial_payloads_fail_closed_without_backend[import importlib; importlib.import_module('subprocess')]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_adversarial_payloads_fail_closed_without_backend[import os; os.fork()]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_isolated_runtime_launch_error_is_structured",
+        "status": "passed",
+        "seconds": 0.023,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestIsolatedExecution::test_humaneval_is_disabled_without_pinned_backend",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSuccess::test_untrusted_execution_is_disabled_by_default",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSuccess::test_simple_print",
+        "status": "passed",
+        "seconds": 1.057,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSuccess::test_arithmetic",
+        "status": "passed",
+        "seconds": 1.044,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSuccess::test_multiline_code",
+        "status": "passed",
+        "seconds": 1.047,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSuccess::test_imports_allowed",
+        "status": "passed",
+        "seconds": 1.057,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSuccess::test_empty_code",
+        "status": "passed",
+        "seconds": 1.051,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSuccess::test_output_flood_is_bounded",
+        "status": "passed",
+        "seconds": 1.044,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeErrors::test_invalid_resource_limits_fail_closed[kwargs0]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeErrors::test_invalid_resource_limits_fail_closed[kwargs1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeErrors::test_syntax_error",
+        "status": "passed",
+        "seconds": 1.041,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeErrors::test_runtime_error",
+        "status": "passed",
+        "seconds": 1.05,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeErrors::test_name_error",
+        "status": "passed",
+        "seconds": 1.056,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeErrors::test_assertion_error",
+        "status": "passed",
+        "seconds": 1.052,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeTimeout::test_infinite_loop_times_out",
+        "status": "passed",
+        "seconds": 2.013,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeTimeout::test_sleep_within_timeout_succeeds",
+        "status": "passed",
+        "seconds": 1.148,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeTimeout::test_short_timeout",
+        "status": "passed",
+        "seconds": 1.054,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSandbox::test_os_system_disabled",
+        "status": "passed",
+        "seconds": 1.041,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSandbox::test_os_remove_disabled",
+        "status": "passed",
+        "seconds": 1.056,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSandbox::test_subprocess_disabled",
+        "status": "passed",
+        "seconds": 1.059,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSandbox::test_exit_disabled",
+        "status": "passed",
+        "seconds": 1.049,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestExecuteCodeSandbox::test_fork_disabled",
+        "status": "passed",
+        "seconds": 1.053,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestTimeLimitContextManager::test_no_timeout_within_limit",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestTimeLimitContextManager::test_timeout_raises",
+        "status": "passed",
+        "seconds": 0.101,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestCaptureIO::test_captures_stdout",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestCaptureIO::test_captures_stderr",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_execution.TestCaptureIO::test_restores_streams",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_finetuning_resume::test_sft_exact_resume",
+        "status": "passed",
+        "seconds": 6.752,
+        "message": ""
+      },
+      {
+        "test": "tests.test_finetuning_resume::test_rl_exact_resume",
+        "status": "passed",
+        "seconds": 5.139,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_cleanup_guard::test_lease_is_bounded_and_resource_specific",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_cleanup_guard::test_rejects_unbounded_or_unowned_resources[changes0]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_cleanup_guard::test_rejects_unbounded_or_unowned_resources[changes1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_cleanup_guard::test_rejects_unbounded_or_unowned_resources[changes2]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_cleanup_guard::test_rejects_unbounded_or_unowned_resources[changes3]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_cleanup_guard::test_rejects_unbounded_or_unowned_resources[changes4]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_cleanup_guard::test_rejects_unbounded_or_unowned_resources[changes5]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_cleanup_guard::test_receipt_requires_live_cloud_execution",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_cleanup_guard::test_guard_yaml_has_no_arbitrary_delete_url",
+        "status": "passed",
+        "seconds": 0.005,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_tpu_preflight::test_zone_zero_override_takes_precedence_over_default",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_tpu_preflight::test_regional_unlimited_bucket_is_not_zonal_quota",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_tpu_run::test_command_quotes_literal_shell_characters_and_sets_rank",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_tpu_run::test_setup_does_not_initialize_distributed_runtime",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_tpu_run::test_invalid_worker_coordinates[4-4-60]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_tpu_run::test_invalid_worker_coordinates[0-0-60]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_gcp_tpu_run::test_invalid_worker_coordinates[0-4-0]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_muon_uses_checkpointed_schedule_count",
+        "status": "passed",
+        "seconds": 1.239,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_zero_schedule_freezes_every_parameter",
+        "status": "passed",
+        "seconds": 4.067,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_scan_matches_loop_values_and_gradients[False-False]",
+        "status": "passed",
+        "seconds": 9.374,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_scan_matches_loop_values_and_gradients[False-True]",
+        "status": "passed",
+        "seconds": 2.416,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_scan_matches_loop_values_and_gradients[True-False]",
+        "status": "passed",
+        "seconds": 3.617,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_scan_matches_loop_values_and_gradients[True-True]",
+        "status": "passed",
+        "seconds": 1.545,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_chunked_loss_matches_reference_and_gradients[False-False]",
+        "status": "passed",
+        "seconds": 0.924,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_chunked_loss_matches_reference_and_gradients[False-True]",
+        "status": "passed",
+        "seconds": 0.621,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_chunked_loss_matches_reference_and_gradients[True-False]",
+        "status": "passed",
+        "seconds": 0.448,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_chunked_loss_matches_reference_and_gradients[True-True]",
+        "status": "passed",
+        "seconds": 0.416,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_all_master_parameters_are_fp32",
+        "status": "passed",
+        "seconds": 0.039,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_v5p_runtime_alias_is_not_v5e",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_winogrande_scores_suffix_not_option",
+        "status": "passed",
+        "seconds": 0.229,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_nonfinite_finetuning_preserves_optimizer_and_model[sft]",
+        "status": "passed",
+        "seconds": 0.137,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_nonfinite_finetuning_preserves_optimizer_and_model[rl]",
+        "status": "passed",
+        "seconds": 0.198,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_prefetch_eof_can_stop_with_full_queue",
+        "status": "passed",
+        "seconds": 0.23,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_launch_rejects_invalid_budgets[nan]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_launch_rejects_invalid_budgets[inf]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_launch_rejects_invalid_budgets[0]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_launch_rejects_invalid_budgets[-1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_sharded_initialization_matches_reference",
+        "status": "passed",
+        "seconds": 0.382,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_cached_generation_matches_full_model_after_nonzero_updates[False]",
+        "status": "passed",
+        "seconds": 3.5,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_cached_generation_matches_full_model_after_nonzero_updates[True]",
+        "status": "passed",
+        "seconds": 0.228,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_host_prefetch_preserves_consumed_cursor",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_global_batch_contract_with_accumulation",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_budget_guard_covers_setup_and_defaults_to_cleanup",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_delayed_launch_waits_before_allocation",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_projection_uses_compute_dtype",
+        "status": "passed",
+        "seconds": 0.066,
+        "message": ""
+      },
+      {
+        "test": "tests.test_harness_regressions::test_source_identity_mismatch_rejected_before_live_mutation",
+        "status": "passed",
+        "seconds": 0.318,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_acceptance_bundle_installs_all_test_feature_extras",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_kaggle_launcher_requires_immutable_full_revision",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_launch_spec_round_trip_and_secret_values_are_rejected",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_launch_spec_executes_argv_without_shell",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_gcp_lifecycle_tears_down_after_failure[up]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_gcp_lifecycle_tears_down_after_failure[run]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_gcp_lifecycle_resume_collect_and_teardown",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_platform_dry_runs_share_one_manifest_contract",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_training_bundle_runs_real_pipeline_at_exact_revision",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_fineweb_gpt2_bundle_uses_gpt2_tokenizer_below_vocab_ceiling",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_monitor_recovers_after_transport_reset",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_resume_monitor_never_submits_a_new_version",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_partial_artifact_download_keeps_previous_complete_output",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_monitor_exhausts_transport_outage_budget",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_kernel_error_is_not_treated_as_transport_failure",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_kaggle_command_bounds_a_hung_cli",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_matched_gpu_bundle_pins_all_three_repositories",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_kaggle_launcher::test_matched_preflight_uses_cpu_before_spending_gpu_quota",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_matched_benchmark::test_framework_neutral_byte_encoding_is_deterministic",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_matched_benchmark::test_sequences_use_next_token_targets",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_matched_benchmark::test_batch_loader_fails_closed_on_shape_drift",
+        "status": "passed",
+        "seconds": 0.005,
+        "message": ""
+      },
+      {
+        "test": "tests.test_matched_benchmark::test_record_carries_shared_data_identity",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_matched_benchmark::test_hardware_guard_rejects_unmatched_accelerators",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_matched_benchmark::test_parameter_budget_is_inclusive_at_five_percent",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_matched_benchmark::test_nanochat_token_batches_are_promoted_to_int64",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestRMSNorm::test_output_shape",
+        "status": "passed",
+        "seconds": 0.166,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestRMSNorm::test_normalization",
+        "status": "passed",
+        "seconds": 0.216,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestRMSNorm::test_zero_input",
+        "status": "passed",
+        "seconds": 0.054,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestRotaryEmbeddings::test_shape",
+        "status": "passed",
+        "seconds": 0.29,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestRotaryEmbeddings::test_apply_shape",
+        "status": "passed",
+        "seconds": 0.312,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestRotaryEmbeddings::test_deterministic",
+        "status": "passed",
+        "seconds": 0.243,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestHasVE::test_alternating",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestHasVE::test_last_layer_included",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestMLP::test_forward_shape",
+        "status": "passed",
+        "seconds": 0.146,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestMLP::test_relu_squared",
+        "status": "passed",
+        "seconds": 0.049,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestCausalSelfAttention::test_auto_backend_metadata_includes_sequence_compatibility",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestCausalSelfAttention::test_xla_attention_matches_dense_reference[3]",
+        "status": "passed",
+        "seconds": 0.958,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestCausalSelfAttention::test_xla_attention_matches_dense_reference[8]",
+        "status": "passed",
+        "seconds": 0.009,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestCausalSelfAttention::test_xla_attention_gradient_matches_dense_reference",
+        "status": "passed",
+        "seconds": 2.318,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestCausalSelfAttention::test_xla_attention_supports_padding_and_grouped_query_heads",
+        "status": "passed",
+        "seconds": 1.559,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestCausalSelfAttention::test_attention_rejects_invalid_padding_shape",
+        "status": "passed",
+        "seconds": 0.031,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestCausalSelfAttention::test_splash_fails_clearly_without_tpu",
+        "status": "skipped",
+        "seconds": 0.001,
+        "message": "CPU/GPU fallback test"
+      },
+      {
+        "test": "tests.test_model.TestCausalSelfAttention::test_forward_shape",
+        "status": "passed",
+        "seconds": 1.243,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestCausalSelfAttention::test_causal_masking",
+        "status": "passed",
+        "seconds": 1.054,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestBlock::test_forward_shape",
+        "status": "passed",
+        "seconds": 0.313,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_declared_rng_controls_initialization",
+        "status": "passed",
+        "seconds": 0.119,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_construction",
+        "status": "passed",
+        "seconds": 0.035,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_forward_logits",
+        "status": "passed",
+        "seconds": 0.065,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_forward_loss",
+        "status": "passed",
+        "seconds": 0.298,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_forward_shakespeare",
+        "status": "passed",
+        "seconds": 0.151,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_num_params",
+        "status": "passed",
+        "seconds": 0.037,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_estimate_flops",
+        "status": "passed",
+        "seconds": 0.037,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_window_sizes",
+        "status": "passed",
+        "seconds": 0.035,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_value_embeddings_alternating",
+        "status": "passed",
+        "seconds": 0.035,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_ignore_index",
+        "status": "passed",
+        "seconds": 0.128,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_softcap",
+        "status": "passed",
+        "seconds": 0.153,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_jit_compatible",
+        "status": "passed",
+        "seconds": 0.561,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPT::test_grad_computable",
+        "status": "passed",
+        "seconds": 5.684,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPTSmall::test_forward",
+        "status": "passed",
+        "seconds": 4.805,
+        "message": ""
+      },
+      {
+        "test": "tests.test_model.TestGPTSmall::test_loss",
+        "status": "passed",
+        "seconds": 0.517,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_summary_requires_disjoint_complete_matching_workers",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_summary_fails_closed_on_inconsistent_evidence[overlap]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_summary_fails_closed_on_inconsistent_evidence[duplicate]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_summary_fails_closed_on_inconsistent_evidence[loss]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_summary_fails_closed_on_inconsistent_evidence[nonfinite]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_summary_fails_closed_on_inconsistent_evidence[revision]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_summary_fails_closed_on_inconsistent_evidence[digest]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_summary_fails_closed_on_inconsistent_evidence[failed]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_summary_rejects_single_host_and_invalid_cost",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_physical_acceptance_rejects_false_positive_evidence[cpu]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_physical_acceptance_rejects_false_positive_evidence[same_host]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_physical_acceptance_rejects_false_positive_evidence[wrong_gradient]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_physical_acceptance_rejects_false_positive_evidence[wrong_devices]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_physical_acceptance_rejects_false_positive_evidence[empty]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_multihost_acceptance::test_physical_acceptance_rejects_false_positive_evidence[bad_sha]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_operations::test_reservations_survive_restart_and_count_retries",
+        "status": "passed",
+        "seconds": 0.006,
+        "message": ""
+      },
+      {
+        "test": "tests.test_operations::test_provision_failure_still_deletes_and_missing_guard_never_allocates",
+        "status": "passed",
+        "seconds": 0.007,
+        "message": ""
+      },
+      {
+        "test": "tests.test_operations::test_failed_cleanup_overrides_success",
+        "status": "passed",
+        "seconds": 0.009,
+        "message": ""
+      },
+      {
+        "test": "tests.test_operations::test_supervisor_refuses_existing_resource_before_arming",
+        "status": "passed",
+        "seconds": 0.005,
+        "message": ""
+      },
+      {
+        "test": "tests.test_operations::test_supervisor_checks_budget_before_guard_and_allocation",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_operations::test_supervisor_retries_only_after_verified_cleanup_with_resume",
+        "status": "passed",
+        "seconds": 0.018,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestMuonOptimizer::test_init_and_step",
+        "status": "passed",
+        "seconds": 1.073,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestMuonOptimizer::test_tall_and_wide_matrices",
+        "status": "passed",
+        "seconds": 1.037,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestMuonOptimizer::test_weight_decay",
+        "status": "passed",
+        "seconds": 0.85,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestMuonOptimizer::test_polar_express_coefficients",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestSetupOptimizer::test_creates_optimizer",
+        "status": "passed",
+        "seconds": 0.065,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestSetupOptimizer::test_optimizer_step",
+        "status": "passed",
+        "seconds": 0.323,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestSetupOptimizer::test_loss_decreases",
+        "status": "passed",
+        "seconds": 1.322,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestLRSchedule::test_warmup",
+        "status": "passed",
+        "seconds": 0.24,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestLRSchedule::test_constant_phase",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestLRSchedule::test_warmdown",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestLRSchedule::test_final_lr_frac",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestWDSchedule::test_cosine_decay",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestMuonMomentumSchedule::test_warmup",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_optim.TestMuonMomentumSchedule::test_stable_phase",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_pipeline::test_pipeline_config_rejects_invalid_shapes",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_pipeline::test_distributed_tpu_attention_fallback_is_explicit",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_pipeline::test_fixture_split_is_deterministic",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_pipeline::test_complete_pipeline_emits_restorable_artifacts",
+        "status": "passed",
+        "seconds": 19.044,
+        "message": ""
+      },
+      {
+        "test": "tests.test_prefetch.TestBackgroundPrefetcher::test_basic_iteration",
+        "status": "passed",
+        "seconds": 0.094,
+        "message": ""
+      },
+      {
+        "test": "tests.test_prefetch.TestBackgroundPrefetcher::test_next_protocol",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_prefetch.TestBackgroundPrefetcher::test_prefetch_ahead",
+        "status": "passed",
+        "seconds": 0.307,
+        "message": ""
+      },
+      {
+        "test": "tests.test_prefetch.TestBackgroundPrefetcher::test_stop_cleanup",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_prefetch.TestBackgroundPrefetcher::test_empty_data",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_prefetch.TestBackgroundPrefetcher::test_arrays_are_jax",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_prefetch.TestBackgroundPrefetcher::test_worker_failure_is_not_silently_reported_as_eof",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_prefetch.TestBackgroundPrefetcher::test_queue_applies_bounded_backpressure",
+        "status": "passed",
+        "seconds": 0.202,
+        "message": ""
+      },
+      {
+        "test": "tests.test_prefetch.TestBackgroundPrefetcher::test_invalid_prefetch_count_fails_early",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_published_artifact::test_published_artifact_is_intact_and_generates_deterministically",
+        "status": "passed",
+        "seconds": 3.727,
+        "message": ""
+      },
+      {
+        "test": "tests.test_published_artifact::test_artifact_path_cannot_escape_root",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_published_artifact::test_artifact_checksum_verification_rejects_tampering",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_third_party_actions_are_immutable",
+        "status": "passed",
+        "seconds": 0.02,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_workflow_permissions_remain_least_privilege",
+        "status": "passed",
+        "seconds": 0.023,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_dependabot_covers_actions_and_python_dependency_metadata",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_release_publishes_and_smokes_the_checkpoint_only_on_tags",
+        "status": "passed",
+        "seconds": 0.006,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_expensive_workflows_are_opt_in_and_routine_ci_is_linux_only",
+        "status": "passed",
+        "seconds": 0.009,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_release_reuses_default_branch_validation_instead_of_retesting",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_python_and_optional_dependency_contracts_are_truthful_and_disjoint",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_pages_uses_default_branch_and_pr_builds_without_deploying",
+        "status": "passed",
+        "seconds": 0.005,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_module_coverage_floor_reports_missing_and_low_files",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_module_coverage_deltas_are_signed_and_risk_scoped",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_module_coverage_cli_reports_delta_and_fails_low_module",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_current_tpu_results_share_one_immutable_revision_and_are_linked",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_quality_policy::test_paid_multihost_launcher_fails_closed_and_uses_bounded_defaults",
+        "status": "passed",
+        "seconds": 0.007,
+        "message": ""
+      },
+      {
+        "test": "tests.test_report::test_unknown_device_cost_is_not_invented",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_report::test_tpu_cost_scales_by_time_and_device_count",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_report::test_git_info_degrades_cleanly_outside_checkout",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_report::test_report_writes_matching_markdown_and_json",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_result_provenance::test_published_result_provenance_is_valid",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_result_provenance::test_validator_rejects_stale_revision",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_result_provenance::test_validator_rejects_missing_evidence_link",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_result_provenance::test_validator_rejects_divergent_claim_value",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_result_provenance::test_validator_rejects_missing_identity",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_sharding::test_default_mesh_consumes_every_device",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_sharding::test_batch_is_sharded_and_state_is_replicated",
+        "status": "passed",
+        "seconds": 0.093,
+        "message": ""
+      },
+      {
+        "test": "tests.test_sharding::test_virtual_multidevice_job_really_has_eight_devices",
+        "status": "skipped",
+        "seconds": 0.001,
+        "message": "dedicated virtual multi-device job only"
+      },
+      {
+        "test": "tests.test_sharding::test_optimizer_state_inherits_replicated_parameter_sharding",
+        "status": "passed",
+        "seconds": 0.031,
+        "message": ""
+      },
+      {
+        "test": "tests.test_sharding::test_inference_uses_model_devices_not_global_mesh[generate]",
+        "status": "passed",
+        "seconds": 3.403,
+        "message": ""
+      },
+      {
+        "test": "tests.test_sharding::test_inference_uses_model_devices_not_global_mesh[generate_with_cache]",
+        "status": "passed",
+        "seconds": 0.271,
+        "message": ""
+      },
+      {
+        "test": "tests.test_sharding::test_inference_uses_model_devices_not_global_mesh[generate_fast]",
+        "status": "passed",
+        "seconds": 1.127,
+        "message": ""
+      },
+      {
+        "test": "tests.test_sharding::test_inference_uses_model_devices_not_global_mesh[generate_speculative]",
+        "status": "passed",
+        "seconds": 1.292,
+        "message": ""
+      },
+      {
+        "test": "tests.test_spot_watchdog::test_delete_timeout_is_retried",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_spot_watchdog::test_queue_state_rejection_deletes_owned_node_then_retries",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_sft_batch_supervises_only_assistant_tokens",
+        "status": "passed",
+        "seconds": 0.378,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_sft_batch_fails_without_examples",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_sft_batch_rejects_examples_without_supervised_tokens",
+        "status": "passed",
+        "seconds": 0.231,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_load_conversations_from_jsonl_obeys_limit",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_preference_objective_is_finite_and_centered",
+        "status": "passed",
+        "seconds": 0.494,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_cli_modules_are_import_safe_and_expose_main",
+        "status": "passed",
+        "seconds": 0.02,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_stage_cli_options_resolve_to_typed_requests[PretrainRequest-build_parser-argv0-depth-3]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_stage_cli_options_resolve_to_typed_requests[SFTRequest-build_parser-argv1-batch_size-2]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_stage_cli_options_resolve_to_typed_requests[RLRequest-build_parser-argv2-num_samples-4]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_stage_cli_options_resolve_to_typed_requests[EvalRequest-build_parser-argv3-tasks-core,mmlu]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_stage_result_is_machine_readable",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_all_stage_requests_accept_one_validated_resolved_config",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_stage_functions::test_pretrain_smoke_resolves_frozen_model_configuration",
+        "status": "passed",
+        "seconds": 15.242,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_packing_has_no_padding_and_resume_is_exact",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_corruption_and_path_escape_rejected",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_gpt_resume_matches_uninterrupted",
+        "status": "passed",
+        "seconds": 8.725,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_invalid_ids_rejected",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_manifest_changes_identity",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_host_batches_reconstruct_canonical_order[1]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_host_batches_reconstruct_canonical_order[2]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_host_batches_reconstruct_canonical_order[4]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_host_batches_reconstruct_canonical_order[8]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_host_batches_reconstruct_canonical_order[16]",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_invalid_host_partition_rejected[0-0-8]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_invalid_host_partition_rejected[-1-2-8]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_invalid_host_partition_rejected[2-2-8]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_invalid_host_partition_rejected[0-3-8]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_fsdp_training_and_checkpoint_bridge",
+        "status": "passed",
+        "seconds": 12.915,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_trainer_rejects_nonpositive_explicit_global_batch[0]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_trainer_rejects_nonpositive_explicit_global_batch[-1]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_noncontiguous_host_rows_preserve_canonical_global_batch",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_invalid_global_row_interval_rejected[-1-1]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_invalid_global_row_interval_rejected[0-0]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_invalid_global_row_interval_rejected[1-0]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_invalid_global_row_interval_rejected[0-9]",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_token_pool::test_muon_accumulated_resume_matches_uninterrupted",
+        "status": "passed",
+        "seconds": 11.407,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestTrainFromIterator::test_vocab_size",
+        "status": "passed",
+        "seconds": 0.031,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestTrainFromIterator::test_special_tokens_present",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestTrainFromIterator::test_special_tokens_have_ids",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestEncodeDecode::test_encode_returns_list_of_ints",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestEncodeDecode::test_decode_roundtrip",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestEncodeDecode::test_encode_batch",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestEncodeDecode::test_encode_with_prepend",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestEncodeDecode::test_encode_with_append",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestEncodeDecode::test_encode_empty_string",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestEncodeDecode::test_encode_invalid_type_raises",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestEncodeDecode::test_callable",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestEncodeDecode::test_unicode_roundtrip",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestSpecialTokens::test_bos_token_id",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestSpecialTokens::test_encode_special_returns_int",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestSpecialTokens::test_id_to_token",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestConversationRendering::test_huggingface_backend_marks_only_assistant_targets",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestConversationRendering::test_completion_removes_reference_answer",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestSaveLoad::test_save_and_reload",
+        "status": "passed",
+        "seconds": 0.003,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestSaveLoad::test_save_creates_file",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestSaveLoad::test_loaded_vocab_size_matches",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_uses_byt5_byte_id_mapping",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_unicode_roundtrip",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_batch_prepend_and_append",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_vocab_contains_bytes_reserved_and_chat_tokens",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_special_tokens_are_explicit_not_parsed_from_text",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_conversation_rendering",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_save_load_and_factory_roundtrip",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_stream_decode_preserves_multibyte_characters",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_rejects_unknown_special_and_invalid_id",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tokenizer.TestByteTokenizer::test_training_cli_needs_no_dataset",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_preserves_global_batch_and_bounds[1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_preserves_global_batch_and_bounds[4]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_preserves_global_batch_and_bounds[8]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_preserves_global_batch_and_bounds[16]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_preserves_global_batch_and_bounds[32]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_preserves_global_batch_and_bounds[64]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_preserves_global_batch_and_bounds[128]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_preserves_global_batch_and_bounds[256]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_invalid_or_over_budget[changes0]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_invalid_or_over_budget[changes1]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_invalid_or_over_budget[changes2]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_invalid_or_over_budget[changes3]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_invalid_or_over_budget[changes4]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_invalid_or_over_budget[changes5]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_invalid_or_over_budget[changes6]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_nonfinite_prices[nan]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_nonfinite_prices[inf]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_scale_plan::test_scale_plan_rejects_nonfinite_prices[-1.0]",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_validation::test_junit_preserves_failures_errors_and_skip_reasons",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_tpu_validation::test_source_hash_detects_uncommitted_changes",
+        "status": "passed",
+        "seconds": 0.002,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_safety::test_nonfinite_step_preserves_model_and_optimizer",
+        "status": "passed",
+        "seconds": 1.517,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_safety::test_fp32_microbatch_accumulation_matches_large_batch",
+        "status": "passed",
+        "seconds": 8.711,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_safety::test_accumulation_matches_independent_fp32_reference[1]",
+        "status": "passed",
+        "seconds": 0.533,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_safety::test_accumulation_matches_independent_fp32_reference[2]",
+        "status": "passed",
+        "seconds": 0.147,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_safety::test_accumulation_matches_independent_fp32_reference[4]",
+        "status": "passed",
+        "seconds": 0.157,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_safety::test_single_microbatch_path_is_supported",
+        "status": "passed",
+        "seconds": 2.048,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_safety::test_schedule_is_defined_before_optimizer_construction",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_scaling::test_device_counts_are_sorted_unique_and_bounded",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_scaling::test_strong_scaling_efficiency_uses_one_device_baseline",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_scaling::test_efficiency_rejects_nonbaseline_first_record",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_scaling::test_efficiency_rejects_invalid_threshold",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      },
+      {
+        "test": "tests.test_training_scaling::test_software_metadata_is_explicit_and_versioned",
+        "status": "passed",
+        "seconds": 0.001,
+        "message": ""
+      }
+    ]
+  },
+  "local_tests": {
+    "full_cpu_before_quality_gate": {
+      "passed": 525,
+      "skipped": 5,
+      "accelerator_deselected": 4,
+      "coverage_percent": 78.53
+    },
+    "final_full_cpu": {
+      "passed": 530,
+      "skipped": 5,
+      "accelerator_deselected": 4,
+      "coverage_percent": 78.37,
+      "seconds": 92.33,
+      "log": "artifacts/audit-fixes/final-accepted-cpu.log"
+    },
+    "initial_eight_device_passed": 94,
+    "final_artifact_eight_device_passed": 51,
+    "final_bf16_passed": 66,
+    "two_process_cpu_passed": 2,
+    "standalone_quality_gate_regressions_passed": 5,
+    "ruff": "passed",
+    "pyright": "passed",
+    "dependency_audit": "passed",
+    "wheel_build_install_forward": "passed",
+    "e2e": "passed",
+    "installed_quality_gate": "packaged flaxchat.training_quality correctly rejected physical summary"
+  },
+  "multihost_acceptance": {
+    "passed": true,
+    "started_epoch": 1790070368.670362,
+    "stages": [
+      {
+        "name": "probe",
+        "passed": true,
+        "returncode": 0,
+        "expected_rank_zero_kill": false
+      },
+      {
+        "name": "dp-baseline",
+        "passed": true,
+        "returncode": 0,
+        "expected_rank_zero_kill": false
+      },
+      {
+        "name": "dp-interruption",
+        "passed": true,
+        "returncode": 1,
+        "expected_rank_zero_kill": true
+      },
+      {
+        "name": "dp-resume",
+        "passed": true,
+        "returncode": 0,
+        "expected_rank_zero_kill": false
+      },
+      {
+        "name": "fsdp-baseline",
+        "passed": true,
+        "returncode": 0,
+        "expected_rank_zero_kill": false
+      },
+      {
+        "name": "fsdp-stop",
+        "passed": true,
+        "returncode": 0,
+        "expected_rank_zero_kill": false
+      },
+      {
+        "name": "fsdp-resume",
+        "passed": true,
+        "returncode": 0,
+        "expected_rank_zero_kill": false
+      },
+      {
+        "name": "single-host-bridge",
+        "passed": true,
+        "returncode": 0,
+        "expected_rank_zero_kill": false
+      },
+      {
+        "name": "multi-host-restore",
+        "passed": true,
+        "returncode": 0,
+        "expected_rank_zero_kill": false
+      }
+    ],
+    "checkpoint_prefix": "gs://tpubuilders-flaxchat-validation-0921/audit-0922/recovery/attempt-0",
+    "limitations": [
+      "Single-host bridge uses CPU with bfloat16 constants.",
+      "Bounded correctness smoke; not convergence or pod-scale performance evidence."
+    ],
+    "training_recipe": {
+      "optimizer": "adamw",
+      "accumulation_steps": 1,
+      "loss_chunk_size": 0,
+      "remat": false
+    },
+    "physical_probe": {
+      "format_version": 1,
+      "status": "probe_passed",
+      "source_revision": "c311b63a7ff035e7539155ae0955b60d8c9de29e",
+      "source_python_sha256": "5f14eae3afaa8a029dfe2118a87a4f599500dff4064a9a2ed786ce48c9871609",
+      "environment_sha256": "34a4af8410be6ba41c3eb6ff41214fbb4392f21e380a036fd2db92d639bd8150",
+      "topology": {
+        "process_count": 2,
+        "device_count": 8,
+        "single_host": false
+      },
+      "data": {
+        "global_order_sha256": "5d85718ec594b982c252d0279e5966ffca33a5eaf2a455038d3ab331fde70cea",
+        "global_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "disjoint": true
+      },
+      "training": {
+        "finite_matching_loss": 174.375,
+        "all_workers_passed": true
+      },
+      "cost_usd": null,
+      "cost_status": "unavailable",
+      "limitations": [
+        "This fail-fast probe covers initialization, topology, host-local data order, a synchronized gradient update, and sharding only.",
+        "Cross-topology checkpoint restore and interrupted-run resume remain mandatory later phases of issue #12."
+      ],
+      "workers": [
+        {
+          "command": [
+            "/tmp/flaxchat-validation/scripts/multihost_acceptance.py",
+            "run",
+            "--project",
+            "tpubuilders",
+            "--zone",
+            "us-east5-a",
+            "--slice",
+            "flaxchat-validation-audit-0922-0",
+            "--environment-file",
+            "/tmp/flaxchat-env.txt",
+            "--output-dir",
+            "artifacts/multihost/probe"
+          ],
+          "data": {
+            "global_order_sha256": "5d85718ec594b982c252d0279e5966ffca33a5eaf2a455038d3ab331fde70cea",
+            "local_indices": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ]
+          },
+          "elapsed_seconds": 0.6408786773681641,
+          "environment_sha256": "34a4af8410be6ba41c3eb6ff41214fbb4392f21e380a036fd2db92d639bd8150",
+          "format_version": 1,
+          "hostname": "t1v-n-a82f5c30-w-0",
+          "location": {
+            "project": "tpubuilders",
+            "slice": "flaxchat-validation-audit-0922-0",
+            "zone": "us-east5-a"
+          },
+          "passed": true,
+          "source_python_sha256": "5f14eae3afaa8a029dfe2118a87a4f599500dff4064a9a2ed786ce48c9871609",
+          "source_revision": "c311b63a7ff035e7539155ae0955b60d8c9de29e",
+          "topology": {
+            "backend": "tpu",
+            "device_count": 8,
+            "device_kinds": [
+              "TPU v5"
+            ],
+            "local_device_count": 4,
+            "process_count": 2,
+            "process_index": 0
+          },
+          "training": {
+            "addressable_shards": 4,
+            "gradient": -232.5,
+            "input_shape": [
+              16,
+              1
+            ],
+            "input_sharding": "NamedSharding(mesh=Mesh('data': 8, 'fsdp': 1, 'tensor': 1, axis_types=(Auto, Auto, Auto)), spec=P('data', None), memory_kind=device)",
+            "loss": 174.375,
+            "updated_parameter": 0.7325000166893005
+          }
+        },
+        {
+          "command": [
+            "/tmp/flaxchat-validation/scripts/multihost_acceptance.py",
+            "run",
+            "--project",
+            "tpubuilders",
+            "--zone",
+            "us-east5-a",
+            "--slice",
+            "flaxchat-validation-audit-0922-0",
+            "--environment-file",
+            "/tmp/flaxchat-env.txt",
+            "--output-dir",
+            "artifacts/multihost/probe"
+          ],
+          "data": {
+            "global_order_sha256": "5d85718ec594b982c252d0279e5966ffca33a5eaf2a455038d3ab331fde70cea",
+            "local_indices": [
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15
+            ]
+          },
+          "elapsed_seconds": 0.6019322872161865,
+          "environment_sha256": "34a4af8410be6ba41c3eb6ff41214fbb4392f21e380a036fd2db92d639bd8150",
+          "format_version": 1,
+          "hostname": "t1v-n-a82f5c30-w-1",
+          "location": {
+            "project": "tpubuilders",
+            "slice": "flaxchat-validation-audit-0922-0",
+            "zone": "us-east5-a"
+          },
+          "passed": true,
+          "source_python_sha256": "5f14eae3afaa8a029dfe2118a87a4f599500dff4064a9a2ed786ce48c9871609",
+          "source_revision": "c311b63a7ff035e7539155ae0955b60d8c9de29e",
+          "topology": {
+            "backend": "tpu",
+            "device_count": 8,
+            "device_kinds": [
+              "TPU v5"
+            ],
+            "local_device_count": 4,
+            "process_count": 2,
+            "process_index": 1
+          },
+          "training": {
+            "addressable_shards": 4,
+            "gradient": -232.5,
+            "input_shape": [
+              16,
+              1
+            ],
+            "input_sharding": "NamedSharding(mesh=Mesh('data': 8, 'fsdp': 1, 'tensor': 1, axis_types=(Auto, Auto, Auto)), spec=P('data', None), memory_kind=device)",
+            "loss": 174.375,
+            "updated_parameter": 0.7325000166893005
+          }
+        }
+      ]
+    },
+    "exact_state_comparisons": {
+      "dp-baseline=>dp-recovery": {
+        "model_state": true,
+        "optimizer_state": true,
+        "training_state": true
+      },
+      "dp-baseline=>bridge": {
+        "model_state": true,
+        "optimizer_state": true,
+        "training_state": true
+      },
+      "fsdp-baseline=>fsdp-recovery": {
+        "model_state": true,
+        "optimizer_state": true,
+        "training_state": true
+      }
+    },
+    "finished_epoch": 1790070837.462114
+  },
+  "sustained_training": {
+    "resolved_config": {
+      "model": {
+        "sequence_len": 1024,
+        "vocab_size": 50257,
+        "n_layer": 12,
+        "n_head": 12,
+        "n_kv_head": 12,
+        "n_embd": 768,
+        "window_pattern": "L",
+        "tie_embeddings": true,
+        "use_scan": false,
+        "use_remat": true,
+        "loss_chunk_size": 128,
+        "attention_backend": "xla",
+        "standard_gpt": true,
+        "compute_dtype": "bfloat16"
+      },
+      "global_batch_size": 8,
+      "steps": 110,
+      "lr": 0.0003,
+      "warmup_steps": 10,
+      "seed": 42,
+      "optimizer": "adamw-clip1-wd0.01",
+      "accumulation_steps": 1,
+      "runtime": {
+        "python": "3.12.14",
+        "packages": {
+          "jax": "0.11.1",
+          "jaxlib": "0.11.1",
+          "flax": "0.12.9",
+          "optax": "0.2.8",
+          "orbax-checkpoint": "0.12.4",
+          "libtpu": "0.0.46.1"
+        },
+        "xla_flags": "",
+        "jax_default_matmul_precision": "",
+        "jax_enable_x64": ""
+      }
+    },
+    "model_config": {
+      "sequence_len": 1024,
+      "vocab_size": 50257,
+      "n_layer": 12,
+      "n_head": 12,
+      "n_kv_head": 12,
+      "n_embd": 768,
+      "window_pattern": "L",
+      "tie_embeddings": true,
+      "use_scan": false,
+      "use_remat": true,
+      "loss_chunk_size": 128,
+      "attention_backend": "xla",
+      "standard_gpt": true,
+      "compute_dtype": "bfloat16"
+    },
+    "tokenizer_identity": {
+      "bos_token_id": 50256,
+      "class": "flaxchat.tokenizer.HuggingFaceTokenizer",
+      "rules_sha256": "11e818f948f43497f364722def50c13f419158554961ee4bb095fbd3350895c3",
+      "vocab_size": 50257
+    },
+    "data_manifest_identity": {
+      "manifest_sha256": "053da9817dac6cd32d3e28c2b344b802a5b960f6db2df99ed47b6844750ec892"
+    },
+    "source_revision": "c311b63a7ff035e7539155ae0955b60d8c9de29e",
+    "source_python_sha256": "5f14eae3afaa8a029dfe2118a87a4f599500dff4064a9a2ed786ce48c9871609",
+    "backend": "tpu",
+    "devices": 8,
+    "process_count": 2,
+    "process_index": 0,
+    "local_device_count": 4,
+    "mesh": {
+      "data": 1,
+      "fsdp": 8,
+      "tensor": 1
+    },
+    "attention_backend": "xla",
+    "attention_fallback_reason": "Mosaic Splash kernels cannot be automatically partitioned across the data mesh; using exact XLA attention for distributed training",
+    "start_step": 0,
+    "completed_steps": 110,
+    "checkpoint_step": 110,
+    "tokens": 901120,
+    "initial_validation_loss": 23.77678871154785,
+    "final_validation_loss": 13.580623626708984,
+    "elapsed_seconds": 176.70894355699988,
+    "metrics": [
+      {
+        "step": 1,
+        "loss": 23.677778244018555,
+        "tokens": 8192,
+        "step_seconds": 40.807378813000014,
+        "learning_rate": 0.0
+      },
+      {
+        "step": 2,
+        "loss": 23.8583984375,
+        "tokens": 16384,
+        "step_seconds": 0.12425809899991691,
+        "learning_rate": 2.9999995604157448e-05
+      },
+      {
+        "step": 3,
+        "loss": 22.22312355041504,
+        "tokens": 24576,
+        "step_seconds": 0.04164636400003019,
+        "learning_rate": 6.0000005760230124e-05
+      },
+      {
+        "step": 4,
+        "loss": 20.263614654541016,
+        "tokens": 32768,
+        "step_seconds": 0.04162256500001149,
+        "learning_rate": 9.000000136438757e-05
+      },
+      {
+        "step": 5,
+        "loss": 18.648378372192383,
+        "tokens": 40960,
+        "step_seconds": 0.04152631400006612,
+        "learning_rate": 0.00011999999696854502
+      },
+      {
+        "step": 6,
+        "loss": 17.007938385009766,
+        "tokens": 49152,
+        "step_seconds": 0.041491318999987925,
+        "learning_rate": 0.0001500000071246177
+      },
+      {
+        "step": 7,
+        "loss": 16.75382423400879,
+        "tokens": 57344,
+        "step_seconds": 0.041673622999951476,
+        "learning_rate": 0.00018000001728069037
+      },
+      {
+        "step": 8,
+        "loss": 16.593746185302734,
+        "tokens": 65536,
+        "step_seconds": 0.041453860000046916,
+        "learning_rate": 0.0002099999983329326
+      },
+      {
+        "step": 9,
+        "loss": 16.790517807006836,
+        "tokens": 73728,
+        "step_seconds": 0.041439328000024034,
+        "learning_rate": 0.0002400000230409205
+      },
+      {
+        "step": 10,
+        "loss": 16.5624942779541,
+        "tokens": 81920,
+        "step_seconds": 0.04162812300000951,
+        "learning_rate": 0.00027000001864507794
+      },
+      {
+        "step": 11,
+        "loss": 16.24349021911621,
+        "tokens": 90112,
+        "step_seconds": 0.04161223999994945,
+        "learning_rate": 0.0003000000142492354
+      },
+      {
+        "step": 12,
+        "loss": 16.465099334716797,
+        "tokens": 98304,
+        "step_seconds": 0.041568014999938896,
+        "learning_rate": 0.0002999296993948519
+      },
+      {
+        "step": 13,
+        "loss": 15.14522647857666,
+        "tokens": 106496,
+        "step_seconds": 0.04162107100000867,
+        "learning_rate": 0.0002997188421431929
+      },
+      {
+        "step": 14,
+        "loss": 16.11370849609375,
+        "tokens": 114688,
+        "step_seconds": 0.04156181100006506,
+        "learning_rate": 0.00029936758801341057
+      },
+      {
+        "step": 15,
+        "loss": 14.777664184570312,
+        "tokens": 122880,
+        "step_seconds": 0.04149774699999398,
+        "learning_rate": 0.0002988763735629618
+      },
+      {
+        "step": 16,
+        "loss": 15.854490280151367,
+        "tokens": 131072,
+        "step_seconds": 0.04159193700002106,
+        "learning_rate": 0.00029824560624547303
+      },
+      {
+        "step": 17,
+        "loss": 15.444787979125977,
+        "tokens": 139264,
+        "step_seconds": 0.041504032000034385,
+        "learning_rate": 0.0002974759554490447
+      },
+      {
+        "step": 18,
+        "loss": 15.93674087524414,
+        "tokens": 147456,
+        "step_seconds": 0.042460141999981715,
+        "learning_rate": 0.0002965681778732687
+      },
+      {
+        "step": 19,
+        "loss": 15.607574462890625,
+        "tokens": 155648,
+        "step_seconds": 0.04164948499999355,
+        "learning_rate": 0.00029552311752922833
+      },
+      {
+        "step": 20,
+        "loss": 15.520185470581055,
+        "tokens": 163840,
+        "step_seconds": 0.04163917899995795,
+        "learning_rate": 0.0002943418803624809
+      },
+      {
+        "step": 21,
+        "loss": 15.948346138000488,
+        "tokens": 172032,
+        "step_seconds": 0.04150432100004764,
+        "learning_rate": 0.00029302554321475327
+      },
+      {
+        "step": 22,
+        "loss": 16.434782028198242,
+        "tokens": 180224,
+        "step_seconds": 0.04174596899997596,
+        "learning_rate": 0.0002915755030699074
+      },
+      {
+        "step": 23,
+        "loss": 15.048632621765137,
+        "tokens": 188416,
+        "step_seconds": 0.042406294999977945,
+        "learning_rate": 0.00028999315691180527
+      },
+      {
+        "step": 24,
+        "loss": 15.049291610717773,
+        "tokens": 196608,
+        "step_seconds": 0.04146953399992981,
+        "learning_rate": 0.000288280047243461
+      },
+      {
+        "step": 25,
+        "loss": 15.207630157470703,
+        "tokens": 204800,
+        "step_seconds": 0.14407327599997188,
+        "learning_rate": 0.00028643786208704114,
+        "validation_loss": 15.227588653564453
+      },
+      {
+        "step": 26,
+        "loss": 15.279258728027344,
+        "tokens": 212992,
+        "step_seconds": 0.042074695999986034,
+        "learning_rate": 0.0002844684349838644
+      },
+      {
+        "step": 27,
+        "loss": 15.447946548461914,
+        "tokens": 221184,
+        "step_seconds": 0.04211711099992499,
+        "learning_rate": 0.0002823737158905715
+      },
+      {
+        "step": 28,
+        "loss": 14.95976734161377,
+        "tokens": 229376,
+        "step_seconds": 0.04176019700003053,
+        "learning_rate": 0.00028015574207529426
+      },
+      {
+        "step": 29,
+        "loss": 15.253600120544434,
+        "tokens": 237568,
+        "step_seconds": 0.04168773600008535,
+        "learning_rate": 0.00027781675453297794
+      },
+      {
+        "step": 30,
+        "loss": 14.444090843200684,
+        "tokens": 245760,
+        "step_seconds": 0.04437034800002948,
+        "learning_rate": 0.0002753589942585677
+      },
+      {
+        "step": 31,
+        "loss": 15.00344467163086,
+        "tokens": 253952,
+        "step_seconds": 0.04239633399993181,
+        "learning_rate": 0.00027278493507765234
+      },
+      {
+        "step": 32,
+        "loss": 14.54446029663086,
+        "tokens": 262144,
+        "step_seconds": 0.17955851199997142,
+        "learning_rate": 0.00027009707991965115
+      },
+      {
+        "step": 33,
+        "loss": 14.921197891235352,
+        "tokens": 270336,
+        "step_seconds": 0.04254140299997289,
+        "learning_rate": 0.00026729816454462707
+      },
+      {
+        "step": 34,
+        "loss": 14.778107643127441,
+        "tokens": 278528,
+        "step_seconds": 0.041711608000014166,
+        "learning_rate": 0.00026439083740115166
+      },
+      {
+        "step": 35,
+        "loss": 14.816667556762695,
+        "tokens": 286720,
+        "step_seconds": 0.04220388199996705,
+        "learning_rate": 0.00026137803797610104
+      },
+      {
+        "step": 36,
+        "loss": 14.34976577758789,
+        "tokens": 294912,
+        "step_seconds": 0.042898525999930825,
+        "learning_rate": 0.00025826270575635135
+      },
+      {
+        "step": 37,
+        "loss": 16.401582717895508,
+        "tokens": 303104,
+        "step_seconds": 0.04172979600002691,
+        "learning_rate": 0.0002550479839555919
+      },
+      {
+        "step": 38,
+        "loss": 14.667283058166504,
+        "tokens": 311296,
+        "step_seconds": 0.04160969800000203,
+        "learning_rate": 0.00025173695757985115
+      },
+      {
+        "step": 39,
+        "loss": 14.539745330810547,
+        "tokens": 319488,
+        "step_seconds": 0.04164297500005887,
+        "learning_rate": 0.00024833291536197066
+      },
+      {
+        "step": 40,
+        "loss": 14.164290428161621,
+        "tokens": 327680,
+        "step_seconds": 0.04171761500003868,
+        "learning_rate": 0.0002448392624501139
+      },
+      {
+        "step": 41,
+        "loss": 14.27625846862793,
+        "tokens": 335872,
+        "step_seconds": 0.041523564000044644,
+        "learning_rate": 0.00024125940399244428
+      },
+      {
+        "step": 42,
+        "loss": 14.392474174499512,
+        "tokens": 344064,
+        "step_seconds": 0.04156243499994616,
+        "learning_rate": 0.000237596919760108
+      },
+      {
+        "step": 43,
+        "loss": 14.332902908325195,
+        "tokens": 352256,
+        "step_seconds": 0.04192376499997863,
+        "learning_rate": 0.00023385530221275985
+      },
+      {
+        "step": 44,
+        "loss": 14.091571807861328,
+        "tokens": 360448,
+        "step_seconds": 0.04157209800007422,
+        "learning_rate": 0.00023003839305602014
+      },
+      {
+        "step": 45,
+        "loss": 13.945857048034668,
+        "tokens": 368640,
+        "step_seconds": 0.0414981590000707,
+        "learning_rate": 0.00022614988847635686
+      },
+      {
+        "step": 46,
+        "loss": 14.305377960205078,
+        "tokens": 376832,
+        "step_seconds": 0.04259393999996064,
+        "learning_rate": 0.00022219364473130554
+      },
+      {
+        "step": 47,
+        "loss": 14.270041465759277,
+        "tokens": 385024,
+        "step_seconds": 0.041691712999977426,
+        "learning_rate": 0.0002181735762860626
+      },
+      {
+        "step": 48,
+        "loss": 14.340649604797363,
+        "tokens": 393216,
+        "step_seconds": 0.041605928000080894,
+        "learning_rate": 0.00021409359760582447
+      },
+      {
+        "step": 49,
+        "loss": 14.074507713317871,
+        "tokens": 401408,
+        "step_seconds": 0.04183746399996835,
+        "learning_rate": 0.00020995776867493987
+      },
+      {
+        "step": 50,
+        "loss": 17.673786163330078,
+        "tokens": 409600,
+        "step_seconds": 0.04167274600001747,
+        "learning_rate": 0.00020577016402967274,
+        "validation_loss": 14.224618911743164,
+        "checkpoint_seconds": 41.02436088699994
+      },
+      {
+        "step": 51,
+        "loss": 15.197522163391113,
+        "tokens": 417792,
+        "step_seconds": 0.04472059400006856,
+        "learning_rate": 0.00020153491641394794
+      },
+      {
+        "step": 52,
+        "loss": 14.530522346496582,
+        "tokens": 425984,
+        "step_seconds": 0.04248307299997123,
+        "learning_rate": 0.00019725626043509692
+      },
+      {
+        "step": 53,
+        "loss": 14.952861785888672,
+        "tokens": 434176,
+        "step_seconds": 0.04234954100002142,
+        "learning_rate": 0.0001929383142851293
+      },
+      {
+        "step": 54,
+        "loss": 13.457222938537598,
+        "tokens": 442368,
+        "step_seconds": 0.041710083999987546,
+        "learning_rate": 0.00018858544353861362
+      },
+      {
+        "step": 55,
+        "loss": 14.310517311096191,
+        "tokens": 450560,
+        "step_seconds": 0.04170222699997339,
+        "learning_rate": 0.00018420183914713562
+      },
+      {
+        "step": 56,
+        "loss": 13.545838356018066,
+        "tokens": 458752,
+        "step_seconds": 0.04181155800006309,
+        "learning_rate": 0.00017979192489292473
+      },
+      {
+        "step": 57,
+        "loss": 13.854472160339355,
+        "tokens": 466944,
+        "step_seconds": 0.041572382000026664,
+        "learning_rate": 0.00017535999359097332
+      },
+      {
+        "step": 58,
+        "loss": 14.034061431884766,
+        "tokens": 475136,
+        "step_seconds": 0.041844413000035274,
+        "learning_rate": 0.00017091045447159559
+      },
+      {
+        "step": 59,
+        "loss": 13.277665138244629,
+        "tokens": 483328,
+        "step_seconds": 0.04173529599995618,
+        "learning_rate": 0.0001664476585574448
+      },
+      {
+        "step": 60,
+        "loss": 13.878377914428711,
+        "tokens": 491520,
+        "step_seconds": 0.041550924000034684,
+        "learning_rate": 0.00016197602963075042
+      },
+      {
+        "step": 61,
+        "loss": 15.479561805725098,
+        "tokens": 499712,
+        "step_seconds": 0.041646220999950856,
+        "learning_rate": 0.00015750000602565706
+      },
+      {
+        "step": 62,
+        "loss": 14.145920753479004,
+        "tokens": 507904,
+        "step_seconds": 0.04167326799995408,
+        "learning_rate": 0.00015302396786864847
+      },
+      {
+        "step": 63,
+        "loss": 13.903499603271484,
+        "tokens": 516096,
+        "step_seconds": 0.041529929000034826,
+        "learning_rate": 0.0001485523534938693
+      },
+      {
+        "step": 64,
+        "loss": 13.34023666381836,
+        "tokens": 524288,
+        "step_seconds": 0.041737451000017245,
+        "learning_rate": 0.000144089586683549
+      },
+      {
+        "step": 65,
+        "loss": 12.74915885925293,
+        "tokens": 532480,
+        "step_seconds": 0.04175674399994023,
+        "learning_rate": 0.00013964000390842557
+      },
+      {
+        "step": 66,
+        "loss": 14.391735076904297,
+        "tokens": 540672,
+        "step_seconds": 0.041505149000045094,
+        "learning_rate": 0.00013520810171030462
+      },
+      {
+        "step": 67,
+        "loss": 14.136357307434082,
+        "tokens": 548864,
+        "step_seconds": 0.04156326099996477,
+        "learning_rate": 0.00013079815835226327
+      },
+      {
+        "step": 68,
+        "loss": 13.785083770751953,
+        "tokens": 557056,
+        "step_seconds": 0.04167464900001505,
+        "learning_rate": 0.00012641459761653095
+      },
+      {
+        "step": 69,
+        "loss": 14.14543628692627,
+        "tokens": 565248,
+        "step_seconds": 0.0416976069999464,
+        "learning_rate": 0.00012206171231810004
+      },
+      {
+        "step": 70,
+        "loss": 14.006646156311035,
+        "tokens": 573440,
+        "step_seconds": 0.1688947030000918,
+        "learning_rate": 0.00011774376616813242
+      },
+      {
+        "step": 71,
+        "loss": 13.769234657287598,
+        "tokens": 581632,
+        "step_seconds": 0.17041516200004025,
+        "learning_rate": 0.00011346508836140856
+      },
+      {
+        "step": 72,
+        "loss": 13.575782775878906,
+        "tokens": 589824,
+        "step_seconds": 0.04199968600005377,
+        "learning_rate": 0.00010922984802164137
+      },
+      {
+        "step": 73,
+        "loss": 13.274145126342773,
+        "tokens": 598016,
+        "step_seconds": 0.04188461699993695,
+        "learning_rate": 0.00010504225792828947
+      },
+      {
+        "step": 74,
+        "loss": 13.812641143798828,
+        "tokens": 606208,
+        "step_seconds": 0.04202796600009151,
+        "learning_rate": 0.00010090642172144726
+      },
+      {
+        "step": 75,
+        "loss": 13.434951782226562,
+        "tokens": 614400,
+        "step_seconds": 0.041692079999961607,
+        "learning_rate": 9.682644304120913e-05,
+        "validation_loss": 13.79792594909668
+      },
+      {
+        "step": 76,
+        "loss": 13.628335952758789,
+        "tokens": 622592,
+        "step_seconds": 0.041832070000054955,
+        "learning_rate": 9.280636732000858e-05
+      },
+      {
+        "step": 77,
+        "loss": 13.685178756713867,
+        "tokens": 630784,
+        "step_seconds": 0.04170776599994497,
+        "learning_rate": 8.885007991921157e-05
+      },
+      {
+        "step": 78,
+        "loss": 13.908764839172363,
+        "tokens": 638976,
+        "step_seconds": 0.04178851599999689,
+        "learning_rate": 8.496161171933636e-05
+      },
+      {
+        "step": 79,
+        "loss": 12.934455871582031,
+        "tokens": 647168,
+        "step_seconds": 0.04179062499997599,
+        "learning_rate": 8.114466618280858e-05
+      },
+      {
+        "step": 80,
+        "loss": 13.333003044128418,
+        "tokens": 655360,
+        "step_seconds": 0.04180570100004388,
+        "learning_rate": 7.740312867099419e-05
+      },
+      {
+        "step": 81,
+        "loss": 13.48805046081543,
+        "tokens": 663552,
+        "step_seconds": 0.04154171800007589,
+        "learning_rate": 7.374057895503938e-05
+      },
+      {
+        "step": 82,
+        "loss": 13.660719871520996,
+        "tokens": 671744,
+        "step_seconds": 0.04163279099998363,
+        "learning_rate": 7.016075687715784e-05
+      },
+      {
+        "step": 83,
+        "loss": 13.236820220947266,
+        "tokens": 679936,
+        "step_seconds": 0.0416024070000276,
+        "learning_rate": 6.666708213742822e-05
+      },
+      {
+        "step": 84,
+        "loss": 14.195843696594238,
+        "tokens": 688128,
+        "step_seconds": 0.04166089099999226,
+        "learning_rate": 6.326306174742058e-05
+      },
+      {
+        "step": 85,
+        "loss": 13.34107494354248,
+        "tokens": 696320,
+        "step_seconds": 0.04169498199996724,
+        "learning_rate": 5.995203537167981e-05
+      },
+      {
+        "step": 86,
+        "loss": 13.813583374023438,
+        "tokens": 704512,
+        "step_seconds": 0.04175781799995093,
+        "learning_rate": 5.6737291743047535e-05
+      },
+      {
+        "step": 87,
+        "loss": 13.692207336425781,
+        "tokens": 712704,
+        "step_seconds": 0.04190740100000312,
+        "learning_rate": 5.3621974075213075e-05
+      },
+      {
+        "step": 88,
+        "loss": 13.903121948242188,
+        "tokens": 720896,
+        "step_seconds": 0.041686253999955625,
+        "learning_rate": 5.060917101218365e-05
+      },
+      {
+        "step": 89,
+        "loss": 13.729355812072754,
+        "tokens": 729088,
+        "step_seconds": 0.04168053000000782,
+        "learning_rate": 4.770185478264466e-05
+      },
+      {
+        "step": 90,
+        "loss": 13.82494068145752,
+        "tokens": 737280,
+        "step_seconds": 0.041706122999926265,
+        "learning_rate": 4.4902906665811315e-05
+      },
+      {
+        "step": 91,
+        "loss": 14.231472969055176,
+        "tokens": 745472,
+        "step_seconds": 0.041539410000041244,
+        "learning_rate": 4.221508061164059e-05
+      },
+      {
+        "step": 92,
+        "loss": 13.716499328613281,
+        "tokens": 753664,
+        "step_seconds": 0.04176900300001307,
+        "learning_rate": 3.9641017792746425e-05
+      },
+      {
+        "step": 93,
+        "loss": 13.066924095153809,
+        "tokens": 761856,
+        "step_seconds": 0.041531190000000606,
+        "learning_rate": 3.718329026014544e-05
+      },
+      {
+        "step": 94,
+        "loss": 14.097946166992188,
+        "tokens": 770048,
+        "step_seconds": 0.043859287000032054,
+        "learning_rate": 3.4844262700062245e-05
+      },
+      {
+        "step": 95,
+        "loss": 15.004205703735352,
+        "tokens": 778240,
+        "step_seconds": 0.04225794900003166,
+        "learning_rate": 3.2626292522763833e-05
+      },
+      {
+        "step": 96,
+        "loss": 14.110170364379883,
+        "tokens": 786432,
+        "step_seconds": 0.041782943000043815,
+        "learning_rate": 3.0531580705428496e-05
+      },
+      {
+        "step": 97,
+        "loss": 12.923752784729004,
+        "tokens": 794624,
+        "step_seconds": 0.042338441999959286,
+        "learning_rate": 2.8562153602251783e-05
+      },
+      {
+        "step": 98,
+        "loss": 13.599835395812988,
+        "tokens": 802816,
+        "step_seconds": 0.04174569799999972,
+        "learning_rate": 2.6719955712906085e-05
+      },
+      {
+        "step": 99,
+        "loss": 13.900825500488281,
+        "tokens": 811008,
+        "step_seconds": 0.041524731999970754,
+        "learning_rate": 2.5006844225572422e-05
+      },
+      {
+        "step": 100,
+        "loss": 12.923242568969727,
+        "tokens": 819200,
+        "step_seconds": 0.041526993000047696,
+        "learning_rate": 2.3424490791512653e-05,
+        "validation_loss": 13.606200218200684,
+        "checkpoint_seconds": 40.80726128399999
+      },
+      {
+        "step": 101,
+        "loss": 13.230809211730957,
+        "tokens": 827392,
+        "step_seconds": 0.04545347199996286,
+        "learning_rate": 2.19744451896986e-05
+      },
+      {
+        "step": 102,
+        "loss": 13.194931983947754,
+        "tokens": 835584,
+        "step_seconds": 0.04213243199990302,
+        "learning_rate": 2.0658137145801447e-05
+      },
+      {
+        "step": 103,
+        "loss": 13.197456359863281,
+        "tokens": 843776,
+        "step_seconds": 0.04166828799998257,
+        "learning_rate": 1.947689088410698e-05
+      },
+      {
+        "step": 104,
+        "loss": 13.0825777053833,
+        "tokens": 851968,
+        "step_seconds": 0.04168142399998942,
+        "learning_rate": 1.8431856005918235e-05
+      },
+      {
+        "step": 105,
+        "loss": 13.374876022338867,
+        "tokens": 860160,
+        "step_seconds": 0.04164467099997182,
+        "learning_rate": 1.7524062059237622e-05
+      },
+      {
+        "step": 106,
+        "loss": 13.700143814086914,
+        "tokens": 868352,
+        "step_seconds": 0.04172148099996775,
+        "learning_rate": 1.6754400348872878e-05
+      },
+      {
+        "step": 107,
+        "loss": 13.328585624694824,
+        "tokens": 876544,
+        "step_seconds": 0.04165148599997792,
+        "learning_rate": 1.6123653040267527e-05
+      },
+      {
+        "step": 108,
+        "loss": 13.239065170288086,
+        "tokens": 884736,
+        "step_seconds": 0.04147173000001203,
+        "learning_rate": 1.5632422218914144e-05
+      },
+      {
+        "step": 109,
+        "loss": 13.696940422058105,
+        "tokens": 892928,
+        "step_seconds": 0.04176145999997516,
+        "learning_rate": 1.528119173599407e-05
+      },
+      {
+        "step": 110,
+        "loss": 12.975733757019043,
+        "tokens": 901120,
+        "step_seconds": 0.04158326599997508,
+        "learning_rate": 1.5070319932419807e-05,
+        "validation_loss": 13.580623626708984,
+        "checkpoint_seconds": 40.102285563999885
+      }
+    ],
+    "invocation_seconds": 192.62492750499996,
+    "new_committed_tokens": 901120,
+    "end_to_end_tokens_per_second": 4678.106887160851,
+    "device_memory_stats": [
+      {
+        "num_allocs": 294,
+        "bytes_in_use": 405060608,
+        "peak_bytes_in_use": 556956672,
+        "largest_alloc_size": 142646272,
+        "bytes_limit": 102786658304,
+        "bytes_reserved": 947421184,
+        "peak_bytes_reserved": 947421184,
+        "bytes_reservable_limit": 102373232640,
+        "largest_free_block_bytes": 101263848448
+      },
+      {
+        "num_allocs": 289,
+        "bytes_in_use": 408965120,
+        "peak_bytes_in_use": 556142080,
+        "largest_alloc_size": 142646272,
+        "bytes_limit": 102786658304,
+        "bytes_reserved": 947421184,
+        "peak_bytes_reserved": 947421184,
+        "bytes_reservable_limit": 102373232640,
+        "largest_free_block_bytes": 101283165184
+      },
+      {
+        "num_allocs": 274,
+        "bytes_in_use": 400706560,
+        "peak_bytes_in_use": 556142080,
+        "largest_alloc_size": 142646272,
+        "bytes_limit": 102786658304,
+        "bytes_reserved": 947421184,
+        "peak_bytes_reserved": 947421184,
+        "bytes_reservable_limit": 102373232640,
+        "largest_free_block_bytes": 101283165184
+      },
+      {
+        "num_allocs": 283,
+        "bytes_in_use": 406605312,
+        "peak_bytes_in_use": 556142080,
+        "largest_alloc_size": 142646272,
+        "bytes_limit": 102786658304,
+        "bytes_reserved": 947421184,
+        "peak_bytes_reserved": 947421184,
+        "bytes_reservable_limit": 102373232640,
+        "largest_free_block_bytes": 101283165184
+      }
+    ],
+    "model_shardings": [
+      "NamedSharding(mesh=Mesh('data': 1, 'fsdp': 8, 'tensor': 1, axis_types=(Auto, Auto, Auto)), spec=P('fsdp',), memory_kind=device)",
+      "NamedSharding(mesh=Mesh('data': 1, 'fsdp': 8, 'tensor': 1, axis_types=(Auto, Auto, Auto)), spec=P(), memory_kind=device)"
+    ],
+    "local_batch_row_ranges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "first_step_compile_and_execute_seconds": 40.807378813000014,
+    "steady_tokens_per_second": 173661.71949569226
+  },
+  "quality_gate": {
+    "passed": false,
+    "checks": {
+      "finite_nonnegative_loss": true,
+      "committed_requested_horizon": true,
+      "heldout_loss_improved": true,
+      "below_uniform_baseline": false,
+      "within_declared_threshold": false
+    },
+    "initial_validation_loss": 23.77678871154785,
+    "final_validation_loss": 13.580623626708984,
+    "uniform_loss": 10.82490511970208,
+    "max_validation_loss": 10.82490511970208,
+    "source_python_sha256": "5f14eae3afaa8a029dfe2118a87a4f599500dff4064a9a2ed786ce48c9871609",
+    "limitations": [
+      "Loss sanity only; no contamination, statistical-significance or downstream quality claim.",
+      "The threshold and held-out corpus must be chosen before comparing experiments."
+    ]
+  },
+  "cost": {
+    "whole_slice_conservative_hourly_usd": 33.6,
+    "node_created_unix": 1790069944.584479,
+    "resource_absence_verified_unix": 1790071143.144777,
+    "node_creation_to_absence_seconds": 1198.5602979660034,
+    "conservative_compute_estimate_usd": 11.186562781016033,
+    "reservation_usd": 39.333333333333336,
+    "posted_usage_usd": null,
+    "promotional_credits_usd": null,
+    "interpretation": "Creation-to-verified-absence duration at on-demand rates; not a posted charge. Ancillary charges excluded from this estimate; reservation includes $2 ancillary and 30 minutes deletion allowance."
+  },
+  "ledger": {
+    "budget_usd": 40.0,
+    "attempts": {
+      "0": {
+        "resource": "projects/tpubuilders/locations/us-east5-a/queuedResources/flaxchat-validation-audit-0922-0",
+        "reservation_usd": 39.333333333333336,
+        "whole_slice_hourly_usd": 33.6,
+        "max_seconds": 4000,
+        "ancillary_reserve_usd": 2.0,
+        "status": "resource_absent",
+        "events": [
+          {
+            "event": "guard_verified",
+            "time_unix": 1790069818.985174,
+            "receipt": {
+              "lease": {
+                "project": "tpubuilders",
+                "zone": "us-east5-a",
+                "queue": "flaxchat-validation-audit-0922-0",
+                "deadline": 1790072016.500121
+              },
+              "execution": "projects/540509768325/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/e88061fb-f5bf-4ef1-9c2c-2705b6224c3f",
+              "location": "us-central1"
+            }
+          },
+          {
+            "event": "provisioning",
+            "time_unix": 1790069818.985672
+          },
+          {
+            "event": "running",
+            "time_unix": 1790070048.4088519
+          },
+          {
+            "event": "work_finished",
+            "time_unix": 1790071039.932947,
+            "returncode": 0
+          },
+          {
+            "event": "resource_absent",
+            "time_unix": 1790071143.144777
+          }
+        ],
+        "posted_usage_usd": null,
+        "promotional_credits_usd": null
+      }
+    }
+  },
+  "cleanup": {
+    "queues": [],
+    "nodes": []
+  },
+  "pool_memory_microbenchmarks": [
+    {
+      "tokens": 1000000,
+      "prepare_seconds": 0.003152791876345873,
+      "open_seconds": 0.00019266712479293346,
+      "first_batch_seconds": 0.007429832825437188,
+      "max_rss_bytes_macos": 163397632
+    },
+    {
+      "tokens": 32000000,
+      "prepare_seconds": 0.09155929205007851,
+      "open_seconds": 0.0007513330783694983,
+      "first_batch_seconds": 0.008343791123479605,
+      "max_rss_bytes_macos": 175521792
+    }
+  ],
+  "remaining_work": [
+    "Decontaminated held-out corpus and useful-model quality target; current short recipe is worse than uniform loss.",
+    "Reduce checkpoint overhead and tune batch/placement from profiling before large-scale spending.",
+    "Actual billing reconciliation, immutable image/source publication, multi-day Spot replacement qualification.",
+    "Physical 4K/pod-scale qualification only for a justified target workload; distributed SFT/RL remains unsupported.",
+    "Paper-specific architecture/optimizer/recipe reproduction is not implemented."
+  ],
+  "initialization_diagnostic": {
+    "scope": "CPU initialization-only diagnostic; one block, width 768, 32 held-out tokens; no training or default change",
+    "embedding_std_before": 0.8,
+    "embedding_std_candidate": 0.02,
+    "loss_before": 21.285642623901367,
+    "loss_candidate": 11.87308406829834,
+    "uniform_loss": 10.82490511970208,
+    "interpretation": "Large tied embedding/output initialization is a candidate contributor; requires a matched learning-curve comparison before changing the production recipe."
+  },
+  "final_source_archive": {
+    "source_python_sha256": "2536925ff4c3e22c9270d2d908c6fc5e3416f6f8b4b906d7fabd469800af551c",
+    "physical_source_python_sha256": "5f14eae3afaa8a029dfe2118a87a4f599500dff4064a9a2ed786ce48c9871609",
+    "unpublished_working_tree": true,
+    "physical_followup_exclusions": [
+      "checkpoint metadata selected-step compatibility",
+      "tokenizer persisted-artifact identity compatibility",
+      "chat identity checks",
+      "evaluation BOS token selection",
+      "four added regression tests",
+      "standalone loss sanity gate and CI routing",
+      "five added quality gate regressions"
+    ],
+    "archive_sha256": "24845e25ae6c219c1ac0ffef0fa14fca7a8e50413775852993e99e6e72575cc4",
+    "archive_bytes": 1151853
+  }
+}

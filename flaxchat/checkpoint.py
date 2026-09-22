@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+from functools import lru_cache
 from typing import Any, cast
 
 import jax
@@ -27,8 +28,9 @@ def create_checkpoint_manager(
     async_checkpointing: bool = True,
 ) -> ocp.CheckpointManager:
     """Create an atomic Orbax manager honoring the async policy."""
-    checkpoint_dir = os.path.abspath(os.path.expanduser(checkpoint_dir))
-    os.makedirs(checkpoint_dir, exist_ok=True)
+    if not checkpoint_dir.startswith("gs://"):
+        checkpoint_dir = os.path.abspath(os.path.expanduser(checkpoint_dir))
+        os.makedirs(checkpoint_dir, exist_ok=True)
     options = ocp.CheckpointManagerOptions(
         max_to_keep=max_to_keep,
         enable_async_checkpointing=async_checkpointing,
@@ -46,16 +48,55 @@ def _json_hash(value: Any) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+@lru_cache(maxsize=64)
+def _chunk_reader(sharding, width):
+    """Reuse compilations across same-shaped leaves and subsequent saves."""
+    @jax.jit(out_shardings=sharding)
+    def read(value, start):
+        return jax.lax.dynamic_slice_in_dim(value.reshape(-1), start, width)
+    return read
+
+
 def _state_manifest(tree) -> dict[str, dict[str, Any]]:
     """Return a canonical schema and content digest for each array leaf."""
     manifest = {}
     for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
-        array = np.asarray(jax.device_get(leaf))
+        digest = hashlib.sha256()
+        if not hasattr(leaf, "dtype"):
+            leaf = np.asarray(leaf)
+        shape, dtype = leaf.shape, leaf.dtype
+        # Stream canonical flattened byte chunks. Only a bounded chunk is
+        # replicated for hashing; a whole FSDP leaf is never gathered on host.
+        chunk_elements = max(1, (1024 * 1024) // np.dtype(dtype).itemsize)
+        size = int(np.prod(shape))
+        if size and isinstance(leaf, jax.Array):
+            if leaf.is_fully_replicated:
+                local = leaf.addressable_data(0).reshape(-1)
+                for start in range(0, size, chunk_elements):
+                    digest.update(np.asarray(jax.device_get(local[start:start + chunk_elements])).tobytes())
+            else:
+                from jax.sharding import NamedSharding, PartitionSpec
+                if not isinstance(leaf.sharding, NamedSharding):
+                    raise ValueError('Sharded checkpoint integrity requires NamedSharding')
+                # Preserve the input mesh's physical device ordering. TPU
+                # topology-aware meshes need not follow jax.devices() order.
+                replicated = NamedSharding(leaf.sharding.mesh, PartitionSpec())
+                width = min(size, chunk_elements)
+                read_chunk = _chunk_reader(replicated, width)
+                for start in range(0, size, width):
+                    # Dynamic slices clamp at the end, so explicitly select the
+                    # trailing partial region from that final bounded window.
+                    offset = min(start, size - width)
+                    chunk = read_chunk(leaf, np.int32(offset)).addressable_data(0)
+                    array = np.asarray(jax.device_get(chunk))
+                    digest.update(array[start - offset:].tobytes())
+        else:
+            flat = np.asarray(jax.device_get(leaf)).reshape(-1)
+            for start in range(0, size, chunk_elements):
+                digest.update(flat[start:start + chunk_elements].tobytes())
         name = jax.tree_util.keystr(path)
         manifest[name] = {
-            "shape": list(array.shape),
-            "dtype": str(array.dtype),
-            "sha256": hashlib.sha256(array.tobytes(order="C")).hexdigest(),
+            "shape": list(shape), "dtype": str(dtype), "sha256": digest.hexdigest(),
         }
     return manifest
 
@@ -76,6 +117,7 @@ def _checkpoint_manifest(step, model_state, opt_state, metadata, training_state)
         "tokenizer": metadata.get("tokenizer_identity", "unavailable"),
         "data_manifest": metadata.get("data_manifest_identity", "unavailable"),
         "source_revision": metadata.get("source_revision", "unavailable"),
+        "source_python_sha256": metadata.get("source_python_sha256", "unavailable"),
     }
     return {
         "format_version": CHECKPOINT_FORMAT_VERSION,
@@ -143,7 +185,7 @@ def _validate_manifest(manifest, model_state, opt_state, metadata, training_stat
         raise CheckpointCompatibilityError("Checkpoint metadata is corrupt")
 
 
-def _restore_args_on_current_topology(metadata):
+def _restore_args_on_current_topology(metadata, target=None):
     """Build explicit restore args without trusting checkpoint sharding files.
 
     Training state has no live target tree, so Orbax otherwise reconstructs the
@@ -154,8 +196,24 @@ def _restore_args_on_current_topology(metadata):
     devices = jax.local_devices()
     if not devices:
         raise CheckpointCompatibilityError("No local JAX device is available for restore")
-    current_sharding = jax.sharding.SingleDeviceSharding(devices[0])
-    sharding_tree = jax.tree.map(lambda _: current_sharding, metadata)
+    if jax.process_count() > 1:
+        current_sharding = jax.sharding.NamedSharding(
+            jax.sharding.Mesh(np.array(jax.devices()), ('restore',)),
+            jax.sharding.PartitionSpec(),
+        )
+    else:
+        current_sharding = jax.sharding.SingleDeviceSharding(devices[0])
+    target_leaves = _canonical_manifest_paths({
+        jax.tree_util.keystr(path): leaf
+        for path, leaf in jax.tree_util.tree_flatten_with_path(target)[0]
+    }) if target is not None else {}
+    def sharding_for(path, value):
+        key = next(iter(_canonical_manifest_paths({jax.tree_util.keystr(path): None})))
+        leaf = target_leaves.get(key)
+        if leaf is not None and np.shape(leaf) != tuple(getattr(value, "shape", ())):
+            raise CheckpointCompatibilityError(f"Checkpoint shape mismatch at {key}")
+        return leaf.sharding if isinstance(leaf, jax.Array) else current_sharding
+    sharding_tree = jax.tree_util.tree_map_with_path(sharding_for, metadata)
     return ocp.checkpoint_utils.construct_restore_args(
         metadata, sharding_tree=sharding_tree
     )
@@ -196,7 +254,8 @@ def load_checkpoint(
     items = {
         "model": ocp.args.PyTreeRestore(
             model_metadata,
-            restore_args=_restore_args_on_current_topology(model_metadata),
+            restore_args=_restore_args_on_current_topology(
+                model_metadata, nnx.to_pure_dict(nnx.state(model)) if model is not None else None),
         ),
         "metadata": ocp.args.JsonRestore(),
         "manifest": ocp.args.JsonRestore(),
@@ -205,7 +264,7 @@ def load_checkpoint(
         optimizer_metadata = _item_metadata(manager, step, "optimizer")
         items["optimizer"] = ocp.args.PyTreeRestore(
             optimizer_metadata,
-            restore_args=_restore_args_on_current_topology(optimizer_metadata),
+            restore_args=_restore_args_on_current_topology(optimizer_metadata, _opt_state_pytree(optimizer)),
         )
     if load_training_state:
         # A freshly opened Composite manager has no item handlers registered,
@@ -228,29 +287,33 @@ def load_checkpoint(
     _validate_manifest(
         restored["manifest"], restored["model"], opt_state, restored["metadata"], training_state
     )
-    # Integrity has now been established against the checkpoint's stored
-    # dtypes. Restore once more against live targets to recover Python
-    # container types and perform any dtype conversion intentionally.
-    step_directory = manager._get_read_step_directory(step, manager.directory)
+    # Reconstruct live containers and cast only after stored-byte integrity has
+    # passed. This uses the already-restored arrays, with no second storage read.
+    def conform(restored_tree, target):
+        leaves = _canonical_manifest_paths({
+            jax.tree_util.keystr(path): leaf
+            for path, leaf in jax.tree_util.tree_flatten_with_path(restored_tree)[0]
+        })
+        target_paths = _canonical_manifest_paths({
+            jax.tree_util.keystr(path): None
+            for path, _ in jax.tree_util.tree_flatten_with_path(target)[0]
+        })
+        if leaves.keys() != target_paths.keys():
+            raise CheckpointCompatibilityError("Live state paths do not match checkpoint")
+        def convert(path, reference):
+            key = next(iter(_canonical_manifest_paths({jax.tree_util.keystr(path): None})))
+            value = leaves[key]
+            if np.shape(value) != np.shape(reference):
+                raise CheckpointCompatibilityError(f"Live state shape mismatch at {key}")
+            if not hasattr(reference, "dtype"):
+                return type(reference)(value)
+            return value.astype(reference.dtype)
+        return jax.tree_util.tree_map_with_path(convert, target)
     model_state = restored["model"]
     if model is not None:
-        model_abstract = nnx.to_pure_dict(nnx.state(model))
-        model_state = ocp.PyTreeCheckpointer().restore(
-            step_directory / "model",
-            args=ocp.args.PyTreeRestore(
-                model_abstract,
-                restore_args=ocp.checkpoint_utils.construct_restore_args(model_abstract),
-            ),
-        )
+        model_state = conform(model_state, nnx.to_pure_dict(nnx.state(model)))
     if optimizer is not None:
-        optimizer_abstract = _opt_state_pytree(optimizer)
-        opt_state = ocp.PyTreeCheckpointer().restore(
-            step_directory / "optimizer",
-            args=ocp.args.PyTreeRestore(
-                optimizer_abstract,
-                restore_args=ocp.checkpoint_utils.construct_restore_args(optimizer_abstract),
-            ),
-        )
+        opt_state = conform(opt_state, _opt_state_pytree(optimizer))
     if optimizer is None and not load_training_state:
         return model_state, restored["metadata"]
     return model_state, opt_state, restored["metadata"], training_state
@@ -275,7 +338,13 @@ def load_checkpoint_metadata(checkpoint_dir: str, step: int | None = None) -> di
         restored = cast(dict[str, Any], restored)
         if _json_hash(restored["metadata"]) != restored["manifest"].get("metadata_sha256"):
             raise CheckpointCompatibilityError("Checkpoint metadata is corrupt")
-        return restored["metadata"]
+        metadata = dict(restored['metadata'])
+        if metadata.get('step', selected) != selected:
+            raise CheckpointCompatibilityError('Checkpoint metadata step differs from selected checkpoint')
+        # Older, integrity-checked artifacts omit this redundant field. Bind
+        # the returned metadata to the actual selected directory without
+        # rewriting the artifact or relaxing its original checksum.
+        return {**metadata, 'step': selected}
     except CheckpointCompatibilityError:
         raise
     except Exception as exc:
@@ -284,6 +353,27 @@ def load_checkpoint_metadata(checkpoint_dir: str, step: int | None = None) -> di
         ) from exc
     finally:
         manager.close()
+
+
+def validate_checkpoint_tokenizer(metadata, tokenizer, *, tokenizer_path=None):
+    """Reject missing or semantically different tokenizer identities."""
+    from flaxchat.dataloader import _tokenizer_identity
+    actual = _tokenizer_identity(tokenizer)
+    expected = metadata.get("tokenizer_identity")
+    if isinstance(expected, str) and tokenizer_path is not None:
+        # Released pipeline artifacts use the exact persisted-file hash.
+        import hashlib
+        from pathlib import Path
+        from flaxchat.tokenizer import load_tokenizer, tokenizer_artifact_path
+        artifact = Path(tokenizer_artifact_path(tokenizer_path))
+        if hashlib.sha256(artifact.read_bytes()).hexdigest() != expected or _tokenizer_identity(load_tokenizer(tokenizer_path)) != actual:
+            raise CheckpointCompatibilityError("Checkpoint tokenizer identity mismatch")
+        return actual
+    if not isinstance(expected, dict) or not any(key.endswith("sha256") for key in expected):
+        raise CheckpointCompatibilityError("Checkpoint lacks a verifiable tokenizer identity; migrate the artifact explicitly")
+    if expected != actual:
+        raise CheckpointCompatibilityError("Checkpoint tokenizer identity mismatch")
+    return actual
 
 
 def restore_model_from_checkpoint(
@@ -317,6 +407,7 @@ def restore_model_from_checkpoint(
                 "tokenizer": metadata.get("tokenizer_identity", "unavailable"),
                 "data_manifest": metadata.get("data_manifest_identity", "unavailable"),
                 "source_revision": metadata.get("source_revision", "unavailable"),
+                "source_python_sha256": metadata.get("source_python_sha256", "unavailable"),
             }
             mismatches = {
                 key: (actual.get(key), value)
@@ -328,14 +419,16 @@ def restore_model_from_checkpoint(
                     f"Checkpoint identity mismatch: {mismatches}"
                 )
 
+        if "model_config" in metadata and hasattr(model, "config"):
+            from flaxchat.config import GPTConfig
+            if GPTConfig(**metadata["model_config"]) != cast(Any, model).config:
+                raise CheckpointCompatibilityError("Live model configuration does not match checkpoint")
         model_state = nnx.state(model)
         pure_state = nnx.to_pure_dict(model_state)
-        live_manifest = _state_manifest(pure_state)
-        restored_manifest = _state_manifest(model_dict)
-        live_schema = {key: value["shape"] for key, value in live_manifest.items()}
-        restored_schema = {
-            key: value["shape"] for key, value in restored_manifest.items()
-        }
+        live_schema = {jax.tree_util.keystr(path): np.shape(leaf)
+                       for path, leaf in jax.tree_util.tree_flatten_with_path(pure_state)[0]}
+        restored_schema = {jax.tree_util.keystr(path): np.shape(leaf)
+                           for path, leaf in jax.tree_util.tree_flatten_with_path(model_dict)[0]}
         if live_schema != restored_schema:
             raise CheckpointCompatibilityError("Live model state schema does not match checkpoint")
         nnx.replace_by_pure_dict(model_state, model_dict)

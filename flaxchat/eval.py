@@ -15,7 +15,7 @@ import numpy as np
 from flaxchat.common import print0
 
 
-PROMPT_TEMPLATE_VERSION = "core-v2"
+PROMPT_TEMPLATE_VERSION = "core-v3-winogrande-partial"
 
 
 def render_prompts_mc(item, continuation_delimiter, fewshot_examples=None):
@@ -73,13 +73,51 @@ def evaluate_example_mc(model, tokenizer, item, fewshot_examples,
     for index, sequence in enumerate(tokens):
         padded[index, :len(sequence)] = sequence
     losses, _ = forward_model(model, jnp.array(padded))
-    scores = [
-        float(jnp.nanmean(losses[index, answer_start - 1:len(sequence) - 1]))
-        for index, sequence in enumerate(tokens)
-    ]
+    scores = []
+    for index, sequence in enumerate(tokens):
+        if answer_start < 1 or answer_start >= len(sequence):
+            raise ValueError("Multiple-choice scoring requires a nonempty continuation")
+        span = losses[index, answer_start - 1:len(sequence) - 1]
+        if not bool(jnp.all(jnp.isfinite(span))):
+            raise ValueError("Nonfinite multiple-choice likelihood")
+        scores.append(float(jnp.mean(span)))
     prediction = scores.index(min(scores))
     correct = prediction == item['gold']
     record = {'prediction': prediction, 'gold': item['gold'], 'scores': scores}
+    return (correct, record) if return_record else correct
+
+
+def evaluate_example_partial(model, tokenizer, item, fewshot_examples,
+                             continuation_delimiter, return_record=False):
+    """Winogrande: score the suffix conditioned on each filled-in prefix.
+
+    Move trailing context whitespace into the continuation before tokenization,
+    matching the standard likelihood request convention. Score summed NLL.
+    """
+    del continuation_delimiter
+    demonstrations = ''.join(
+        example['contexts'][example['gold']] + example['continuation'] + '\n\n'
+        for example in (fewshot_examples or [])
+    )
+    scores, boundaries = [], []
+    bos = tokenizer.get_bos_token_id()
+    for context in item['contexts']:
+        context = demonstrations + context
+        stripped = context.rstrip()
+        continuation = context[len(stripped):] + item['continuation']
+        prefix, whole = tokenizer([stripped, stripped + continuation], prepend=bos)
+        start = len(prefix)
+        if start < 1 or start >= len(whole):
+            raise ValueError('Partial likelihood requires a nonempty continuation')
+        losses, _ = forward_model(model, jnp.asarray([whole], dtype=jnp.int32))
+        scores.append(float(jnp.sum(losses[0, start - 1:len(whole) - 1])))
+        boundaries.append({'start': start, 'end': len(whole)})
+    if not all(math.isfinite(score) for score in scores):
+        raise ValueError('Nonfinite partial likelihood')
+    prediction = int(np.argmin(scores))
+    record = {'prediction': prediction, 'gold': item['gold'], 'scores': scores,
+              'continuation_boundaries': boundaries, 'scoring': 'suffix_sum_nll'}
+    correct = prediction == item['gold']
     return (correct, record) if return_record else correct
 
 
@@ -112,7 +150,7 @@ CORE_TASKS = {
     'arc_easy': {'task_type': 'multiple_choice', 'num_fewshot': 25, 'continuation_delimiter': '\n', 'dataset': 'allenai/ai2_arc:ARC-Easy', 'revision': '210d026faf9955653af8916fad021475a3f00453', 'split': 'test', 'fewshot_split': 'train', 'baseline': 0.2527},
     'arc_challenge': {'task_type': 'multiple_choice', 'num_fewshot': 25, 'continuation_delimiter': '\n', 'dataset': 'allenai/ai2_arc:ARC-Challenge', 'revision': '210d026faf9955653af8916fad021475a3f00453', 'split': 'test', 'fewshot_split': 'train', 'baseline': 0.2099},
     'piqa': {'task_type': 'multiple_choice', 'num_fewshot': 5, 'continuation_delimiter': '\n', 'dataset': 'ybisk/piqa', 'revision': '2e8ac2dffd59bac8c3c6714948f4c551a0848bb0', 'split': 'validation', 'fewshot_split': 'train', 'baseline': 0.5},
-    'winogrande': {'task_type': 'multiple_choice', 'num_fewshot': 5, 'continuation_delimiter': '\n', 'dataset': 'allenai/winogrande:winogrande_xl', 'revision': '01e74176c63542e6b0bcb004dcdea22d94fb67b5', 'split': 'validation', 'fewshot_split': 'train', 'baseline': 0.5},
+    'winogrande': {'task_type': 'partial_likelihood', 'num_fewshot': 5, 'continuation_delimiter': '\n', 'dataset': 'allenai/winogrande:winogrande_xl', 'revision': '01e74176c63542e6b0bcb004dcdea22d94fb67b5', 'split': 'validation', 'fewshot_split': 'train', 'baseline': 0.5},
     'mmlu': {'task_type': 'multiple_choice', 'num_fewshot': 5, 'continuation_delimiter': ' ', 'dataset': 'cais/mmlu:all', 'revision': 'c30699e8356da336a370243923dbaf21066bb9fe', 'split': 'validation', 'fewshot_split': 'dev', 'baseline': 0.25},
 }
 
@@ -130,7 +168,13 @@ def normalize_core_item(item):
     if 'sol1' in item:
         return {'query': item['goal'], 'choices': [item['sol1'], item['sol2']], 'gold': int(item['label'])}
     if 'sentence' in item:
-        return {'query': item['sentence'], 'choices': [item['option1'], item['option2']], 'gold': int(item['answer']) - 1}
+        if item['sentence'].count('_') != 1:
+            raise ValueError('Winogrande requires exactly one blank')
+        prefix, suffix = item['sentence'].split('_')
+        if not suffix.strip():
+            raise ValueError('Winogrande requires a suffix to score')
+        return {'contexts': [prefix + item['option1'], prefix + item['option2']],
+                'continuation': ' ' + suffix.strip(), 'gold': int(item['answer']) - 1}
     if 'context' in item and 'continuation' in item:
         return {'context': item['context'], 'continuation': item['continuation']}
     raise ValueError(f"Unsupported CORE fields: {sorted(item)}")
@@ -209,7 +253,9 @@ def evaluate_core(model, tokenizer, max_per_task=None, *, seed=1234,
                 )
                 task_manifest['fewshot_indices'][str(index)] = fewshot_indices
                 fewshot = [normalize_core_item(fewshot_data[i]) for i in fewshot_indices]
-                evaluator = evaluate_example_mc if spec['task_type'] == 'multiple_choice' else evaluate_example_lm
+                evaluator = {'multiple_choice': evaluate_example_mc,
+                             'partial_likelihood': evaluate_example_partial,
+                             'language_modeling': evaluate_example_lm}.get(spec['task_type'], evaluate_example_lm)
                 is_correct, record = evaluator(
                     model, tokenizer, item, fewshot, spec['continuation_delimiter'],
                     return_record=True,

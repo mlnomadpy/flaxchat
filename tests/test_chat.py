@@ -66,3 +66,38 @@ def test_stream_preserves_byte_tokenizer_unicode(tiny_model, monkeypatch):
 def test_loader_rejects_unknown_checkpoint_type_before_io():
     with pytest.raises(ValueError, match="base, sft, or rl"):
         load_chat_service("d4", "unknown")
+
+
+def test_loader_checks_full_tokenizer_identity_and_pins_step(tiny_config, monkeypatch):
+    from dataclasses import asdict
+    from flaxchat import chat
+    from flaxchat.dataloader import _tokenizer_identity
+    tokenizer = ByteTokenizer()
+    metadata = {'model_config': asdict(tiny_config), 'step': 7,
+                'tokenizer_identity': _tokenizer_identity(tokenizer)}
+    restored = []
+    monkeypatch.setattr(chat, 'get_tokenizer', lambda: tokenizer)
+    monkeypatch.setattr(chat, 'load_checkpoint_metadata', lambda _: metadata)
+    monkeypatch.setattr(chat, 'GPT', lambda *a, **k: object())
+    monkeypatch.setattr(chat, 'restore_model_from_checkpoint', lambda *a, **k: restored.append(k))
+    chat.load_chat_service('d1')
+    assert restored[0]['step'] == 7
+    metadata['tokenizer_identity'] = {'vocab_size': tokenizer.get_vocab_size()}
+    with pytest.raises(ValueError, match='verifiable tokenizer'):
+        chat.load_chat_service('d1')
+    assert len(restored) == 1
+
+
+def test_persisted_tokenizer_hash_accepts_exact_artifact_only(tmp_path):
+    import hashlib
+    from pathlib import Path
+    from flaxchat.checkpoint import validate_checkpoint_tokenizer
+    from flaxchat.tokenizer import tokenizer_artifact_path
+    tokenizer = ByteTokenizer()
+    tokenizer.save(str(tmp_path))
+    artifact = Path(tokenizer_artifact_path(tmp_path))
+    metadata = {'tokenizer_identity': hashlib.sha256(artifact.read_bytes()).hexdigest()}
+    validate_checkpoint_tokenizer(metadata, tokenizer, tokenizer_path=tmp_path)
+    metadata['tokenizer_identity'] = '0' * 64
+    with pytest.raises(ValueError, match='identity mismatch'):
+        validate_checkpoint_tokenizer(metadata, tokenizer, tokenizer_path=tmp_path)
