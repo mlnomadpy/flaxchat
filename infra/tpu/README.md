@@ -21,6 +21,24 @@ campaign before the workload. The prepared source archive must include its
 small pinned token pool. The source archive checksum, base commit and the
 version constraints in `validation-lock.txt` are inputs to `setup_validation.sh`.
 
+Use `--local-preflight` with a JSON argv array invoking
+`scripts.train_encoder --preflight-only` and the exact prepared fixture/configuration
+before provisioning. This local command must finish successfully within 120 seconds;
+its log is retained under the campaign output. Failure or timeout occurs before
+the budget ledger, cleanup lease, or cloud allocation is created. Validate the
+files that will actually be bundled/uploaded, not a different local copy.
+
+For archived encoder campaigns, prefer `scripts.preflight_encoder_archive` as
+that local command. Supply `--archive`, its expected `--sha256`, the archive-relative
+`--data-path`, an existing local `--snapshot`, and `--backend` (`xla`, `xla_full`,
+or `pallas`). `--batch-size` and `--steps` must match the workload. This command
+checks the archive digest, rejects traversal/link/duplicate members, and requires
+complete Python package roots before extracting to a temporary directory. It runs
+the frozen trainer and frozen fixture with CPU-only, isolated distributed settings;
+it does not download weights or allocate a TPU. Only use source archives you trust:
+the preflight executes their training code. Its current recipe uses masked MLM,
+BF16 compute, FP32 residuals, and the trainer's default vocabulary tile/loss chunk.
+
 Every attempt reserves `whole_slice_hourly_rate * (attempt_seconds + 1800) / 3600`
 plus the ancillary reserve. The budget includes **all** retry reservations.
 An existing resource name or ledger attempt cannot be reused. More than one
@@ -334,3 +352,31 @@ sleep cannot extend their wait. Cancellation signals stop private SSH process
 groups before the supervisor verifies queue/VM cleanup. Remote command timeouts
 and the independent Cloud Workflows guard remain necessary if the host sleeps,
 loses connectivity, or exits entirely.
+
+Repair validation now runs workload `gcloud` children with the setup-created
+Python 3.12 interpreter via `CLOUDSDK_PYTHON`, when that environment exists.
+Setup records and checks the CLI interpreter in `/tmp/flaxchat-gcloud-runtime.json`.
+This avoids relying on the TPU image's aging Python for checkpoint transfers;
+the initial bootstrap still uses the image CLI. It does not upgrade system Python
+or mutate the global Cloud SDK installation.
+
+Cleanup admission requires more than an ACTIVE execution. The deployed workflow
+first GETs the exact dedicated queue and refuses an existing resource. For an
+absent queue, it probes force-DELETE with its own OAuth identity; only the expected
+404 result permits waiting for the cleanup deadline. Authorization errors fail
+admission. The controller verifies the deployed source, execution revision, lease
+identity and server-side wait step before provisioning. Google canonical project
+numbers are resolved and checked against the requested project.
+
+Policy Troubleshooter cannot resolve TPU queued-resource names in the tested API;
+a project-level simulation is not a substitute for these actual service probes.
+The September 24 live probe's audit log explicitly records granted=true for
+`tpu.nodes.delete`. Subsequent IAM changes remain an operational risk.
+
+The supervisor treats `--name` as a prefix and appends an attempt index and a
+fresh random run identifier. The actual identity is saved in each attempt's
+`resource-identity.json` and in the ledger. Use that identity for inspection.
+Never reuse a previous resource name: an older cleanup execution can remain
+armed after resource deletion and subsequently delete a new resource with that
+name. A suspending request fails readiness promptly and proceeds to verified
+cleanup; it is not classified as capacity exhaustion.

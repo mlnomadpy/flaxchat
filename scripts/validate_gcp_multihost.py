@@ -19,6 +19,8 @@ def main(argv=None):
     parser.add_argument('--project', required=True)
     parser.add_argument('--zone', required=True)
     parser.add_argument('--node', required=True)
+    parser.add_argument('--tunnel-through-iap', action='store_true')
+    parser.add_argument('--iap-fallback', action='store_true')
     parser.add_argument('--checkpoint-prefix', required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--global-batch', type=int, default=16)
@@ -85,7 +87,9 @@ def main(argv=None):
         stage_dir = args.output / name
         result = subprocess.run([sys.executable, '-m', 'scripts.gcp_tpu_run', '--project', args.project,
             '--zone', args.zone, '--node', args.node, '--output', str(stage_dir),
-            '--timeout', str(min(480, int(remaining))), *extra, '--', *command])
+            '--timeout', str(min(480, int(remaining))), *extra,
+            *(['--tunnel-through-iap'] if args.tunnel_through_iap else []),
+            *(['--iap-fallback'] if args.iap_fallback else []), '--', *command])
         passed = result.returncode == 0
         if name == 'probe' and passed:
             from scripts.multihost_acceptance import validate_records

@@ -1,6 +1,6 @@
 """Prepare bounded JSONL text into encoder rows using a local HF tokenizer.
 
-One document per row; long documents are truncated, never joined across rows.
+One document per row; optional windows preserve long-document tails without joining documents.
 Use a pinned dataset export. This command does not download a corpus or start TPUs.
 """
 import argparse
@@ -15,7 +15,9 @@ from tokenizers import Tokenizer
 from scripts.train_encoder import file_hash
 
 
-def prepare(source, tokenizer_path, output, *, sequence_length, max_rows, pad_token_id, mask_token_id=4):
+def prepare(source, tokenizer_path, output, *, sequence_length, max_rows, pad_token_id, mask_token_id=4, long_document_policy='truncate'):
+    if long_document_policy not in ('truncate', 'window'):
+        raise ValueError('Unknown long-document policy')
     if sequence_length <= 0 or max_rows <= 0:
         raise ValueError('sequence-length and max-rows must be positive')
     source, tokenizer_path, output = Path(source), Path(tokenizer_path), Path(output)
@@ -26,7 +28,13 @@ def prepare(source, tokenizer_path, output, *, sequence_length, max_rows, pad_to
         raise ValueError('Invalid pad token ID')
     if not 0 <= mask_token_id < tokenizer.get_vocab_size() or mask_token_id == pad_token_id:
         raise ValueError('Invalid or identical mask token ID')
-    tokenizer.enable_truncation(max_length=sequence_length)
+    if long_document_policy == 'window':
+        tokenizer.no_truncation()
+        content_length = sequence_length - tokenizer.num_special_tokens_to_add(False)
+        if content_length <= 0:
+            raise ValueError('Sequence length must leave room for document tokens')
+    else:
+        tokenizer.enable_truncation(max_length=sequence_length)
     tokenizer.no_padding()
     raw = json.loads(tokenizer_path.read_text())
     special_ids = sorted({pad_token_id, mask_token_id} | {t['id'] for t in raw.get('added_tokens', []) if t.get('special')})
@@ -36,6 +44,7 @@ def prepare(source, tokenizer_path, output, *, sequence_length, max_rows, pad_to
         staging = np.lib.format.open_memmap(temp / 'staging.npy', mode='w+', dtype=np.int32,
                                            shape=(max_rows, sequence_length))
         count = 0
+        nonpadding_tokens = 0
         with source.open() as stream:
             for line in stream:
                 if not line.strip():
@@ -43,12 +52,24 @@ def prepare(source, tokenizer_path, output, *, sequence_length, max_rows, pad_to
                 text = json.loads(line)['text']
                 if not isinstance(text, str):
                     raise ValueError('JSONL text must be a string')
-                ids = tokenizer.encode(text).ids
-                if not ids or all(t in special_ids for t in ids):
-                    continue
-                staging[count] = pad_token_id
-                staging[count, :len(ids)] = ids
-                count += 1
+                if long_document_policy == 'window':
+                    # Tokenizers 0.23 may early-exit right truncation without
+                    # producing overflow. Tokenize fully, then split explicitly.
+                    encoding = tokenizer.encode(text, add_special_tokens=False)
+                    encoding.truncate(content_length)
+                    windows = [tokenizer.post_process(e) for e in [encoding, *encoding.overflowing]]
+                else:
+                    windows = [tokenizer.encode(text)]
+                for window in windows:
+                    ids = window.ids
+                    if not ids or all(t in special_ids for t in ids):
+                        continue
+                    staging[count] = pad_token_id
+                    staging[count, :len(ids)] = ids
+                    nonpadding_tokens += sum(t != pad_token_id for t in ids)
+                    count += 1
+                    if count == max_rows:
+                        break
                 if count == max_rows:
                     break
         if not count:
@@ -64,7 +85,9 @@ def prepare(source, tokenizer_path, output, *, sequence_length, max_rows, pad_to
                         vocab_size=tokenizer.get_vocab_size(), pad_token_id=pad_token_id, mask_token_id=mask_token_id,
                         special_token_ids=special_ids, tokenizer_sha256=file_hash(tokenizer_path),
                         source_sha256=file_hash(source), tokens_sha256=file_hash(temp / 'tokens.npy'),
-                        policy='one-document-per-row; truncate; no shifting')
+                        policy=f'one-document-per-row; {long_document_policy}; no shifting',
+                        nonpadding_tokens=nonpadding_tokens, input_positions=count * sequence_length,
+                        nonpadding_fraction=nonpadding_tokens / (count * sequence_length))
         (temp / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
         temp.rename(output)
         return manifest
@@ -75,6 +98,7 @@ def prepare(source, tokenizer_path, output, *, sequence_length, max_rows, pad_to
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--long-document-policy', choices=['truncate', 'window'], default='truncate')
     p.add_argument('--source', required=True, help='JSONL with text fields')
     p.add_argument('--tokenizer', required=True, help='Local tokenizer.json')
     p.add_argument('--output', required=True)
@@ -84,4 +108,4 @@ if __name__ == '__main__':
     p.add_argument('--mask-token-id', type=int, default=4, help='Model mask token, even if tokenizer marks it non-special')
     a = p.parse_args()
     print(json.dumps(prepare(a.source, a.tokenizer, a.output, sequence_length=a.sequence_length,
-                            max_rows=a.max_rows, pad_token_id=a.pad_token_id, mask_token_id=a.mask_token_id), indent=2))
+                            max_rows=a.max_rows, pad_token_id=a.pad_token_id, mask_token_id=a.mask_token_id, long_document_policy=a.long_document_policy), indent=2))

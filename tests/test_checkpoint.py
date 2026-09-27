@@ -6,6 +6,7 @@ Uses tiny_model fixture from conftest.py and pytest tmp_path for isolation.
 
 import os
 import shutil
+from typing import TYPE_CHECKING, Any, assert_type
 import pytest
 import jax
 import jax.numpy as jnp
@@ -22,6 +23,46 @@ from flaxchat.checkpoint import (
     restore_model_from_checkpoint,
 )
 from flaxchat.gpt import GPT
+
+
+if TYPE_CHECKING:
+    import orbax.checkpoint as ocp
+
+    def _check_checkpoint_return_contracts(
+        manager: ocp.CheckpointManager, model: nnx.Module, optimizer: nnx.Optimizer,
+        include_state: bool,
+    ):
+        assert_type(load_checkpoint(manager), tuple[dict[str, Any], dict[str, Any]])
+        assert_type(load_checkpoint(manager, optimizer=optimizer),
+                    tuple[dict[str, Any], dict[str, Any], dict[str, Any], None])
+        assert_type(load_checkpoint(manager, load_training_state=True),
+                    tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any], dict[str, Any]])
+        assert_type(restore_model_from_checkpoint(model, 'unused'), dict[str, Any])
+        assert_type(restore_model_from_checkpoint(model, 'unused', load_training_state=True),
+                    tuple[dict[str, Any], dict[str, Any]])
+        assert_type(restore_model_from_checkpoint(model, 'unused', load_training_state=include_state),
+                    dict[str, Any] | tuple[dict[str, Any], dict[str, Any]])
+
+
+@pytest.mark.parametrize('dtype', ['float32', 'bfloat16'])
+def test_replicated_manifest_reuses_dynamic_reader_and_preserves_partial_chunk(dtype):
+    import numpy as np
+    from flaxchat.checkpoint import _chunk_reader, _state_manifest
+
+    width = (1024 * 1024) // np.dtype(getattr(jnp, dtype)).itemsize
+    values = jnp.arange(width * 2 + 17, dtype=jnp.float32).astype(getattr(jnp, dtype))
+    _chunk_reader.cache_clear()
+    first = _state_manifest({'weight': values})
+    before = _chunk_reader.cache_info()
+    assert first == _state_manifest({'weight': np.asarray(values)})
+    changed_values = values.at[-1].set(-1)
+    second = _state_manifest({'weight': changed_values})
+    after = _chunk_reader.cache_info()
+    assert before.misses == after.misses == 1
+    assert after.hits == before.hits + 1
+    assert second != first
+    assert second == _state_manifest({'weight': np.asarray(changed_values)})
+    assert _state_manifest({'empty': values[:0]}) == _state_manifest({'empty': np.asarray(values[:0])})
 
 
 def test_integrity_hash_preserves_reordered_mesh_and_partial_chunk():
@@ -168,6 +209,21 @@ class TestSaveLoadRoundTrip:
 
         with pytest.raises(ValueError, match="No checkpoints found"):
             load_checkpoint(manager, step=None)
+
+    def test_retain_all_keeps_early_checkpoint_after_four_saves(self, tiny_model, tmp_path):
+        manager = create_checkpoint_manager(str(tmp_path / 'all'), max_to_keep=None,
+                                            async_checkpointing=False)
+        optimizer = self._make_optimizer(tiny_model)
+        try:
+            for step in range(1, 5):
+                save_checkpoint(manager, step=step, model=tiny_model, optimizer=optimizer,
+                                metadata={'step': step})
+            manager.wait_until_finished()
+            assert manager.all_steps() == [1, 2, 3, 4]
+            _, metadata = load_checkpoint(manager, step=1, model=tiny_model)
+            assert metadata['step'] == 1
+        finally:
+            manager.close()
 
     def test_param_values_preserved(self, tiny_config, tmp_path):
         """Parameter values should be exactly preserved after round-trip."""
@@ -316,10 +372,11 @@ class TestSaveLoadRoundTrip:
         for expected, actual in zip(jax.tree.leaves(reference), jax.tree.leaves(resumed)):
             assert jnp.array_equal(expected, actual)
         for expected, actual in zip(
-            jax.tree.leaves(reference_optimizer.opt_state),
-            jax.tree.leaves(resumed_optimizer.opt_state),
+            jax.tree.leaves(nnx.state(reference_optimizer)),
+            jax.tree.leaves(nnx.state(resumed_optimizer)),
         ):
             assert jnp.array_equal(expected, actual)
+        assert int(resumed_optimizer.step[...]) == 10
 
 
 # ---------------------------------------------------------------------------
@@ -390,3 +447,61 @@ def test_gcs_checkpoint_path_is_preserved():
         create_checkpoint_manager('gs://test-bucket/checkpoints', async_checkpointing=False)
     assert manager.call_args.kwargs['directory'] == 'gs://test-bucket/checkpoints'
     mkdir.assert_not_called()
+
+@pytest.mark.parametrize('kind', ['adam', 'sgd'])
+def test_optimizer_counter_is_saved_independently_of_checkpoint_label(tmp_path, kind):
+    import optax
+
+    model = nnx.Linear(2, 1, rngs=nnx.Rngs(2))
+    tx = optax.adam(.01) if kind == 'adam' else optax.sgd(.01)
+    optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
+    for _ in range(2):
+        gradients = nnx.grad(lambda m: jnp.sum(m(jnp.ones((1, 2)))))(model)
+        optimizer.update(model, gradients)
+    directory = str(tmp_path / kind)
+    manager = create_checkpoint_manager(directory, async_checkpointing=False)
+    try:
+        save_checkpoint(manager, 900, model, optimizer, {'step': 900})
+    finally:
+        manager.close()
+    target = nnx.Linear(2, 1, rngs=nnx.Rngs(999))
+    target_optimizer = nnx.Optimizer(target, tx, wrt=nnx.Param)
+    restore_model_from_checkpoint(target, directory, optimizer=target_optimizer)
+    assert int(target_optimizer.step[...]) == 2
+    for expected, actual in zip(jax.tree.leaves(nnx.state(optimizer)),
+                                jax.tree.leaves(nnx.state(target_optimizer)), strict=True):
+        assert jnp.array_equal(expected, actual)
+
+
+def test_legacy_checkpoint_allows_model_only_but_rejects_inexact_resume(tmp_path):
+    import optax
+    import orbax.checkpoint as ocp
+
+    model = nnx.Linear(2, 1, rngs=nnx.Rngs(2))
+    optimizer = nnx.Optimizer(model, optax.sgd(.01), wrt=nnx.Param)
+    state = nnx.to_pure_dict(nnx.state(model))
+    metadata = {'step': 900}
+    manifest = _checkpoint_manifest(900, state, optimizer.opt_state, metadata, None)
+    manifest['format_version'] = 2
+    directory = str(tmp_path / 'legacy')
+    manager = create_checkpoint_manager(directory, async_checkpointing=False)
+    try:
+        manager.save(900, args=ocp.args.Composite(
+            model=ocp.args.PyTreeSave(state),
+            optimizer=ocp.args.PyTreeSave(optimizer.opt_state),
+            metadata=ocp.args.JsonSave(metadata),
+            manifest=ocp.args.JsonSave(manifest),
+        ))
+    finally:
+        manager.close()
+    target = nnx.Linear(2, 1, rngs=nnx.Rngs(999))
+    target_optimizer = nnx.Optimizer(target, optax.sgd(.01), wrt=nnx.Param)
+    before = jax.tree.leaves(nnx.state(target))
+    with pytest.raises(CheckpointCompatibilityError, match='omit the NNX optimizer update counter'):
+        restore_model_from_checkpoint(target, directory, optimizer=target_optimizer)
+    assert int(target_optimizer.step[...]) == 0
+    for x, y in zip(before, jax.tree.leaves(nnx.state(target)), strict=True):
+        assert jnp.array_equal(x, y)
+    restore_model_from_checkpoint(target, directory)
+    for x, y in zip(jax.tree.leaves(state), jax.tree.leaves(nnx.state(target)), strict=True):
+        assert jnp.array_equal(x, y)

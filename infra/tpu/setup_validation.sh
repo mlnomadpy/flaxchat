@@ -34,3 +34,6 @@ else
 fi
 .venv/bin/python -m pip freeze > /tmp/flaxchat-env.txt
 test -f /tmp/flaxchat-env.txt
+export CLOUDSDK_PYTHON="$PWD/.venv/bin/python"
+gcloud info --format='json(basic.python_version,basic.python_location,installation.version)' > /tmp/flaxchat-gcloud-runtime.json
+.venv/bin/python -c 'import json; d=json.load(open("/tmp/flaxchat-gcloud-runtime.json")); v=d["basic"]["python_version"]; assert tuple(map(int,v.split(".")[:2])) >= (3, 12), v'

@@ -48,9 +48,10 @@ def validate(backend, tile, data_root='artifacts/encoder-validation-0922'):
     mesh = Mesh(np.asarray(jax.devices()), ('data',))
     nnx.update(model, replicate_on_mesh(nnx.state(model), mesh))
     data = Path(data_root) / 'data-512'
-    tokens = np.load(data/'tokens.npy')[:4]
+    batch = max(4, jax.device_count())
+    tokens = np.load(data/'tokens.npy')[:batch]
     manifest = json.loads((data/'manifest.json').read_text())
-    x, y = mask_tokens(tokens, seed=42, step=0, example_ids=np.arange(4),
+    x, y = mask_tokens(tokens, seed=42, step=0, example_ids=np.arange(batch),
         vocab_size=config.vocab_size, mask_token_id=config.mask_token_id,
         special_token_ids=manifest['special_token_ids'], probability=.15)
     x, y = place_host_batch(x, mesh), place_host_batch(y, mesh)
@@ -67,19 +68,22 @@ def validate(backend, tile, data_root='artifacts/encoder-validation-0922'):
     relative, finite = errors(baseline_grad, candidate_grad)
     loss_error = abs(float(candidate)-float(baseline))
     # Declared before measurement. BF16 allows numerical drift, never NaNs.
-    passed = bool(finite) and loss_error < 1e-3 and float(relative) < .03
+    diagnostics = gradient_diagnostics(baseline_grad, candidate_grad)
+    max_parameter_error = max(row['relative_l2'] for row in diagnostics)
+    passed = bool(finite) and loss_error < 1e-3 and float(relative) < .03 and max_parameter_error < .03
     return dict(passed=passed, baseline_loss=float(baseline), candidate_loss=float(candidate),
         absolute_loss_error=loss_error, gradient_relative_l2=float(relative),
         maximum_loss_error=1e-3, maximum_gradient_relative_l2=.03,
+        max_parameter_gradient_relative_l2=max_parameter_error, maximum_parameter_gradient_relative_l2=.03,
         backend=backend, tile=tile, initial_weights_sha256=identity, matmul_precision='highest',
-        parameter_gradient_diagnostics=gradient_diagnostics(baseline_grad, candidate_grad),
+        parameter_gradient_diagnostics=diagnostics,
         devices=jax.device_count(), device_kind=jax.devices()[0].device_kind,
         quality_qualified=False)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--backend', choices=['pallas','xla_full'], required=True)
+    parser.add_argument('--backend', choices=['pallas','xla_full','xla_local'], required=True)
     parser.add_argument('--tile', type=int, default=1024)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--data-root', default='artifacts/encoder-validation-0922')

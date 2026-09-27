@@ -102,9 +102,16 @@ def run_spot_attempt(ledger, attempt_id, resource, *, hourly_usd, max_seconds,
     uniquely named attempt with the same ledger and a durable resume cursor.
     """
     ledger.reserve(attempt_id, resource, hourly_usd, max_seconds, ancillary_reserve_usd)
-    receipt = arm_and_verify(resource, max_seconds)
-    if not receipt:
-        raise RuntimeError('Missing verified cloud lease')
+    try:
+        receipt = arm_and_verify(resource, max_seconds)
+        if not receipt:
+            raise RuntimeError('Missing verified cloud lease')
+    except BaseException as exc:
+        # Provision has not been called. Retain the reservation and diagnostic,
+        # without deleting a resource whose guard was never verified.
+        ledger.event(attempt_id, 'guard_failed_before_provisioning',
+                     error=f'{type(exc).__name__}: {exc}')
+        raise
     ledger.event(attempt_id, 'guard_verified', receipt=receipt)
     try:
         ledger.event(attempt_id, 'provisioning')
@@ -112,6 +119,11 @@ def run_spot_attempt(ledger, attempt_id, resource, *, hourly_usd, max_seconds,
         ledger.event(attempt_id, 'running')
         code = run(resource)
         ledger.event(attempt_id, 'work_finished', returncode=code)
+    except BaseException as exc:
+        # Preserve the cause before potentially slow cloud deletion. The finally
+        # block must still run if writing this diagnostic itself fails.
+        ledger.event(attempt_id, 'attempt_failed', error=f'{type(exc).__name__}: {exc}')
+        raise
     finally:
         try:
             if not cleanup_and_verify(resource):

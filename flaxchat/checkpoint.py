@@ -7,7 +7,7 @@ import json
 import os
 import re
 from functools import lru_cache
-from typing import Any, cast
+from typing import Any, Literal, cast, overload
 
 import jax
 import numpy as np
@@ -15,7 +15,7 @@ import orbax.checkpoint as ocp
 from flax import nnx
 
 
-CHECKPOINT_FORMAT_VERSION = 2
+CHECKPOINT_FORMAT_VERSION = 3
 
 
 class CheckpointCompatibilityError(ValueError):
@@ -24,7 +24,7 @@ class CheckpointCompatibilityError(ValueError):
 
 def create_checkpoint_manager(
     checkpoint_dir: str,
-    max_to_keep: int = 3,
+    max_to_keep: int | None = 3,
     async_checkpointing: bool = True,
 ) -> ocp.CheckpointManager:
     """Create an atomic Orbax manager honoring the async policy."""
@@ -40,7 +40,9 @@ def create_checkpoint_manager(
 
 
 def _opt_state_pytree(optimizer: nnx.Optimizer):
-    return optimizer.opt_state
+    # NNX owns an update counter outside Optax's transformation state. Save all
+    # persistent optimizer variables so resumption preserves that counter too.
+    return nnx.to_pure_dict(nnx.state(optimizer))
 
 
 def _json_hash(value: Any) -> str:
@@ -57,8 +59,10 @@ def _chunk_reader(sharding, width):
     return read
 
 
-def _state_manifest(tree) -> dict[str, dict[str, Any]]:
-    """Return a canonical schema and content digest for each array leaf."""
+def _state_manifest(tree, *, chunk_bytes=1024 * 1024) -> dict[str, dict[str, Any]]:
+    """Return canonical leaf digests; chunk size only controls transfer granularity."""
+    if type(chunk_bytes) is not int or chunk_bytes < 1:
+        raise ValueError('Manifest chunk_bytes must be a positive integer')
     manifest = {}
     for path, leaf in jax.tree_util.tree_flatten_with_path(tree)[0]:
         digest = hashlib.sha256()
@@ -67,13 +71,22 @@ def _state_manifest(tree) -> dict[str, dict[str, Any]]:
         shape, dtype = leaf.shape, leaf.dtype
         # Stream canonical flattened byte chunks. Only a bounded chunk is
         # replicated for hashing; a whole FSDP leaf is never gathered on host.
-        chunk_elements = max(1, (1024 * 1024) // np.dtype(dtype).itemsize)
+        chunk_elements = max(1, chunk_bytes // np.dtype(dtype).itemsize)
         size = int(np.prod(shape))
         if size and isinstance(leaf, jax.Array):
             if leaf.is_fully_replicated:
-                local = leaf.addressable_data(0).reshape(-1)
-                for start in range(0, size, chunk_elements):
-                    digest.update(np.asarray(jax.device_get(local[start:start + chunk_elements])).tobytes())
+                local = leaf.addressable_data(0)
+                if size <= chunk_elements:
+                    digest.update(np.asarray(jax.device_get(local)).tobytes())
+                else:
+                    # Static Python slices can compile a distinct executable
+                    # for every offset of a large replicated embedding. Reuse
+                    # one dynamic reader, as for partitioned checkpoint leaves.
+                    read_chunk = _chunk_reader(local.sharding, chunk_elements)
+                    for start in range(0, size, chunk_elements):
+                        offset = min(start, size - chunk_elements)
+                        array = np.asarray(jax.device_get(read_chunk(local, np.int32(offset))))
+                        digest.update(array[start - offset:].tobytes())
             else:
                 from jax.sharding import NamedSharding, PartitionSpec
                 if not isinstance(leaf.sharding, NamedSharding):
@@ -111,7 +124,8 @@ def _canonical_manifest_paths(manifest: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def _checkpoint_manifest(step, model_state, opt_state, metadata, training_state):
+def _checkpoint_manifest(step, model_state, opt_state, metadata, training_state,
+                         *, chunk_bytes=1024 * 1024):
     identities = {
         "resolved_config": metadata.get("resolved_config", metadata.get("model_config")),
         "tokenizer": metadata.get("tokenizer_identity", "unavailable"),
@@ -122,9 +136,9 @@ def _checkpoint_manifest(step, model_state, opt_state, metadata, training_state)
     return {
         "format_version": CHECKPOINT_FORMAT_VERSION,
         "step": int(step),
-        "model_state": _state_manifest(model_state),
-        "optimizer_state": _state_manifest(opt_state),
-        "training_state": _state_manifest(training_state) if training_state is not None else {},
+        "model_state": _state_manifest(model_state, chunk_bytes=chunk_bytes),
+        "optimizer_state": _state_manifest(opt_state, chunk_bytes=chunk_bytes),
+        "training_state": _state_manifest(training_state, chunk_bytes=chunk_bytes) if training_state is not None else {},
         "metadata_sha256": _json_hash(metadata),
         "identity": identities,
         "identity_sha256": _json_hash(identities),
@@ -139,13 +153,15 @@ def save_checkpoint(
     metadata: dict,
     *,
     training_state: dict | None = None,
+    manifest_chunk_bytes: int = 1024 * 1024,
 ):
     """Save all persistent model variables, optimizer and resumable run state."""
     model_state = nnx.to_pure_dict(nnx.state(model))
     opt_state = _opt_state_pytree(optimizer)
     metadata = dict(metadata)
     manifest = _checkpoint_manifest(
-        step, model_state, opt_state, metadata, training_state
+        step, model_state, opt_state, metadata, training_state,
+        chunk_bytes=manifest_chunk_bytes,
     )
     items = {
         "model": ocp.args.PyTreeSave(model_state),
@@ -159,7 +175,7 @@ def save_checkpoint(
 
 
 def _validate_manifest(manifest, model_state, opt_state, metadata, training_state):
-    if manifest.get("format_version") != CHECKPOINT_FORMAT_VERSION:
+    if manifest.get("format_version") not in (2, CHECKPOINT_FORMAT_VERSION):
         raise CheckpointCompatibilityError(
             f"Unsupported checkpoint format {manifest.get('format_version')!r}; "
             f"expected {CHECKPOINT_FORMAT_VERSION}"
@@ -230,6 +246,52 @@ def _item_metadata(manager: ocp.CheckpointManager, step: int, item: str):
         ) from exc
 
 
+@overload
+def load_checkpoint(
+    manager: ocp.CheckpointManager,
+    step: int | None = None,
+    model: nnx.Module | None = None,
+    optimizer: None = None,
+    *,
+    load_training_state: Literal[False] = False,
+) -> tuple[dict[str, Any], dict[str, Any]]: ...
+
+
+@overload
+def load_checkpoint(
+    manager: ocp.CheckpointManager,
+    step: int | None = None,
+    model: nnx.Module | None = None,
+    optimizer: nnx.Optimizer | None = None,
+    *,
+    load_training_state: Literal[True],
+) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any], dict[str, Any]]: ...
+
+
+@overload
+def load_checkpoint(
+    manager: ocp.CheckpointManager,
+    step: int | None = None,
+    model: nnx.Module | None = None,
+    *,
+    optimizer: nnx.Optimizer,
+    load_training_state: Literal[False] = False,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], None]: ...
+
+
+@overload
+def load_checkpoint(
+    manager: ocp.CheckpointManager,
+    step: int | None = None,
+    model: nnx.Module | None = None,
+    optimizer: nnx.Optimizer | None = None,
+    *,
+    load_training_state: bool = False,
+) -> tuple[dict[str, Any], dict[str, Any]] | tuple[
+    dict[str, Any], dict[str, Any] | None, dict[str, Any], dict[str, Any] | None
+]: ...
+
+
 def load_checkpoint(
     manager: ocp.CheckpointManager,
     step: int | None = None,
@@ -287,6 +349,13 @@ def load_checkpoint(
     _validate_manifest(
         restored["manifest"], restored["model"], opt_state, restored["metadata"], training_state
     )
+    if optimizer is not None and restored["manifest"]["format_version"] == 2:
+        raise CheckpointCompatibilityError(
+            "Version 2 checkpoints omit the NNX optimizer update counter. "
+            "Load model-only or explicitly migrate the checkpoint with a verified "
+            "optimizer counter before resuming; the checkpoint label is not a "
+            "reliable substitute for the number of optimizer updates."
+        )
     # Reconstruct live containers and cast only after stored-byte integrity has
     # passed. This uses the already-restored arrays, with no second storage read.
     def conform(restored_tree, target):
@@ -376,6 +445,42 @@ def validate_checkpoint_tokenizer(metadata, tokenizer, *, tokenizer_path=None):
     return actual
 
 
+@overload
+def restore_model_from_checkpoint(
+    model: nnx.Module,
+    checkpoint_dir: str,
+    step: int | None = None,
+    optimizer: nnx.Optimizer | None = None,
+    *,
+    expected_identity: dict | None = None,
+    load_training_state: Literal[False] = False,
+) -> dict[str, Any]: ...
+
+
+@overload
+def restore_model_from_checkpoint(
+    model: nnx.Module,
+    checkpoint_dir: str,
+    step: int | None = None,
+    optimizer: nnx.Optimizer | None = None,
+    *,
+    expected_identity: dict | None = None,
+    load_training_state: Literal[True],
+) -> tuple[dict[str, Any], dict[str, Any]]: ...
+
+
+@overload
+def restore_model_from_checkpoint(
+    model: nnx.Module,
+    checkpoint_dir: str,
+    step: int | None = None,
+    optimizer: nnx.Optimizer | None = None,
+    *,
+    expected_identity: dict | None = None,
+    load_training_state: bool = False,
+) -> dict[str, Any] | tuple[dict[str, Any], dict[str, Any]]: ...
+
+
 def restore_model_from_checkpoint(
     model: nnx.Module,
     checkpoint_dir: str,
@@ -434,7 +539,9 @@ def restore_model_from_checkpoint(
         nnx.replace_by_pure_dict(model_state, model_dict)
         nnx.update(model, model_state)
         if optimizer is not None and opt_state is not None:
-            optimizer.opt_state = opt_state
+            optimizer_state = nnx.state(optimizer)
+            nnx.replace_by_pure_dict(optimizer_state, opt_state)
+            nnx.update(optimizer, optimizer_state)
         if load_training_state:
             return metadata, training_state
         return metadata

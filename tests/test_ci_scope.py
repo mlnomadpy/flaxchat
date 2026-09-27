@@ -91,3 +91,41 @@ def test_ci_selector_and_artifact_verifier_have_precise_test_routes():
     assert select_scope(["infra/tpu/flexstart.sh"])["tests"] == [
         "tests/test_quality_policy.py"
     ]
+
+
+def test_encoder_preflight_and_evidence_regressions_are_selected():
+    scope = select_scope(['scripts/train_encoder.py'])
+    assert 'tests/test_encoder_snapshot.py' in scope['tests']
+    assert scope['run_multidevice']
+    assert 'tests/test_encoder_projection_benchmark.py' in select_scope(
+        ['scripts/benchmark_encoder_projection.py'])['tests']
+    assert 'tests/test_encoder_qualification.py' in select_scope(
+        ['scripts/validate_encoder_tpu.py'])['tests']
+
+
+def test_classifier_training_selects_task_and_multidevice_checks():
+    scope = select_scope(['scripts/finetune_encoder_classifier.py'])
+    assert scope['tests'] == ['tests/test_encoder_classification.py', 'tests/test_encoder_ner_finetuning.py']
+    assert scope['run_multidevice']
+    assert select_scope(['scripts/prepare_encoder_classification.py'])['tests'] == [
+        'tests/test_encoder_classification.py'
+    ]
+
+
+def test_ner_evaluator_selects_training_metrics_and_multidevice():
+    scope = select_scope(['scripts/evaluate_encoder_ner.py'])
+    assert scope['tests'] == ['tests/test_encoder_ner_finetuning.py', 'tests/test_ner.py']
+    assert scope['run_multidevice']
+
+
+def test_accumulation_reference_selects_physical_mesh_simulation():
+    scope = select_scope(['scripts/replay_mlm_accumulation.py'])
+    assert scope['run_multidevice']
+    assert 'tests/test_local_mlm_accumulation.py' in scope['tests']
+    assert 'tests/test_mlm_accumulation_replay.py' in scope['tests']
+
+
+def test_tied_embedding_diagnostic_selects_multidevice_validation():
+    scope = select_scope(['scripts/diagnose_tied_embedding.py'])
+    assert scope['run_multidevice']
+    assert 'tests/test_tied_embedding_diagnostic.py' in scope['tests']

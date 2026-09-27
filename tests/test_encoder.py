@@ -15,6 +15,25 @@ def config(**kwargs):
         loss_chunk_size=3, use_remat=False) | kwargs))
 
 
+def test_embedding_gather_preserves_bf16_values_and_fp32_repeated_token_gradients():
+    model = ModernBert(config(compute_dtype='bfloat16', residual_dtype='bfloat16'),
+                       rngs=nnx.Rngs(17))
+    ids = jnp.array([[1, 1, 2], [1, 2, 1]])
+    cotangent = jnp.asarray(np.random.default_rng(17).normal(size=(2, 3, 16)), jnp.bfloat16)
+    def lookup(embedding):
+        return embedding(ids).astype(jnp.bfloat16)
+    output = lookup(model.embedding)
+    expected_output = jnp.take(model.embedding.embedding[...].astype(jnp.bfloat16), ids, axis=0)
+    np.testing.assert_array_equal(output, expected_output)
+    grads = nnx.grad(lambda embedding: jnp.sum(
+        lookup(embedding).astype(jnp.float32) * cotangent.astype(jnp.float32)
+    ))(model.embedding)
+    expected = np.zeros((32, 16), np.float32)
+    np.add.at(expected, np.asarray(ids).ravel(),
+              np.asarray(cotangent, dtype=np.float32).reshape(-1, 16))
+    np.testing.assert_array_equal(grads.embedding[...], expected)
+
+
 def test_attention_future_local_padding_and_segments():
     q = k = jnp.zeros((1, 5, 1, 2))
     v = jnp.broadcast_to(jnp.arange(5)[None, :, None, None], q.shape).astype(jnp.float32)

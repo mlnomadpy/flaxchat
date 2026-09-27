@@ -1,0 +1,5 @@
+{
+  "title": "flaxchat-yat-mmbert-west4-cleanup",
+  "description": "Allow the existing cleanup role only for YAT mmBERT validation resources in us-west4-a.",
+  "expression": "resource.name.startsWith('projects/tpubuilders/locations/us-west4-a/queuedResources/flaxchat-validation-yat-mmbert-') || resource.name.startsWith('projects/tpubuilders/locations/us-west4-a/nodes/flaxchat-validation-yat-mmbert-')"
+}

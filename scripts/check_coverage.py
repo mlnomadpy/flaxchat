@@ -8,6 +8,12 @@ from pathlib import Path
 
 
 FLOORS = {
+    "flaxchat/encoder.py": 80.0,
+    "flaxchat/encoder_tasks.py": 80.0,
+    "flaxchat/mlm.py": 75.0,
+    "flaxchat/fused_cross_entropy.py": 90.0,
+    "flaxchat/operations.py": 85.0,
+    "flaxchat/training.py": 80.0,
     "flaxchat/chat.py": 55.0,
     "flaxchat/checkpoint.py": 75.0,
     "flaxchat/common.py": 65.0,

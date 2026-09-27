@@ -1,5 +1,7 @@
 """Pure, testable helpers for numerically safe optimizer updates."""
 
+from typing import cast
+
 import jax
 import jax.numpy as jnp
 from flax import nnx
@@ -75,15 +77,26 @@ def gradients_for_microbatches(model, all_inputs, all_targets, dtype=jnp.float32
     return jnp.mean(losses), averaged
 
 
-def place_host_batch(array, mesh, *, batch_axis=0):
+def place_host_batch(array, mesh, *, batch_axis=0, data_axes: str | tuple[str, ...] = 'data'):
     """Place process-local rows into one global batch, including accumulation.
 
     Every process contributes local_device_count * per_device_batch rows.
     Accumulation uses axis 1; the microstep axis is replicated.
+    data_axes may be a tuple such as ('data', 'fsdp') so both mesh axes
+    distribute distinct rows. The default preserves existing data parallelism.
+    Parameter sharding and gradient normalization must be configured separately.
     """
     from jax.sharding import NamedSharding, PartitionSpec
+    if type(batch_axis) is not int or not -array.ndim <= batch_axis < array.ndim:
+        raise ValueError('batch_axis must identify an array dimension')
+    selected = (data_axes,) if isinstance(data_axes, str) else data_axes
+    if (not isinstance(selected, tuple) or not selected
+            or any(not isinstance(axis, str) for axis in selected)
+            or len(set(selected)) != len(selected)
+            or any(axis not in mesh.axis_names for axis in selected)):
+        raise ValueError('data_axes must name distinct existing mesh axes')
     axes = [None] * array.ndim
-    axes[batch_axis] = 'data'
+    axes[batch_axis] = selected[0] if len(selected) == 1 else selected
     sharding = NamedSharding(mesh, PartitionSpec(*axes))
     return jax.make_array_from_process_local_data(sharding, array)
 
@@ -110,8 +123,10 @@ def initialize_sharded(factory, mesh, *, fsdp=1):
     determines layout before any parameter or optimizer buffer is allocated.
     """
     from jax.sharding import NamedSharding, PartitionSpec as P
-    if fsdp < 1 or mesh.size % fsdp:
+    if type(fsdp) is not int or fsdp < 1 or mesh.size % fsdp:
         raise ValueError('fsdp must divide the mesh size')
+    if fsdp > 1 and mesh.shape.get('fsdp') != fsdp:
+        raise ValueError('fsdp must match the named fsdp mesh-axis size')
     abstract = nnx.eval_shape(factory)
     graph, state = nnx.split(abstract)
     def layout(leaf):
@@ -144,3 +159,72 @@ def pretraining_optimizer(model, *, kind, learning_rate, warmup_steps, steps):
     else:
         raise ValueError(f'Unsupported optimizer recipe: {kind}')
     return optimizer, schedule
+
+
+def _mlm_microbatch_numerators(model, all_inputs, all_targets, *, direct_sum=False):
+    """Return summed MLM numerator, its gradients, and selected-target count.
+
+    A mean of microbatch means biases updates when mask counts differ. Empty
+    microbatches contribute zero; normalization happens after accumulation.
+    """
+    # Match ModernBert's loss mask before computing either microstep weights or
+    # the final denominator. Labels on padding must not change valid-token loss.
+    all_targets = cast(jax.Array, jnp.where(all_inputs != model.config.pad_token_id, all_targets, -1))
+    zeros = jax.tree.map(lambda p: jnp.zeros_like(p, dtype=jnp.float32), nnx.state(model, nnx.Param))
+
+    @nnx.scan(in_axes=(nnx.Carry, None, 0, 0), out_axes=(nnx.Carry, 0))
+    def micro_step(accumulated, current, inputs, targets):
+        count = (targets >= 0).sum()
+        objective = (lambda m: m(inputs, targets, loss_reduction='sum')) if direct_sum else (lambda m: m(inputs, targets) * count)
+        numerator, grads = nnx.value_and_grad(objective)(current)
+        return jax.tree.map(jnp.add, accumulated, grads), numerator
+
+    accumulated, numerators = micro_step(zeros, model, all_inputs, all_targets)
+    return numerators.sum(), accumulated, (all_targets >= 0).sum()
+
+
+def gradients_for_mlm_microbatches(model, all_inputs, all_targets):
+    """Accumulate gradients weighted by masked targets, including empty batches."""
+    numerator, grads, count = _mlm_microbatch_numerators(model, all_inputs, all_targets)
+    denominator = jnp.maximum(count, 1)
+    return numerator / denominator, jax.tree.map(lambda g: g / denominator, grads)
+
+
+def gradients_for_local_mlm_microbatches(model, all_inputs, all_targets, mesh):
+    """Reduce parameter gradients once after device-local MLM accumulation.
+
+    Parameters remain replicated. The global batch axis is axis1, following
+    the replicated microstep axis. Local losses are weighted by selected target
+    counts before summation; averaging local means would bias uneven masks.
+    This changes reduction order, so BF16 trajectories need physical validation.
+    """
+    from dataclasses import replace
+    from jax.sharding import PartitionSpec as P
+    from flaxchat.encoder import ModernBert
+
+    if not isinstance(model, ModernBert):
+        raise TypeError('Local MLM accumulation requires ModernBert')
+    if mesh.axis_names != ('data',):
+        raise ValueError('Local MLM accumulation requires a one-dimensional data mesh')
+    if (all_inputs.ndim != 3 or all_inputs.shape != all_targets.shape
+            or all_inputs.shape[0] < 1 or all_inputs.shape[1] % mesh.size):
+        raise ValueError('Expected matching [microsteps, divisible batch, sequence] arrays')
+    graph, params, other = nnx.split(model, nnx.Param, ...)
+
+    def local(parameters, state, inputs, targets):
+        current = nnx.merge(graph, parameters, state)
+        # The whole local computation is already mapped to one device. Avoid
+        # nesting the attention/FFN's global data shard_maps inside this map.
+        config = replace(current.config, yat_local_shards=False)
+        current.config = config
+        current._local_projection_loss = True
+        for layer in current.layers:
+            layer.config = config
+        numerator, gradients, count = _mlm_microbatch_numerators(current, inputs, targets, direct_sum=True)
+        numerator, gradients, count = jax.lax.psum((numerator, gradients, count), 'data')
+        denominator = jnp.maximum(count, 1)
+        return numerator / denominator, jax.tree.map(lambda g: g / denominator, gradients)
+
+    return jax.shard_map(local, mesh=mesh,
+        in_specs=(P(), P(), P(None, 'data'), P(None, 'data')),
+        out_specs=(P(), P()), check_vma=False)(params, other, all_inputs, all_targets)

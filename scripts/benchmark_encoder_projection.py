@@ -4,7 +4,9 @@ Run under gcp_spot_supervisor. A failed kernel never qualifies for training.
 Reports separate steady update throughput, compilation, checkpointing and cost.
 """
 import argparse
+import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import statistics
@@ -12,6 +14,8 @@ import subprocess
 import sys
 import time
 from typing import Any
+
+from scripts.workload_deadline import WorkloadDeadline
 
 
 def preflight_cases(cases, data_root):
@@ -27,11 +31,36 @@ def preflight_cases(cases, data_root):
     return checked
 
 
-def summarize_steps(records, warmup=5):
+def summarize_steps(records, warmup=5, *, expected_steps=55, expected_tokens=None):
+    """Validate the full training horizon before deriving performance claims."""
+    if type(warmup) is not int or type(expected_steps) is not int or not 0 <= warmup < expected_steps:
+        raise ValueError('Require a measured horizon after nonnegative warmup')
     steps = [r for r in records if r.get('event') == 'train_step']
+    if ([r.get('step') for r in steps] != list(range(1, expected_steps + 1))
+            or any(type(r.get('step')) is not int for r in steps)):
+        raise ValueError('Require the complete ordered training horizon')
+    def finite(value, *, positive=False):
+        return (type(value) in (int, float) and math.isfinite(value)
+                and (value > 0 if positive else value >= 0))
+    tokens_per_step = expected_tokens if expected_tokens is not None else steps[0].get('tokens')
+    if type(tokens_per_step) is not int or tokens_per_step <= 0:
+        raise ValueError('Require positive integer input tokens')
+    for record in steps:
+        if (record.get('updated') is not True or not finite(record.get('loss'))
+                or not finite(record.get('seconds'), positive=True)
+                or type(record.get('masked_tokens')) is not int
+                or not finite(record.get('masked_tokens'), positive=True)
+                or record['masked_tokens'] > tokens_per_step
+                or type(record.get('tokens')) is not int or record['tokens'] != tokens_per_step
+                or type(record.get('projection_dense_fallback')) is not bool):
+            raise ValueError('Invalid training update evidence')
+    checkpoints = [r for r in records if r.get('event') == 'checkpoint']
+    if (not checkpoints or checkpoints[-1].get('step') != expected_steps
+            or records.index(checkpoints[-1]) < records.index(steps[-1])
+            or any(type(r.get('step')) is not int or not 1 <= r['step'] <= expected_steps
+                   or not finite(r.get('seconds'), positive=True) for r in checkpoints)):
+        raise ValueError('Require a valid final committed checkpoint')
     measured = steps[warmup:]
-    if not measured or any(not r['updated'] for r in steps):
-        raise ValueError('Insufficient accepted training updates')
     seconds = [r['seconds'] for r in measured]
     tokens = sum(r['tokens'] for r in measured)
     return dict(measured_steps=len(measured), warmup_steps=warmup,
@@ -53,7 +82,7 @@ def kernel_benchmark(args):
     if jax.default_backend() != 'tpu':
         raise RuntimeError('Physical TPU required')
     def reference(h, w, b, y):
-        logits = (h @ w.T).astype(jnp.float32) + b
+        logits = jnp.matmul(h, w.T, preferred_element_type=jnp.float32) + b
         target = jnp.take_along_axis(logits, jnp.maximum(y, 0)[:, None], axis=-1)[:, 0]
         return jnp.where(y >= 0, jax.nn.logsumexp(logits, -1) - target, 0).sum() / jnp.maximum((y >= 0).sum(), 1)
     def fused(h, w, b, y):
@@ -102,6 +131,7 @@ def kernel_benchmark(args):
 
 
 def campaign(args):
+    deadline = WorkloadDeadline(args.max_seconds)
     preflight_cases([(4, 512), *args.cases], args.data_root)
     root = Path(args.output)
     root.mkdir(parents=True, exist_ok=True)
@@ -115,15 +145,19 @@ def campaign(args):
             completed_training_cases=sum(r['name'].startswith('train-') for r in results))
         (root/'summary.json').write_text(json.dumps(report, indent=2))
         if args.prefix:
+            try:
+                upload_timeout = deadline.remaining(60)
+            except TimeoutError:
+                return  # Local evidence survives even when the upload lease expires.
             subprocess.run(['gcloud','storage','cp',*map(str,root.glob('*.json')),
-                            *map(str,root.glob('*.log')),args.prefix.rstrip('/')+'/'],check=True)
+                            *map(str,root.glob('*.log')),args.prefix.rstrip('/')+'/'],check=True, timeout=upload_timeout)
     def run(name, command, timeout=600):
         start = time.monotonic()
         try:
             with (root/f'{name}.log').open('w') as log:
-                p = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, env=env, timeout=timeout)
+                p = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, env=env, timeout=deadline.remaining(timeout))
             code = p.returncode
-        except subprocess.TimeoutExpired:
+        except (subprocess.TimeoutExpired, TimeoutError):
             code = 124
         result: dict[str, Any] = dict(name=name, returncode=code, seconds=time.monotonic()-start)
         results.append(result)
@@ -159,7 +193,7 @@ def campaign(args):
             save()
         for batch, length in args.cases:
             for projection, backend, tile in variants:
-                if time.time() - started > args.max_seconds - 180:
+                if deadline.remaining() < 180:
                     save()
                     return False
                 name = f'train-{projection}-{backend}-b{batch}-s{length}'
@@ -176,15 +210,27 @@ def campaign(args):
                             records.append(json.loads(line))
                         except json.JSONDecodeError:
                             pass
-                    r.update(summarize_steps(records))
-                    r.update(batch=batch, length=length, projection=projection, backend=backend, passed=True)
+                    r.update(summarize_steps(records, expected_steps=55, expected_tokens=batch*length))
+                    # Preserve raw source/checkpoint identity alongside the log;
+                    # comparison verifies both instead of trusting `passed`.
+                    manifest = root / f'{name}-manifest.json'
+                    with manifest.open('w') as stream:
+                        subprocess.run(['gcloud', 'storage', 'cat',
+                            args.prefix.rstrip('/') + '/checkpoints/' + name + '/55/manifest/metadata'],
+                            stdout=stream, check=True, timeout=deadline.remaining(60))
+                    r.update(batch=batch, length=length, projection=projection, backend=backend, passed=True,
+                        training_log_sha256=hashlib.sha256((root / f'{name}.log').read_bytes()).hexdigest(),
+                        manifest_sha256=hashlib.sha256(manifest.read_bytes()).hexdigest())
                     r['steady_usd_per_billion_input_tokens'] = args.hourly_usd*1e9/(3600*r['steady_tokens_per_second'])
                     r['invocation_usd_per_billion_input_tokens'] = args.hourly_usd*r['seconds']*1e9/(3600*batch*length*55)
                 save()
+    except TimeoutError:
+        results.append(dict(name='campaign-deadline', passed=False, returncode=124))
+        return False
     finally:
         save()
     from scripts.compare_encoder_projection import compare
-    return compare(json.loads((root/'summary.json').read_text()))['complete']
+    return compare(json.loads((root/'summary.json').read_text()), evidence_root=root)['complete']
 
 
 if __name__ == '__main__':
@@ -203,7 +249,7 @@ if __name__ == '__main__':
     p.add_argument('--max-seconds', type=int, default=1500)
     a=p.parse_args()
     a.cases = [tuple(map(int, case.split(':'))) for case in a.cases]
-    if any(len(case) != 2 or min(case) <= 0 for case in a.cases) or a.hourly_usd <= 0:
+    if any(len(case) != 2 or min(case) <= 0 for case in a.cases) or not math.isfinite(a.hourly_usd) or a.hourly_usd <= 0:
         p.error('Positive batch:sequence cases and hourly rate required')
     if a.preflight_only:
         print(json.dumps(preflight_cases([(4, 512), *a.cases], a.data_root), indent=2))

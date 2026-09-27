@@ -4,14 +4,26 @@ The baseline projects every encoded position into all 256,000 vocabulary entries
 Only selected MLM labels contribute to the loss. `--mlm-projection masked`
 compacts selected positions into static per-row buffers; overflow runs the dense
 path without discarding labels. The default remains dense; the optional backends have performance evidence below,
-but downstream model quality and multi-host encoder execution remain unqualified.
+but downstream model quality remains unqualified. Two-host Pallas and `xla_full` recovery
+smokes passed; see [physical validation](ENCODER_TPU_VALIDATION.md).
 
 ## Fused TPU backend
 
-**Qualification status (2026-09-22): experimental; default remains `xla`.**
-After the shared-head refactor, both optimized backends pass the released-model
-gradient regression. Earlier failures are retained below to explain the fix.
-Downstream quality and physical multi-host encoder execution remain unqualified.
+**Qualification status (2026-09-23): experimental; default remains `xla`.**
+The initial real-text XNLI fixture with released weights failed Pallas loss parity:
+absolute error 0.00648451 versus the unchanged 0.001 limit. Global gradient
+relative L2 passes (0.0125314 versus 0.03). A frozen-feature diagnostic also
+showed a projection/loss mismatch. The repair makes the FP32 projection contract
+explicit and preserves FP32 cotangents. Local chunked XLA has passed the new gate
+and 1,000-update recovery; final Pallas hardware results and remaining limits are
+recorded in the [repair report](HARNESS_REPAIRS_2026_09_23.md). The original
+[September 23 campaign](ENCODER_SCALE_RESULTS_2026_09_23.md) remains historical evidence.
+
+After the shared-head refactor, both optimized backends passed the earlier
+released-model regression fixture. Those results do not override the new failure.
+Earlier failures are retained below to explain the fix.
+Two-host/eight-device masked Pallas and `xla_full` training and exact crash recovery passed at
+batch 16 / context 512. Other topologies and downstream quality remain unqualified.
 
 `--mlm-loss-backend pallas --mlm-vocab-tile 1024` selects the experimental fused
 projection/cross-entropy implementation. It composes with masked selection.
@@ -20,14 +32,17 @@ The forward kernel computes vocabulary tiles in TPU VMEM, returning only their
 log-sum-exp and target scores. A stable reduction combines normalizers across the
 entire vocabulary. The custom backward recomputes each tile, forms all softmax
 gradients, and computes hidden/decoder/bias gradients. Hidden gradients accumulate in FP32 in VMEM across vocabulary tiles.
-For more than 512 projected rows, a second token axis keeps decoder tiles resident
-and accumulates decoder gradients in FP32 before casting them once. There is no vocabulary sampling or gradient pruning.
-BF16 dot outputs are rounded before the FP32 bias addition, matching the existing
-head's precision contract. Tile/reduction ordering can cause numerical differences.
+Forward uses a second token axis above 512 projected rows; backward uses it above
+128 rows to bound VMEM with FP32 cotangents. Decoder gradients accumulate in FP32
+before casting them once. There is no vocabulary sampling or gradient pruning.
+BF16 matrix operands produce explicit FP32 dot outputs before FP32 bias addition,
+matching the canonical head's precision contract. Tile/reduction ordering can
+cause numerical differences.
 
 The backend uses explicit data sharding around device-local Pallas calls. Both
 loss sum and selected-token count are reduced globally; decoder gradients include
-all shards. Token tiles are 128 or 512 rows; hidden size and vocabulary tile size must
+all shards. Forward token tiles are 128 or 512 rows and backward tiles are 128 rows;
+hidden size and vocabulary tile size must
 be multiples of 128. Tail vocabulary padding is excluded from normalization.
 Full encoder outputs remain available; only training/evaluation with labels uses
 the configured loss backend. Parameters, residuals, and Adam state retain the
@@ -307,14 +322,22 @@ failing-fixture gates precede these results. Complete reports:
 `headfix4-comparison.json`, and `headfix4-diagnosis.json`. Remote logs/results:
 `gs://tpubuilders-flaxchat-validation-0921/encoder-validation-0922/headfix4/results/`.
 
-Remaining qualification: v6e execution/throughput, physical multi-host encoder
-training, long-context/other-batch sweeps of this revision, physical fused
-checkpoint interruption/recovery, and realistic multilingual held-out/downstream
-quality. CPU exact resume passes; a successful TPU checkpoint write is not a
-physical interruption/recovery test.
+Remaining qualification: v6e execution/throughput, other physical multi-host
+topologies/backends, broader long-context/other-batch sweeps, and realistic
+multilingual held-out/downstream quality. The later `multirecovery6` and `multixla7` campaigns
+passed physical two-host masked Pallas and `xla_full` training with exact SIGKILL recovery; see
+[the recovery report](ENCODER_TPU_VALIDATION.md).
 
 The final corrected verification allocation was cleaned up and its supervisor
 exited successfully. Estimated compute for that allocation is **$1.23–$1.52**,
 using observed READY-to-absence and full request-to-absence windows respectively.
 Earlier diagnostic runs and storage/network are additional; no posted-billing
 or remaining-credit claim is made. Evidence: `headfix4-cost.json` and the run ledger.
+
+
+The later `context8` campaign passed single-host, batch-4 `xla_full` execution and
+checkpoint writes at contexts 2,048 and 8,192. These were three-update smokes,
+not sustained benchmarks or long-context recovery tests. At 8,192 the runtime
+reported 20.21 GiB peak reserved memory, despite a 7.25 GiB peak allocator-usage
+counter; retain both when assessing smaller-HBM devices. See
+[physical context evidence](ENCODER_TPU_VALIDATION.md).

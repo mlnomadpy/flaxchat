@@ -51,7 +51,7 @@ def diagnose(output, data_root, prefix=None):
     def save():
         Path(output).write_text(json.dumps(report, indent=2) + '\n')
         if prefix:
-            subprocess.run(['gcloud', 'storage', 'cp', str(output), prefix.rstrip('/') + '/'], check=True)
+            subprocess.run(['gcloud', 'storage', 'cp', str(output), prefix.rstrip('/') + '/'], check=True, timeout=60)
         print(json.dumps(dict(completed_stages=list(report['stages']))), flush=True)
     full = nnx.jit(nnx.value_and_grad(lambda m, x, y: m(x, y)))
     base = full(model, x, y)
