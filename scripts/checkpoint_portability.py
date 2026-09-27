@@ -26,7 +26,10 @@ class PortableModel(nnx.Module):
 def make_run():
     model = PortableModel()
     optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
-    mesh = model.weight[...].sharding.mesh
+    sharding = model.weight[...].sharding
+    if not isinstance(sharding, NamedSharding):
+        raise ValueError("Portable model requires NamedSharding")
+    mesh = sharding.mesh
     nnx.update(optimizer, jax.tree.map(
         lambda x: jax.device_put(x, NamedSharding(mesh, P("data", None) if x.ndim == 2 else P())),
         nnx.state(optimizer),

@@ -177,7 +177,7 @@ class MixtureRows(LanguageRows):
         weights = counts ** exponent
         self.target_token_shares = np.zeros(len(self.pools))
         for source, share in shares.items():
-            selected = np.asarray([s == source for s, _ in self.pools])
+            selected = np.asarray([s == source for s, _ in self.pools], dtype=np.bool_)
             self.target_token_shares[selected] = share * weights[selected] / weights[selected].sum()
         self.row_probabilities = self.target_token_shares / (counts / np.asarray([len(i) for i in self.indices]))
         self.row_probabilities /= self.row_probabilities.sum()
