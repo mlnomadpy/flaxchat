@@ -3,7 +3,7 @@
 # needs JAX + Flax + Orbax to restore the original checkpoint.
 
 # --- Inference (required) ---
-torch>=2.1
+torch>=2.14.0
 numpy>=1.23
 
 # --- Conversion (only needed to run convert_flax_to_torch.py) ---
