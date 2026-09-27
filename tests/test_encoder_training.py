@@ -34,7 +34,9 @@ def test_preparation_training_and_exact_resume(tmp_path, monkeypatch, compute, r
     tokpath = tmp_path / 'tokenizer.json'
     tokenizer.save(str(tokpath))
     source = tmp_path / 'texts.jsonl'
-    fixture_rows = max(8, 2 * jax.device_count()) if local_gradient_accumulation else 8
+    accumulation_batch = 2 * jax.device_count()
+    batch_size = max(4, accumulation_batch) if recipe == 'scheduled_accumulation' else 4
+    fixture_rows = max(8, accumulation_batch) if local_gradient_accumulation else max(8, batch_size)
     source.write_text('\n'.join(json.dumps({'text': 'hello world hello world'}) for _ in range(fixture_rows)))
     data = tmp_path / 'data'
     manifest: dict[str, object] = dict(prepare(
@@ -78,7 +80,7 @@ def test_preparation_training_and_exact_resume(tmp_path, monkeypatch, compute, r
                          num_hidden_layers=2, global_attn_every_n_layers=2)
     cfg = tmp_path / 'config.json'
     cfg.write_text(json.dumps(asdict(config)))
-    common = ['--config', str(cfg), '--data', str(data), '--steps', '3', '--batch-size', '4',
+    common = ['--config', str(cfg), '--data', str(data), '--steps', '3', '--batch-size', str(batch_size),
               '--mask-probability', '1', '--save-every', '2', '--dtype', compute, '--residual-dtype', residual,
               '--loss-chunk-size', '4', '--mlm-projection', projection, '--mlm-loss-backend', backend, '--mlm-vocab-tile', '128']
     if ffn_compute_mode is not None:
