@@ -248,7 +248,9 @@ def place_array(array, sharding):
 
 def replicate_optimizer_state(optimizer, mesh: Mesh | None = None):
     """Place every optimizer leaf, including scalar counters, on the mesh."""
-    optimizer.opt_state = replicate_on_mesh(optimizer.opt_state, mesh)
+    from flax import nnx
+
+    nnx.update(optimizer, replicate_on_mesh(nnx.state(optimizer), mesh))
     return optimizer
 
 

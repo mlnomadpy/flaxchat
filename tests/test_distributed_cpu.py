@@ -133,19 +133,23 @@ from flaxchat.checkpoint import create_checkpoint_manager, save_checkpoint, rest
 mesh = setup_mesh(fsdp=2)
 model = nnx.Linear(4, 4, rngs=nnx.Rngs(0))
 optimizer = nnx.Optimizer(model, optax.adamw(.001), wrt=nnx.Param)
+optimizer.step[...] = np.asarray(7, np.uint32)
 def place(state):
     return jax.tree.map(lambda x: place_array(x, NamedSharding(mesh, P('fsdp') if np.ndim(x) == 2 else P())), state)
 nnx.update(model, place(nnx.state(model)))
 nnx.update(optimizer, place(nnx.state(optimizer)))
 before = _state_manifest(nnx.to_pure_dict(nnx.state(model)))
+before_optimizer = _state_manifest(nnx.to_pure_dict(nnx.state(optimizer)))
 manager = create_checkpoint_manager(sys.argv[1], async_checkpointing=False)
 try:
     save_checkpoint(manager, 1, model, optimizer, {'model_config': {'test': True}}, training_state=replicate_on_mesh({'next_batch': np.asarray(1, np.int32)}, mesh))
     manager.wait_until_finished()
 finally:
     manager.close()
+optimizer.step[...] = place_array(np.asarray(0, np.uint32), NamedSharding(mesh, P()))
 restore_model_from_checkpoint(model, sys.argv[1], optimizer=optimizer, load_training_state=True)
 assert _state_manifest(nnx.to_pure_dict(nnx.state(model))) == before
+assert _state_manifest(nnx.to_pure_dict(nnx.state(optimizer))) == before_optimizer
 print('DISTRIBUTED_CHECKPOINT_PASSED', flush=True)
 '''
     with socket.socket() as sock:

@@ -2,8 +2,8 @@
 
 Logit tiles live inside Pallas kernels. Only per-tile normalizers/target scores
 cross HBM; hidden gradients accumulate in VMEM. No [tokens, vocabulary] logits are stored.
-No sampled vocabulary or gradient filtering. BF16 projection rounding matches
-ModernBert.project; reduction order can differ. Use interpret=True only in tests.
+No sampled vocabulary or gradient filtering. BF16 operands accumulate into FP32
+logits, matching ModernBert.project; reduction order can differ. Use interpret=True only in tests.
 """
 from functools import partial
 from typing import cast
@@ -20,7 +20,7 @@ def _dot(a, b):
 
 
 def _logits(h, w, bias):
-    return _dot(h, w.T).astype(h.dtype).astype(jnp.float32) + bias[None, :]
+    return _dot(h, w.T) + bias[None, :]
 
 
 def _forward(h, w, bias, labels, tile, interpret):
@@ -60,7 +60,7 @@ def _ce(h, w, bias, labels, tile, interpret):
 
 
 def _backward(tile, interpret, residual, cotangent):
-    if residual[0].shape[0] > 512:
+    if residual[0].shape[0] > 128:
         return _multi_backward(tile, interpret, residual, cotangent)
     h, w, bias, labels, lse = residual
     vocab = w.shape[0]
@@ -77,15 +77,14 @@ def _backward(tile, interpret, residual, cotangent):
         probs = jnp.exp(z - lr[...][:, None])
         dz = (probs - (columns[None, :] == yr[...][:, None])) * gr[...][:, None]
         dz = cast(jax.Array, jnp.where(columns[None, :] < vocab, dz, 0))
-        # Bias receives FP32 gradients; the BF16 projection operands receive
-        # gradients through the FP32-logit cast in the dense reference.
+        # FP32 logits have FP32 cotangents. Rounding dz to BF16 before the
+        # transpose matmuls changes the derivative of the explicit-FP32 oracle.
         dbr[...] = dz.sum(axis=0)
-        dz = dz.astype(h.dtype)
         @pl.when(pl.program_id(0) == 0)
         def initialize_hidden_gradient():
             dhr[...] = jnp.zeros((m, dim), jnp.float32)
-        dhr[...] += _dot(dz, wr[...])
-        dwr[...] = _dot(dz.T, hr[...]).astype(w.dtype)
+        dhr[...] += _dot(dz, wr[...].astype(jnp.float32))
+        dwr[...] = _dot(dz.T, hr[...].astype(jnp.float32)).astype(w.dtype)
 
     dh, dw, db = pl.pallas_call(kernel,
         out_shape=(jax.ShapeDtypeStruct((m, dim), jnp.float32),
@@ -129,31 +128,59 @@ def fused_cross_entropy(h, w, bias, labels, *, tile=1024, interpret=False) -> ja
     return cast(jax.Array, _ce(h, w, bias, labels, tile, interpret))
 
 
-def sharded_fused_loss(hidden, weight, bias, labels, *, tile=1024, interpret=False, backend='pallas'):
-    """Data-parallel loss with explicit local kernels and global token weighting."""
+def sharded_fused_loss(hidden, weight, bias, labels, *, tile=1024, interpret=False, backend='pallas', chunk_size=128, compute_dtype=None, local_only=False, reduction='mean'):
+    """Data-parallel loss with explicit local kernels and global token weighting.
+
+    local_only is for an enclosing device-local accumulation map: return the
+    local mean without mapping or collectives. Its caller owns global weighting.
+    """
+    if reduction not in ('mean', 'sum'):
+        raise ValueError('reduction must be mean or sum')
+    if backend not in ('pallas', 'xla_full', 'xla_local'):
+        raise ValueError('Unknown sharded projection backend')
+    if chunk_size <= 0:
+        raise ValueError('chunk_size must be positive')
     import numpy as np
     from jax.sharding import Mesh, PartitionSpec as P
     mesh = Mesh(np.asarray(jax.devices()), ('data',))
-    if hidden.shape[0] % mesh.size:
+    if not local_only and hidden.shape[0] % mesh.size:
         raise ValueError('Fused loss batch must divide across all data devices')
 
-    @partial(jax.shard_map, mesh=mesh, in_specs=(P('data'), P(), P(), P('data')),
-             out_specs=P(), check_vma=False)
     def local(h, w, b, y):
         n, dim = y.size, h.shape[-1]
-        pad = (-n) % 128
+        block = chunk_size if backend == 'xla_local' else 128
+        pad = (-n) % block
         h = jnp.pad(h.reshape(n, dim), ((0, pad), (0, 0)))
         y = jnp.pad(y.reshape(-1), (0, pad), constant_values=-1)
-        if backend == 'xla_full':
-            logits = (h @ w.T).astype(jnp.float32) + b
-            target = jnp.take_along_axis(logits, jnp.maximum(y, 0)[:, None], axis=-1)[:, 0]
-            total = jnp.where(y >= 0, jax.nn.logsumexp(logits, axis=-1) - target, 0).sum()
+        def loss_sum(features, targets):
+            dtype = features.dtype if compute_dtype is None else compute_dtype
+            logits = jnp.matmul(features.astype(dtype), w.astype(dtype).T, preferred_element_type=jnp.float32,
+                                precision=jax.lax.Precision.HIGHEST) + b
+            target = jnp.take_along_axis(logits, jnp.maximum(targets, 0)[:, None], axis=-1)[:, 0]
+            return jnp.where(targets >= 0, jax.nn.logsumexp(logits, axis=-1) - target, 0).sum()
+        if backend == 'xla_local':
+            # Scan only local tokens. Rematerialization prevents reverse-mode
+            # scan from retaining every vocabulary-sized logit tile in HBM.
+            @jax.checkpoint
+            def accumulate(total, inputs):
+                features, targets = inputs
+                return total + loss_sum(features, targets), None
+            total, _ = jax.lax.scan(accumulate, jnp.float32(0),
+                (h.reshape(-1, block, dim), y.reshape(-1, block)))
+        elif backend == 'xla_full':
+            total = loss_sum(h, y)
         else:
             total = fused_cross_entropy(h, w, b, y, tile=tile, interpret=interpret).sum()
-        total = jax.lax.psum(total, 'data')
-        count = jax.lax.psum((y >= 0).sum(), 'data')
-        return total / jnp.maximum(count, 1)
-    return local(hidden, weight, bias, labels)
+        count = (y >= 0).sum()
+        if not local_only:
+            total = jax.lax.psum(total, 'data')
+            count = jax.lax.psum(count, 'data')
+        return total if reduction == 'sum' else total / jnp.maximum(count, 1)
+    if local_only:
+        return local(hidden, weight, bias, labels)
+    return jax.shard_map(local, mesh=mesh,
+        in_specs=(P('data'), P(), P(), P('data')), out_specs=P(),
+        check_vma=False)(hidden, weight, bias, labels)
 
 
 def _multi_forward(h, w, bias, labels, tile, interpret):
@@ -187,7 +214,9 @@ def _multi_backward(tile, interpret, residual, cotangent):
     from jax.experimental.pallas import tpu as pltpu
     h, w, bias, labels, lse = residual
     m, dim = h.shape
-    block = 512 if m % 512 == 0 else 128
+    # FP32 cotangents and transpose-matmul temporaries need more VMEM than
+    # forward logits. Keep backward tiles small even for 512-aligned inputs.
+    block = 128
     vocab = w.shape[0]
     pad = (-vocab) % tile
     wp, bp = jnp.pad(w, ((0, pad), (0, 0))), jnp.pad(bias, (0, pad))
@@ -199,11 +228,11 @@ def _multi_backward(tile, interpret, residual, cotangent):
         grad = (jnp.exp(z - lr[...][:, None]) - (columns[None, :] == yr[...][:, None])) * gr[...][:, None]
         return cast(jax.Array, jnp.where(columns[None, :] < vocab, grad, 0))
     def dh_kernel(hr, wr, br, yr, lr, gr, out):
-        grad = dz(hr, wr, br, yr, lr, gr, pl.program_id(1)).astype(h.dtype)
+        grad = dz(hr, wr, br, yr, lr, gr, pl.program_id(1))
         @pl.when(pl.program_id(1) == 0)
         def init():
             out[...] = jnp.zeros((block, dim), jnp.float32)
-        out[...] += _dot(grad, wr[...])
+        out[...] += _dot(grad, wr[...].astype(jnp.float32))
     dh = pl.pallas_call(dh_kernel, grid=(nm, nv),
         in_specs=(pl.BlockSpec((block, dim), lambda m, v: (m, 0)),
                   pl.BlockSpec((tile, dim), lambda m, v: (v, 0)),
@@ -220,7 +249,7 @@ def _multi_backward(tile, interpret, residual, cotangent):
         def init():
             accum[...] = jnp.zeros((tile, dim), jnp.float32)
             outb[...] = jnp.zeros((tile,), jnp.float32)
-        accum[...] += _dot(grad.astype(h.dtype).T, hr[...])
+        accum[...] += _dot(grad.T, hr[...].astype(jnp.float32))
         outb[...] += grad.sum(axis=0)
         @pl.when(pl.program_id(1) == nm - 1)
         def finish():

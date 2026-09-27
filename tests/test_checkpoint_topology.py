@@ -31,9 +31,10 @@ def _run(mode, checkpoint_dir, devices):
 
 
 @pytest.mark.integration
-def test_checkpoint_restores_from_eight_devices_to_one(tmp_path):
+@pytest.mark.parametrize("writer_devices,reader_devices", [(8, 1), (1, 8)])
+def test_checkpoint_restores_across_device_counts(tmp_path, writer_devices, reader_devices):
     checkpoint = tmp_path / "portable"
-    writer = _run("save", checkpoint, 8)
-    reader = _run("restore", checkpoint, 1)
-    assert writer == {"mode": "save", "device_count": 8, "shard_count": 8}
-    assert reader == {"mode": "restore", "device_count": 1, "shard_count": 1}
+    writer = _run("save", checkpoint, writer_devices)
+    reader = _run("restore", checkpoint, reader_devices)
+    assert writer == {"mode": "save", "device_count": writer_devices, "shard_count": writer_devices, "optimizer_updates": 7}
+    assert reader == {"mode": "restore", "device_count": reader_devices, "shard_count": reader_devices, "optimizer_updates": 8}

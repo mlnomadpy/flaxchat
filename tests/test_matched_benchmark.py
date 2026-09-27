@@ -2,12 +2,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import torch
 
 from benchmarks.matched.common import load_batches, make_record, validate_hardware
 from benchmarks.matched.prepare_data import encode_documents, make_sequences
 from benchmarks.matched.preflight import within_budget
-from benchmarks.matched.nanochat_runner import token_tensor
 
 
 def test_framework_neutral_byte_encoding_is_deterministic():
@@ -61,6 +59,9 @@ def test_parameter_budget_is_inclusive_at_five_percent():
 
 
 def test_nanochat_token_batches_are_promoted_to_int64():
+    torch = pytest.importorskip("torch", reason="Optional PyTorch benchmark adapter")
+    from benchmarks.matched.nanochat_runner import token_tensor
+
     values = np.arange(6, dtype=np.int32).reshape(2, 3)
     converted = token_tensor(values, torch.device("cpu"))
     assert converted.dtype == torch.int64

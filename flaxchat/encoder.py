@@ -13,6 +13,7 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 import numpy as np
+from flaxchat.yat import squared_distance_bf16, softmax_bf16, adaptive_squared_distance_bf16
 
 
 @dataclass(frozen=True)
@@ -36,10 +37,77 @@ class EncoderConfig:
     use_remat: bool = True
     loss_chunk_size: int = 128
     mlm_projection: str = 'dense'
+    mlm_projection_capacity: int | None = None
     mlm_loss_backend: str = 'xla'
     mlm_vocab_tile: int = 1024
+    ffn_type: str = 'geglu'
+    yat_epsilon: float = 0.01
+    yat_bias: float = 1.0
+    yat_alpha_trainable: bool = True
+    yat_alpha: float = 1.0
+    yat_attention_alpha: float | None = None
+    attention_score: str = 'dot_product'
+    yat_compute_mode: str = 'mixed'
+    yat_ffn_compute_mode: str | None = None
+    yat_ffn_backward_block: int | None = None
+    yat_local_shards: bool = False
+    yat_attention_block_size: int = 0
+    yat_global_attention_block_size: int = 0
+    yat_softmax_backward: str = 'factored'
+    yat_attention_implementation: str = 'standard'
 
     def __post_init__(self):
+        if self.yat_ffn_compute_mode is not None:
+            if self.yat_ffn_compute_mode not in ('mixed', 'bf16', 'bf16_adaptive'):
+                raise ValueError('Unknown yat_ffn_compute_mode')
+            if self.ffn_type != 'yat_glu':
+                raise ValueError('yat_ffn_compute_mode requires YAT FFN')
+            if self.yat_ffn_compute_mode != 'mixed' and self.compute_dtype != 'bfloat16':
+                raise ValueError('BF16 FFN requires bfloat16 compute dtype')
+        if self.mlm_projection_capacity is not None:
+            if type(self.mlm_projection_capacity) is not int or self.mlm_projection_capacity < 1:
+                raise ValueError('mlm_projection_capacity must be a positive integer')
+            if self.mlm_projection != 'masked':
+                raise ValueError('mlm_projection_capacity requires masked projection')
+        if self.yat_ffn_backward_block is not None:
+            if type(self.yat_ffn_backward_block) is not int or self.yat_ffn_backward_block < 1:
+                raise ValueError('yat_ffn_backward_block must be a positive integer')
+            if self.ffn_type != 'yat_glu' or (self.yat_ffn_compute_mode or self.yat_compute_mode) != 'bf16':
+                raise ValueError('yat_ffn_backward_block requires direct BF16 YAT FFN')
+        if self.yat_attention_implementation not in ('standard', 'centered_fp32_scores'):
+            raise ValueError('Unknown yat_attention_implementation')
+        if self.yat_attention_implementation == 'centered_fp32_scores' and (
+                self.attention_score != 'yat_softmax' or self.yat_compute_mode != 'bf16'
+                or self.yat_softmax_backward != 'factored'
+                or type(self.yat_attention_block_size) is not int
+                or type(self.yat_global_attention_block_size) is not int
+                or self.yat_attention_block_size < 1 or self.yat_global_attention_block_size < 1):
+            raise ValueError('centered_fp32_scores requires direct BF16 YAT, factored softmax, and positive local/global tiles')
+        if self.yat_softmax_backward not in ('factored', 'max_centered'):
+            raise ValueError('Unknown yat_softmax_backward')
+        if self.yat_softmax_backward == 'max_centered' and (
+                self.attention_score != 'yat_softmax' or self.yat_compute_mode == 'mixed'):
+            raise ValueError('max_centered requires BF16 YAT attention')
+        for name in ("yat_attention_block_size", "yat_global_attention_block_size"):
+            if type(getattr(self, name)) is not int or getattr(self, name) < 0:
+                raise ValueError(f"{name} must be a nonnegative integer")
+        if self.yat_compute_mode not in ('mixed', 'bf16', 'bf16_adaptive'):
+            raise ValueError('yat_compute_mode must be mixed, bf16 or bf16_adaptive')
+        if self.yat_compute_mode in ('bf16', 'bf16_adaptive') and self.compute_dtype != 'bfloat16':
+            raise ValueError('BF16 YAT requires bfloat16 compute dtype')
+        if self.attention_score not in ('dot_product', 'yat_softmax'):
+            raise ValueError('attention_score must be dot_product or yat_softmax')
+        if self.attention_score == 'yat_softmax' and self.attention_backend != 'xla':
+            raise ValueError('YAT attention currently requires the exact XLA reference backend')
+        if self.ffn_type not in ('geglu', 'yat_glu'):
+            raise ValueError('ffn_type must be geglu or yat_glu')
+        if (self.ffn_type == 'yat_glu' or self.attention_score == 'yat_softmax') and (self.yat_epsilon != .01 or self.yat_bias != 1.0 or self.yat_alpha_trainable is not True):
+            raise ValueError('YAT GLU requires fixed bias 1, fixed epsilon 0.01 and trainable alpha')
+        if not all(math.isfinite(v) and v > 0 for v in (self.yat_epsilon, self.yat_alpha)):
+            raise ValueError('YAT epsilon and alpha must be finite and positive')
+        if self.yat_attention_alpha is not None and (
+                not math.isfinite(self.yat_attention_alpha) or self.yat_attention_alpha <= 0):
+            raise ValueError('YAT attention alpha must be finite and positive')
         for name in ('vocab_size', 'hidden_size', 'intermediate_size', 'num_hidden_layers',
                      'num_attention_heads', 'max_position_embeddings', 'global_attn_every_n_layers',
                      'local_attention', 'loss_chunk_size'):
@@ -62,8 +130,8 @@ class EncoderConfig:
             raise ValueError('attention_backend must be xla or splash')
         if self.mlm_projection not in ('dense', 'masked'):
             raise ValueError('mlm_projection must be dense or masked')
-        if self.mlm_loss_backend not in ('xla', 'xla_full', 'pallas'):
-            raise ValueError('mlm_loss_backend must be xla, xla_full or pallas')
+        if self.mlm_loss_backend not in ('xla', 'xla_full', 'xla_local', 'pallas'):
+            raise ValueError('mlm_loss_backend must be xla, xla_full, xla_local or pallas')
         if self.mlm_vocab_tile <= 0 or self.mlm_vocab_tile % 128:
             raise ValueError('mlm_vocab_tile must be a positive multiple of 128')
         if self.mlm_loss_backend == 'pallas' and self.hidden_size % 128:
@@ -72,6 +140,13 @@ class EncoderConfig:
             raise ValueError('special token IDs must be inside vocabulary')
         if self.pad_token_id == self.mask_token_id:
             raise ValueError('Padding and mask token IDs must differ')
+
+    def projection_capacity(self, length: int) -> int:
+        """Static per-row target capacity; overflow always retains the dense path."""
+        if self.mlm_projection_capacity is not None:
+            return min(length, self.mlm_projection_capacity)
+        chunk = self.loss_chunk_size
+        return min(length, ((length + 4 * chunk - 1) // (4 * chunk)) * chunk)
 
     @classmethod
     def from_hf(cls, config, **overrides):
@@ -105,9 +180,86 @@ def _splash_kernel(heads, length, radius):
     return splash.make_splash_mha_single_device(masks.MultiHeadMask([mask] * heads))
 
 
-def bidirectional_attention(q, k, v, segments, *, radius=None, backend='xla', packed=True):
+def bidirectional_attention(q, k, v, segments, *, radius=None, backend='xla', packed=True,
+                            score='dot_product', alpha: float | jax.Array = 1.0, yat_compute_mode='mixed',
+                            yat_local_shards=False, yat_attention_block_size=0,
+                            yat_softmax_backward='factored', yat_attention_implementation='standard'):
     """Symmetric attention with document isolation and zero padded outputs."""
+    if yat_attention_implementation not in ('standard', 'centered_fp32_scores'):
+        raise ValueError('Unknown yat_attention_implementation')
+    if yat_attention_implementation == 'centered_fp32_scores' and (
+            score != 'yat_softmax' or yat_compute_mode != 'bf16'
+            or backend != 'xla' or yat_attention_block_size < 1 or yat_softmax_backward != 'factored'):
+        raise ValueError('centered_fp32_scores requires tiled direct BF16 YAT with XLA and factored softmax')
+    if yat_softmax_backward not in ('factored', 'max_centered'):
+        raise ValueError('Unknown yat_softmax_backward')
+    if yat_softmax_backward == 'max_centered' and (
+            score != 'yat_softmax' or yat_compute_mode == 'mixed'):
+        raise ValueError('max_centered requires BF16 YAT attention')
+    if yat_local_shards and score == 'yat_softmax' and jax.device_count() > 1:
+        from jax.sharding import Mesh, PartitionSpec as P
+        if q.shape[0] % jax.device_count():
+            raise ValueError('Local YAT attention batch must divide across data devices')
+        # Each repair predicate and loop belongs to one chip. Global dynamic
+        # slices otherwise force the partitioner to handle cross-chip tiles.
+        local = jax.shard_map(
+            lambda qq, kk, vv, ss, aa: bidirectional_attention(qq, kk, vv, ss,
+                radius=radius, backend=backend, packed=packed, score=score,
+                alpha=aa, yat_compute_mode=yat_compute_mode, yat_attention_block_size=yat_attention_block_size,
+                yat_softmax_backward=yat_softmax_backward,
+                yat_attention_implementation=yat_attention_implementation),
+            mesh=Mesh(np.asarray(jax.devices()), ('data',)),
+            in_specs=(P('data'), P('data'), P('data'), P('data'), P()),
+            out_specs=P('data'), check_vma=False)
+        return local(q, k, v, segments, jnp.asarray(alpha))
+    if score == 'yat_softmax' and yat_attention_block_size:
+        if yat_attention_implementation == 'centered_fp32_scores':
+            from flaxchat.yat_attention_centered import centered_yat_attention
+            local_segments = segments if packed else jnp.where(segments >= 0, 0, -1)
+            return centered_yat_attention(q, k, v, local_segments, radius=radius, alpha=alpha,
+                                          block_size=yat_attention_block_size)
+        if backend != 'xla':
+            raise ValueError('Windowed YAT attention requires XLA backend')
+        from flaxchat.yat_attention import windowed_yat_attention
+        # Unpacked callers can supply arbitrary nonnegative document labels.
+        local_segments = segments if packed else jnp.where(segments >= 0, 0, -1)
+        return windowed_yat_attention(q, k, v, local_segments, radius=radius, alpha=alpha,
+            compute_mode=yat_compute_mode, block_size=yat_attention_block_size,
+            softmax_backward_mode=yat_softmax_backward)
     valid = segments >= 0
+    if score == 'yat_softmax':
+        if backend != 'xla':
+            raise ValueError('YAT attention requires XLA reference backend')
+        if yat_compute_mode not in ('mixed', 'bf16', 'bf16_adaptive'):
+            raise ValueError('Unknown YAT compute mode')
+        q, k, v = [cast(jax.Array, jnp.where(valid[:, :, None, None], a, 0)) for a in (q, k, v)]
+        strict_bf16 = yat_compute_mode in ('bf16', 'bf16_adaptive')
+        dtype = jnp.bfloat16 if strict_bf16 else jnp.float32
+        dots = jnp.einsum('bqhd,bkhd->bhqk', q, k, preferred_element_type=dtype)
+        if strict_bf16:
+            qx, kx = q.transpose(0, 2, 1, 3), k.transpose(0, 2, 1, 3)
+            distance = (adaptive_squared_distance_bf16(qx, kx, dots) if yat_compute_mode == 'bf16_adaptive'
+                        else squared_distance_bf16(qx, kx))
+        else:
+            qnorm = jnp.sum(jnp.square(q.astype(jnp.float32)), -1).transpose(0, 2, 1)
+            knorm = jnp.sum(jnp.square(k.astype(jnp.float32)), -1).transpose(0, 2, 1)
+            distance = jnp.maximum(qnorm[..., :, None] + knorm[..., None, :] - 2 * dots, 0.)
+        logits = jnp.asarray(alpha, dtype=dtype) * jnp.square(dots + 1.) / (distance + .01)
+        mask = valid[:, :, None] & valid[:, None, :]
+        if packed:
+            mask &= segments[:, :, None] == segments[:, None, :]
+        if radius is not None:
+            indices = jnp.arange(q.shape[1])
+            mask &= jnp.abs(indices[:, None] - indices[None, :])[None] <= radius
+        mask |= (~valid)[:, :, None] & jnp.eye(q.shape[1], dtype=bool)[None]
+        masked_logits = jnp.where(mask[:, None], logits, jnp.asarray(-jnp.inf, dtype=dtype))
+        weights = (softmax_bf16(masked_logits, backward_mode=yat_softmax_backward)
+                   if strict_bf16 else jax.nn.softmax(masked_logits, axis=-1))
+        out = jnp.einsum('bhqk,bkhd->bqhd', weights.astype(v.dtype), v,
+                         preferred_element_type=dtype).astype(v.dtype)
+        return jnp.where(valid[:, :, None, None], out, 0)
+    if score != 'dot_product':
+        raise ValueError('Unknown encoder attention score')
     if backend == 'splash':
         if jax.default_backend() != 'tpu' or q.shape[1] % 128:
             raise ValueError('Splash requires TPU and sequence length divisible by 128')
@@ -146,6 +298,63 @@ def _rope(x, positions, base):
     return x * cos + rotated * sin
 
 
+def _yat_glu_epilogue(dots, gate, input_norm, weight_norm, alpha):
+    distance = jnp.maximum(input_norm + weight_norm - 2 * dots, 0.)
+    return alpha * jnp.square(dots + 1.0) / (distance + 0.01) * gate
+
+
+_remat_yat_glu_epilogue = jax.checkpoint(_yat_glu_epilogue, prevent_cse=False)
+
+
+def yat_glu(x, kernel, *, alpha: float | jax.Array = 1.0, compute_mode='mixed', local_shards=False,
+            distance_backward_block=None):
+    """YAT with fixed numerator bias 1 and epsilon .01, times a linear gate.
+
+    Kernel layout is [input, 2 * intermediate], matching GeGLU. Low precision
+    operands default to FP32 accumulation/geometry. The bf16 mode uses blocked
+    direct distances and BF16 array arithmetic. bf16_adaptive reuses the dot
+    with selective direct fallback. All modes return the operand dtype.
+    Alpha may be a trainable scalar. This changes the model function and is not
+    GELU-checkpoint numerical parity.
+    """
+    if distance_backward_block is not None and compute_mode != 'bf16':
+        raise ValueError('distance_backward_block requires direct bf16 mode')
+    if kernel.ndim != 2 or kernel.shape[0] != x.shape[-1] or kernel.shape[1] % 2:
+        raise ValueError('YAT GLU requires an [input, 2 * intermediate] kernel')
+    if local_shards and jax.device_count() > 1:
+        from jax.sharding import Mesh, PartitionSpec as P
+        if x.shape[0] % jax.device_count():
+            raise ValueError('Local YAT FFN batch must divide across data devices')
+        local = jax.shard_map(
+            lambda xx, ww, aa: yat_glu(xx, ww, alpha=aa, compute_mode=compute_mode,
+                                      distance_backward_block=distance_backward_block),
+            mesh=Mesh(np.asarray(jax.devices()), ('data',)),
+            in_specs=(P('data'), P(), P()), out_specs=P('data'), check_vma=False)
+        return local(x, kernel, jnp.asarray(alpha))
+    kernel = kernel.astype(x.dtype)
+    if compute_mode in ('bf16', 'bf16_adaptive'):
+        if x.dtype != jnp.bfloat16:
+            raise ValueError('BF16 YAT requires BF16 inputs')
+        dots, gate = jnp.split(jnp.matmul(x, kernel, preferred_element_type=jnp.bfloat16), 2, axis=-1)
+        prototypes = kernel[:, :kernel.shape[1] // 2].T
+        flat = x.reshape(-1, x.shape[-1])
+        distance = (adaptive_squared_distance_bf16(flat, prototypes, dots.reshape(-1, dots.shape[-1]))
+                    if compute_mode == 'bf16_adaptive' else squared_distance_bf16(
+                        flat, prototypes, backward_block=distance_backward_block)).reshape(dots.shape)
+        return jnp.asarray(alpha, dtype=jnp.bfloat16) * jnp.square(dots + 1.) / (distance + .01) * gate
+    if compute_mode != 'mixed':
+        raise ValueError('Unknown YAT compute mode')
+    dots, gate = jnp.split(jnp.matmul(x, kernel, preferred_element_type=jnp.float32), 2, axis=-1)
+    x32 = x.astype(jnp.float32)
+    prototypes = kernel[:, :kernel.shape[1] // 2].astype(jnp.float32)
+    # Recompute cheap elementwise geometry in backward instead of retaining
+    # additional [tokens, intermediate] distance/reciprocal activations. The
+    # combined feature+gate GEMM is outside this rematerialization boundary.
+    return _remat_yat_glu_epilogue(
+        dots, gate, jnp.sum(x32 * x32, axis=-1, keepdims=True),
+        jnp.sum(prototypes * prototypes, axis=0), alpha).astype(x.dtype)
+
+
 class EncoderBlock(nnx.Module):
     def __init__(self, config, index, *, rngs):
         self.config = config
@@ -163,6 +372,12 @@ class EncoderBlock(nnx.Module):
         self.attn_out = linear(config.hidden_size, config.hidden_size)
         self.wi = linear(config.hidden_size, 2 * config.intermediate_size)
         self.wo = linear(config.intermediate_size, config.hidden_size)
+        if config.ffn_type == 'yat_glu':
+            self.yat_alpha = nnx.Param(jnp.array(config.yat_alpha, dtype=jnp.float32))
+        if config.attention_score == 'yat_softmax':
+            initial_alpha = (config.yat_alpha if config.yat_attention_alpha is None
+                             else config.yat_attention_alpha)
+            self.yat_attention_alpha = nnx.Param(jnp.array(initial_alpha, dtype=jnp.float32))
 
     def __call__(self, x, segments, positions, *, packed=True):
         c = self.config
@@ -174,18 +389,36 @@ class EncoderBlock(nnx.Module):
         q, k = _rope(q, positions, base), _rope(k, positions, base)
         h = bidirectional_attention(q, k, v, segments,
                                     radius=c.local_attention // 2 if local else None,
-                                    backend=c.attention_backend, packed=packed)
+                                    backend=c.attention_backend, packed=packed,
+                                    score=c.attention_score, yat_compute_mode=c.yat_compute_mode,
+                                    yat_local_shards=c.yat_local_shards,
+                                    yat_softmax_backward=c.yat_softmax_backward,
+                                    yat_attention_implementation=c.yat_attention_implementation,
+                                    yat_attention_block_size=c.yat_attention_block_size if local else c.yat_global_attention_block_size,
+                                    alpha=self.yat_attention_alpha[...] if c.attention_score == 'yat_softmax' else 1.)
         x = x + self.attn_out(h.reshape(x.shape))
-        a, gate = jnp.split(self.wi(self.mlp_norm(x)), 2, axis=-1)
-        return x + self.wo(jax.nn.gelu(a, approximate=False) * gate)
+        h = self.mlp_norm(x)
+        if c.ffn_type == 'yat_glu':
+            h = yat_glu(h.astype(getattr(jnp, c.compute_dtype)), self.wi.kernel[...],
+                        alpha=self.yat_alpha[...], compute_mode=c.yat_ffn_compute_mode or c.yat_compute_mode,
+                        local_shards=c.yat_local_shards,
+                        distance_backward_block=c.yat_ffn_backward_block)
+        else:
+            a, gate = jnp.split(self.wi(h), 2, axis=-1)
+            h = jax.nn.gelu(a, approximate=False) * gate
+        return x + self.wo(h)
 
 
 class ModernBert(nnx.Module):
     """Encoder outputs, masked mean pooling, and tied MLM logits/loss."""
     def __init__(self, config: EncoderConfig, *, rngs):
         self.config = config
+        # Set only on a device-local copy by the accumulation wrapper.
+        self._local_projection_loss = False
         dtype = getattr(jnp, config.compute_dtype)
-        self.embedding = nnx.Embed(config.vocab_size, config.hidden_size, dtype=getattr(jnp, config.residual_dtype),
+        # Gather FP32 master rows before casting activations. Casting the whole
+        # table first also makes repeated-token gradient scatter-adds BF16.
+        self.embedding = nnx.Embed(config.vocab_size, config.hidden_size, dtype=jnp.float32,
                                    embedding_init=nnx.initializers.normal(.02), rngs=rngs)
         def norm():
             return nnx.LayerNorm(config.hidden_size, epsilon=config.norm_eps,
@@ -207,7 +440,7 @@ class ModernBert(nnx.Module):
         positions = jnp.broadcast_to(jnp.arange(ids.shape[1]), ids.shape) if position_ids is None else position_ids
         if positions.shape != ids.shape:
             raise ValueError('position_ids must match input shape')
-        x = self.embedding_norm(self.embedding(ids))
+        x = self.embedding_norm(self.embedding(ids).astype(getattr(jnp, self.config.residual_dtype)))
         for layer in self.layers:
             if self.config.use_remat:
                 x = nnx.remat(lambda block, h, s, p: block(h, s, p, packed=segment_ids is not None))(
@@ -228,12 +461,15 @@ class ModernBert(nnx.Module):
 
     def decode(self, features):
         dtype = getattr(jnp, self.config.compute_dtype)
-        return (features.astype(dtype) @ self.embedding.embedding[...].astype(dtype).T).astype(jnp.float32) + self.decoder_bias[...]
+        return jnp.matmul(features.astype(dtype), self.embedding.embedding[...].astype(dtype).T,
+                          preferred_element_type=jnp.float32, precision=jax.lax.Precision.HIGHEST) + self.decoder_bias[...]
 
     def project(self, hidden):
         return self.decode(self.prediction_features(hidden))
 
-    def __call__(self, ids, targets=None, *, segment_ids=None, position_ids=None):
+    def __call__(self, ids, targets=None, *, segment_ids=None, position_ids=None, loss_reduction='mean'):
+        if loss_reduction not in ('mean', 'sum'):
+            raise ValueError('loss_reduction must be mean or sum')
         hidden = self.encode(ids, segment_ids=segment_ids, position_ids=position_ids)
         if targets is None:
             return self.project(hidden)
@@ -245,31 +481,35 @@ class ModernBert(nnx.Module):
             # Compact independently per row to preserve the batch sharding axis.
             # Static capacity is rounded to projection chunks for TPU matmuls.
             length = ids.shape[1]
-            chunk = self.config.loss_chunk_size
-            capacity = min(length, math.ceil(length / (4 * chunk)) * chunk)
+            capacity = self.config.projection_capacity(length)
             def sparse(model, h, y):
                 selected = y >= 0
                 indices = jax.vmap(lambda row: jnp.nonzero(row, size=capacity, fill_value=0)[0])(selected)
                 features = jnp.take_along_axis(h, indices[..., None], axis=1)
                 labels = jnp.take_along_axis(y, indices, axis=1)
                 occupied = jnp.arange(capacity)[None, :] < selected.sum(axis=1, keepdims=True)
-                return model._projection_loss(features, jnp.where(occupied, labels, -1))
+                return model._projection_loss(features, jnp.where(occupied, labels, -1), reduction=loss_reduction)
             # Never truncate Bernoulli masks: overflow takes the full dense path.
             return nnx.cond(jnp.any((targets >= 0).sum(axis=1) > capacity),
-                            lambda model, h, y: model._projection_loss(h, y),
+                            lambda model, h, y: model._projection_loss(h, y, reduction=loss_reduction),
                             sparse, self, hidden, targets)
-        return self._projection_loss(hidden, targets)
+        return self._projection_loss(hidden, targets, reduction=loss_reduction)
 
-    def _projection_loss(self, hidden, targets):
+    def _projection_loss(self, hidden, targets, *, reduction='mean'):
         # Transform once before chunking. Repeating the BF16 transformation in
         # every scan iteration changes gradient rounding and reduction order.
         hidden = self.prediction_features(hidden)
-        if self.config.mlm_loss_backend in ('pallas', 'xla_full'):
+        if self.config.mlm_loss_backend in ('pallas', 'xla_full', 'xla_local'):
             from flaxchat.fused_cross_entropy import sharded_fused_loss
             dtype = getattr(jnp, self.config.compute_dtype)
-            return sharded_fused_loss(hidden.astype(dtype), self.embedding.embedding[...].astype(dtype),
+            # Local XLA casts inside each rematerialized chunk, so the FP32
+            # master-weight gradients accumulate without repeated BF16 rounding.
+            local_xla = self.config.mlm_loss_backend == 'xla_local'
+            return sharded_fused_loss(hidden if local_xla else hidden.astype(dtype),
+                                     self.embedding.embedding[...] if local_xla else self.embedding.embedding[...].astype(dtype),
                                      self.decoder_bias[...], targets, tile=self.config.mlm_vocab_tile,
-                                     backend=self.config.mlm_loss_backend)
+                                     backend=self.config.mlm_loss_backend, chunk_size=self.config.loss_chunk_size, compute_dtype=dtype,
+                                     local_only=self._local_projection_loss, reduction=reduction)
         chunk = self.config.loss_chunk_size
         n = targets.size
         pad = (-n) % chunk
@@ -285,7 +525,7 @@ class ModernBert(nnx.Module):
         def accumulate(model, total, h, y):
             return total + loss_chunk(model, h, y)
         total = accumulate(self, jnp.float32(0), features, labels)
-        return total / jnp.maximum((targets >= 0).sum(), 1)
+        return total if reduction == 'sum' else total / jnp.maximum((targets >= 0).sum(), 1)
 
 
 def import_hf_weights(model, tensors):
@@ -317,6 +557,11 @@ def import_hf_weights(model, tensors):
         value = value.T if transpose else value
         if value.shape != var.shape or not np.isfinite(value).all():
             raise ValueError(f'Invalid checkpoint tensor: {name}')
-        converted.append((var, jnp.asarray(value, dtype=var.dtype)))
+        # Import into the existing target layout without an intermediate full
+        # device allocation; the host snapshot is present on each process.
+        target = var[...].sharding
+        host_value = value.astype(var.dtype, copy=False)
+        converted.append((var, jax.make_array_from_callback(
+            value.shape, target, lambda index, source=host_value: source[index])))
     for var, value in converted:
         var[...] = value

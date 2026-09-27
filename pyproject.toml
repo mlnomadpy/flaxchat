@@ -73,7 +73,7 @@ select = ["E4", "E7", "E9", "F", "B"]
 "torch_port/eval_quantization.py" = ["B007"]
 
 [tool.pyright]
-include = ["flaxchat", "scripts"]
+include = ["flaxchat", "scripts", "tests/test_checkpoint.py", "tests/test_encoder_training.py"]
 ignore = [
     # Explicit migration baseline; remove entries as these legacy JAX-heavy
     # modules gain precise array/Orbax protocol annotations.

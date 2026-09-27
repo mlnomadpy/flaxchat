@@ -11,7 +11,6 @@ import sys
 import numpy as np
 
 from benchmarks.matched.common import PARAMETER_TOLERANCE, SEED, TARGET_PARAMETERS
-from benchmarks.matched.nanochat_runner import token_tensor
 
 
 def within_budget(parameters: int) -> bool:
@@ -19,6 +18,8 @@ def within_budget(parameters: int) -> bool:
 
 
 def main() -> None:
+    from benchmarks.matched.nanochat_runner import token_tensor
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--nanochat-source", required=True, type=Path)
     parser.add_argument("--maxtext-source", required=True, type=Path)

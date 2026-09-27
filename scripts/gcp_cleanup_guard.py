@@ -7,6 +7,8 @@ import re
 import subprocess
 import time
 
+import yaml
+
 
 def lease(project, zone, queue, seconds, *, now=None):
     if not re.fullmatch(r'[a-z][a-z0-9-]{4,61}[a-z0-9]', project):
@@ -21,6 +23,37 @@ def lease(project, zone, queue, seconds, *, now=None):
                 deadline=(time.time() if now is None else now) + seconds)
 
 
+def verify_cleanup_permissions(execution, *, project, location, zone, queue, deadline):
+    """Fail closed on unknown effective IAM; never grant roles or enable APIs."""
+    name = execution.get('name', '')
+    resource_project = project
+    if not name.startswith(f'projects/{project}/'):
+        resource_project = subprocess.check_output(
+            ['gcloud', 'projects', 'describe', project, '--format=value(projectNumber)'],
+            text=True, timeout=60).strip()
+        if not resource_project.isdigit():
+            raise ValueError('Cannot resolve cleanup project identity')
+    match = re.fullmatch(
+        rf'projects/{re.escape(resource_project)}/locations/{re.escape(location)}'
+        r'/workflows/([a-zA-Z0-9_-]+)/executions/[^/]+', name)
+    if match is None:
+        raise ValueError('Cleanup execution has an invalid resource identity')
+    workflow = json.loads(subprocess.check_output(
+        ['gcloud', 'workflows', 'describe', match[1], '--project', project,
+         '--location', location, '--format=json'], text=True, timeout=60))
+    revision = execution.get('workflowRevisionId')
+    if not revision or workflow.get('revisionId') != revision:
+        raise ValueError('Cleanup workflow revision changed; re-arm the guard')
+    # Bind the observed checkpoint to our reviewed workflow semantics, not an
+    # arbitrary workflow with a similarly named step. The TPU API itself checks
+    # read/delete access; Policy Troubleshooter cannot resolve queued resources.
+    source = Path(__file__).parents[1] / 'infra/tpu/cleanup_workflow.yaml'
+    if yaml.safe_load(workflow.get('sourceContents', '')) != yaml.safe_load(source.read_text()):
+        raise ValueError('Cleanup workflow source does not match reviewed permission probes')
+    if not any(step.get('step') == 'wait_for_expiry' for step in execution.get('status', {}).get('currentSteps', [])):
+        raise ValueError('Cleanup permission probes have not succeeded; allocation blocked')
+
+
 def verify(receipt, *, project, zone, queue, now=None):
     """Read server-side execution state; a receipt alone is not authorization."""
     expected = receipt['lease']
@@ -30,12 +63,35 @@ def verify(receipt, *, project, zone, queue, now=None):
     remaining = expected['deadline'] - (time.time() if now is None else now)
     if not 60 <= remaining <= 7200:
         raise ValueError('Guard is expired or too close to expiry')
-    execution = json.loads(subprocess.check_output(
-        ['gcloud', 'workflows', 'executions', 'describe', receipt['execution'],
-         '--project', project, '--location', receipt['location'], '--format=json'],
-        text=True, timeout=60))
-    if execution['state'] != 'ACTIVE' or json.loads(execution['argument']) != expected:
-        raise ValueError('Cloud cleanup execution is not active for this exact lease')
+    polling_deadline = time.monotonic() + 45
+    while True:
+        execution = json.loads(subprocess.check_output(
+            ['gcloud', 'workflows', 'executions', 'describe', receipt['execution'],
+             '--project', project, '--location', receipt['location'], '--format=json'],
+            text=True, timeout=60))
+        if json.loads(execution['argument']) != expected:
+            raise ValueError('Cloud cleanup execution is not active for this exact lease')
+        if execution['state'] != 'ACTIVE':
+            detail = execution.get('error', {}).get('context', '')
+            try:
+                payload = json.loads(execution.get('error', {}).get('payload', '{}'))
+                detail = payload.get('body', {}).get('error', {}).get('message', detail)
+            except (ValueError, AttributeError):
+                pass
+            raise ValueError(
+                f'Cloud cleanup execution is not active: {execution["state"]}; '
+                f'allocation blocked before provisioning; {str(detail)[:2000]}'
+            )
+        if any(step.get('step') == 'wait_for_expiry' for step in execution.get('status', {}).get('currentSteps', [])):
+            break
+        if time.monotonic() >= polling_deadline:
+            raise ValueError('Cleanup permission probes timed out; allocation blocked')
+        time.sleep(1)
+    verify_cleanup_permissions(execution, project=project, location=receipt['location'],
+                               zone=zone, queue=queue, deadline=expected['deadline'])
+    remaining = expected['deadline'] - (time.time() if now is None else now)
+    if remaining < 60:
+        raise ValueError('Guard is too close to expiry after permission verification')
     return remaining
 
 

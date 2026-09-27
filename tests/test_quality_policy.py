@@ -246,3 +246,14 @@ def test_paid_multihost_launcher_fails_closed_and_uses_bounded_defaults():
     )
     assert result.returncode == 2
     assert "refusing paid TPU creation" in result.stderr
+
+
+@pytest.mark.parametrize('module', ['encoder', 'mlm', 'fused_cross_entropy', 'operations', 'training'])
+def test_training_risk_modules_require_individual_coverage(module):
+    path = f'flaxchat/{module}.py'
+    assert FLOORS[path] >= 75
+    report = {'files': {name: {'summary': {'percent_covered': 100}} for name in FLOORS}}
+    report['files'][path]['summary']['percent_covered'] = FLOORS[path] - .1
+    assert any(path in failure for failure in check_coverage(report))
+    del report['files'][path]
+    assert any(path in failure for failure in check_coverage(report))

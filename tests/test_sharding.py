@@ -48,7 +48,7 @@ def test_optimizer_state_inherits_replicated_parameter_sharding():
     optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
     replicate_optimizer_state(optimizer, mesh)
     expected = NamedSharding(mesh, P())
-    arrays = [leaf for leaf in jax.tree.leaves(optimizer.opt_state) if hasattr(leaf, "sharding")]
+    arrays = [leaf for leaf in jax.tree.leaves(nnx.state(optimizer)) if hasattr(leaf, "sharding")]
     assert arrays
     assert all(
         leaf.sharding.is_equivalent_to(expected, leaf.ndim) for leaf in arrays
