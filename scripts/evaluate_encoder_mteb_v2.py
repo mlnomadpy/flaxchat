@@ -148,7 +148,7 @@ class MtebEncoder:
                     if len(sequence) > self.length:
                         self.truncated += 1
                     ids[index, :min(len(sequence), self.length)] = sequence[:self.length]
-                vectors = np.asarray(self.session._pool(self.session._model, jnp.asarray(ids)), dtype=np.float32)[:len(chunk)]
+                vectors = np.asarray(self.session._pool(self.session._model, jnp.asarray(ids)), dtype=np.float32)[:len(chunk)].copy()
                 vectors /= np.maximum(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-12)
                 if not np.isfinite(vectors).all():
                     raise ValueError("Nonfinite MTEB embedding")
