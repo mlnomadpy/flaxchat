@@ -37,6 +37,7 @@ def worker_command(argv, *, rank, count, coordinator, directory, timeout, distri
     if not re.fullmatch('[0-9a-f]{32}', execution_id):
         raise ValueError('Invalid execution identity')
     marker = f'FLAXCHAT_REMOTE_EXIT_{execution_id}_{rank}='
+    started_marker = f'FLAXCHAT_REMOTE_STARTED_{execution_id}_{rank}=1'
     lock = f'/tmp/flaxchat-command-{execution_id}-{rank}'
     sdk_python = shlex.quote(directory.rstrip('/') + '/.venv/bin/python')
     # Use the supported, setup-created runtime for workload gcloud children.
@@ -52,6 +53,7 @@ def worker_command(argv, *, rank, count, coordinator, directory, timeout, distri
             f"date +%s > {lock}/started; "
             f"{detached} > {lock}/output.log 2>&1 < /dev/null & "
             f"elif [ ! -d {lock} ]; then printf '\\n{marker}125\\n'; exit 0; fi; "
+            f"printf '\\n{started_marker}\\n'; "
             f"attach_deadline=$(( $(date +%s) + {timeout + 10} )); "
             f"while [ ! -f {lock}/status ]; do "
             f"if [ $(date +%s) -ge \"$attach_deadline\" ]; then "
@@ -102,26 +104,43 @@ def ssh_command(node, project, zone, rank, remote, *, tunnel_through_iap=False):
 
 def attach_worker(node, project, zone, rank, remote, log, timeout, cancelled, *,
                   tunnel_through_iap=False, iap_fallback=False):
-    """Reattach the same durable command over IAP within one total deadline."""
+    """Reattach a running command without mistaking a long job for SSH failure."""
     mono_end, wall_end = time.monotonic() + timeout, time.time() + timeout
     attempts = []
     routes = [tunnel_through_iap]
     if iap_fallback and not tunnel_through_iap:
         routes.append(True)
     code = 124
-    for index, iap in enumerate(routes):
+    index = 0
+    while index < len(routes):
+        iap = routes[index]
         remaining = min(mono_end - time.monotonic(), wall_end - time.time())
         if cancelled.is_set() or remaining <= 0:
             break
-        # Reserve time for the alternate route. The detached remote execution
-        # survives a lost attachment; never generate a new execution ID here.
-        allowance = min(90, remaining) if index == 0 and len(routes) > 1 else remaining
+        # A live remote job can outlast the first 90-second attachment. Keep
+        # reattaching its public route when the start marker was observed;
+        # switch to IAP only when the connection itself never reached the VM.
+        allowance = min(300 if any(a.get('remote_started') for a in attempts[-1:]) else 90,
+                        remaining) if len(routes) > 1 else remaining
+        before = log.tell()
         code = run_transport(ssh_command(node, project, zone, rank, remote,
                              tunnel_through_iap=iap), log, allowance, cancelled)
+        log.flush()
+        if hasattr(log, 'getvalue'):
+            output = log.getvalue()[before:]
+        else:
+            with open(log.name, encoding='utf-8', errors='replace') as stream:
+                stream.seek(before)
+                output = stream.read()
+        started = 'FLAXCHAT_REMOTE_STARTED_' in output
         attempts.append({'route': 'iap' if iap else 'public',
-                         'transport_returncode': code, 'timeout_seconds': allowance})
+                         'transport_returncode': code, 'timeout_seconds': allowance,
+                         'remote_started': started})
         if code == 0:
             break  # A remote command failure is not a transport retry signal.
+        if code == 124 and started and not cancelled.is_set():
+            continue
+        index += 1
     return code, attempts
 
 
