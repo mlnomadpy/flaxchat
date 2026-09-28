@@ -42,8 +42,10 @@ class EmbeddingSession:
 
     def __init__(self, checkpoint, *, step=None):
         metadata = load_checkpoint_metadata(checkpoint, step=step)
-        if metadata.get("model_family") != "modernbert":
-            raise ValueError("Encoder checkpoint required")
+        if metadata.get("model_family") not in (
+            "modernbert", "modernbert_contrastive_encoder"
+        ):
+            raise ValueError("Encoder or contrastive encoder checkpoint required")
         config = EncoderConfig(**metadata["resolved_config"]["encoder"])
         self._check_runtime(config)
         model = ModernBert(config, rngs=nnx.Rngs(0))

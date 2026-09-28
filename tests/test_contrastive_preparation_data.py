@@ -194,6 +194,34 @@ class PreparationTests(unittest.TestCase):
                     heldout_sha256="0" * 64,
                 )
 
+    def test_prior_train_components_cannot_enter_new_dev(self):
+        with tempfile.TemporaryDirectory() as t:
+            r = Path(t)
+            args = self.fixture(r)
+            prior = r / "prior-train.jsonl"
+            prior.write_text(json.dumps({
+                "sentence1": "question 0", "sentence2": "answer 0"
+            }) + "\n")
+            extra = dict(prior_train_path=prior,
+                         prior_train_sha256=prep.file_hash(prior))
+            receipt = prep.prepare(output=r / "expanded", **args, **extra)
+            prep.verify(r / "expanded")
+            self.assertEqual(receipt["prior_train_sha256"], prep.file_hash(prior))
+            self.assertGreaterEqual(receipt["forced_train_pairs"], 1)
+            for _, row in prep.rows(r / "expanded/dev.jsonl"):
+                self.assertNotIn(prep.text_hash("question 0"), row["text_hashes"])
+                self.assertNotIn(prep.text_hash("answer 0"), row["text_hashes"])
+                self.assertNotIn(prep.text_hash("followup"), row["text_hashes"])
+            train = [row for _, row in prep.rows(r / "expanded/train.jsonl")]
+            self.assertTrue(any(prep.text_hash("question 0") in row["text_hashes"]
+                                for row in train))
+            self.assertTrue(any(prep.text_hash("followup") in row["text_hashes"]
+                                for row in train))
+            with self.assertRaisesRegex(ValueError, "Prior train checksum"):
+                prep.prepare(output=r / "bad", **args,
+                             prior_train_path=prior,
+                             prior_train_sha256="0" * 64)
+
 
 if __name__ == "__main__":
     assert not any(

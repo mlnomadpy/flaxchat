@@ -25,6 +25,7 @@ from flaxchat.checkpoint import (
 )
 from flaxchat.common import replicate_on_mesh
 from flaxchat.contrastive import symmetric_infonce
+from flaxchat.contrastive_sampling import LanguagePairRows
 from flaxchat.encoder import EncoderConfig, ModernBert
 from flaxchat.encoder_data import EpochRows, file_hash
 from flaxchat.runtime import runtime_identity
@@ -52,6 +53,7 @@ def source_identity():
         "scripts/prepare_encoder_contrastive.py",
         "scripts/train_encoder.py",
         "flaxchat/contrastive.py",
+        "flaxchat/contrastive_sampling.py",
         "flaxchat/encoder.py",
         "flaxchat/yat.py",
         "flaxchat/checkpoint.py",
@@ -163,6 +165,9 @@ def run(args):
             or args.save_every < 1 or args.keep_checkpoints < 1
             or not 1 <= args.sequence_length <= 512
             or not np.isfinite(args.temperature) or not 0 < args.temperature <= 1
+            or (args.language_temperature is not None and
+                (not np.isfinite(args.language_temperature) or
+                 not 0 < args.language_temperature <= 1))
             or not np.isfinite(args.weight_decay) or not 0 <= args.weight_decay <= 1):
         raise ValueError("Invalid contrastive batch, sequence, temperature or checkpoint policy")
     if args.stop_after is not None and not 1 <= args.stop_after <= args.steps:
@@ -221,6 +226,9 @@ def run(args):
         shuffle="replayable_epoch_permutation", gradient_clip_norm=1.0,
         weight_decay=args.weight_decay, optimizer="adamw_fp32_state",
         runtime=runtime_identity())
+    if args.language_temperature is not None:
+        recipe["shuffle"] = "replayable_language_temperature"
+        recipe["language_temperature"] = args.language_temperature
     if continuation_receipt is not None:
         recipe["contrastive_parent"] = continuation_receipt
     identity_source = source_identity()
@@ -285,7 +293,11 @@ def run(args):
         accepted = apply_gradients_if_finite(m, o, grads, loss)
         return loss, accepted
 
-    sampler = EpochRows(len(arrays["query_tokens"]), args.seed, shuffle=True)
+    sampler = (EpochRows(len(arrays["query_tokens"]), args.seed, shuffle=True)
+               if args.language_temperature is None else
+               LanguagePairRows(Path(args.data) / "train.jsonl",
+                                len(arrays["query_tokens"]), args.seed,
+                                args.language_temperature))
     local_batch = args.batch_size // jax.process_count()
     if jax.process_index() == 0:
         print(json.dumps(dict(event="contrastive_run_config", recipe=recipe,
@@ -339,6 +351,8 @@ def parser():
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--sequence-length", type=int, default=256)
     p.add_argument("--seed", type=int, default=29)
+    p.add_argument("--language-temperature", type=float,
+                   help="Sample language pairs proportional to count**temperature; 0.5 reduces imbalance")
     p.add_argument("--temperature", type=float, default=.05)
     p.add_argument("--learning-rate", type=float, default=2e-5)
     p.add_argument("--warmup-steps", type=int, default=10)

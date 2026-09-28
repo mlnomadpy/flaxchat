@@ -6,6 +6,7 @@ an external hard deadline; the checks here are cooperative between subsets.
 
 import argparse
 from dataclasses import asdict
+import hashlib
 import json
 from pathlib import Path
 import time
@@ -45,6 +46,30 @@ def verify_plan(path):
         raise ValueError("Positive sequence length required")
     if type(plan["candidate"].get("step")) is not int or plan["candidate"]["step"] < 1:
         raise ValueError("Explicit positive checkpoint step required")
+    if plan["candidate"].get("model_family", "modernbert") not in (
+        "modernbert", "modernbert_contrastive_encoder"
+    ):
+        raise ValueError("Unsupported candidate model family")
+    pinned_metadata = plan["candidate"].get("metadata_sha256")
+    if pinned_metadata is not None and (
+        not isinstance(pinned_metadata, str) or len(pinned_metadata) != 64
+        or any(char not in "0123456789abcdef" for char in pinned_metadata)
+    ):
+        raise ValueError("Invalid candidate metadata SHA-256")
+    baseline_config = plan["baseline"].get("encoder_config")
+    if baseline_config is not None:
+        if not isinstance(baseline_config, dict):
+            raise ValueError("Invalid pinned baseline encoder configuration")
+        EncoderConfig(**baseline_config)
+    if "training_overlap_audit" in plan:
+        audit_record = plan["training_overlap_audit"]
+        audit_path = Path(audit_record["path"])
+        if file_hash(audit_path) != audit_record["sha256"]:
+            raise ValueError("Frozen Tatoeba overlap audit changed")
+        audit = json.loads(audit_path.read_text())
+        if (audit.get("passed") is not True or audit.get("overlapping_unique_texts") != 0
+                or audit.get("prepared_manifest_sha256") != audit_record["prepared_manifest_sha256"]):
+            raise ValueError("Invalid frozen Tatoeba overlap audit")
     inventory = Path(plan["inventory_path"])
     if file_hash(inventory) != plan["inventory_sha256"]:
         raise ValueError("Frozen inventory hash mismatch")
@@ -116,6 +141,12 @@ def verify_plan(path):
     return plan, identity, entries, directories, snapshot_hashes
 
 
+def _metadata_sha256(metadata):
+    persisted = {key: value for key, value in metadata.items() if key != "step"}
+    return hashlib.sha256(json.dumps(persisted, sort_keys=True,
+        separators=(",", ":"), default=str).encode()).hexdigest()
+
+
 def run(plan_path, role, output, *, batch_size=8, max_seconds=3600):
     if role not in ("baseline", "candidate"):
         raise ValueError("Baseline or candidate role required")
@@ -127,19 +158,28 @@ def run(plan_path, role, output, *, batch_size=8, max_seconds=3600):
     deadline = WorkloadDeadline(max_seconds)
     started = time.monotonic()
     plan, identity, entries, directories, snapshot_hashes = verify_plan(plan_path)
+    if plan.get("require_physical_tpu") and (
+        jax.default_backend() != "tpu" or jax.process_count() != 1
+    ):
+        raise ValueError("Frozen paired benchmark requires a physical single-host TPU")
     verification_seconds = time.monotonic() - started
     candidate = plan["candidate"]
     metadata = load_checkpoint_metadata(candidate["checkpoint"], step=candidate["step"])
     if (
-        metadata.get("model_family") != "modernbert"
+        metadata.get("model_family") != candidate.get("model_family", "modernbert")
         or metadata.get("step") != candidate["step"]
+        or (candidate.get("metadata_sha256") is not None and
+            _metadata_sha256(metadata) != candidate["metadata_sha256"])
     ):
         raise ValueError("Candidate checkpoint identity mismatch")
     config = EncoderConfig(**metadata["resolved_config"]["encoder"])
+    baseline_config = EncoderConfig(**plan["baseline"].get("encoder_config", asdict(config)))
+    if metadata["tokenizer_identity"] != snapshot_hashes["tokenizer.json"]:
+        raise ValueError("Candidate and released-mmBERT tokenizers differ")
     deadline.remaining()
     load_started = time.monotonic()
     session = (
-        EmbeddingSession.from_pretrained(plan["baseline"]["snapshot"], config=config)
+        EmbeddingSession.from_pretrained(plan["baseline"]["snapshot"], config=baseline_config)
         if role == "baseline"
         else EmbeddingSession(candidate["checkpoint"], step=candidate["step"])
     )
@@ -160,7 +200,7 @@ def run(plan_path, role, output, *, batch_size=8, max_seconds=3600):
             batch_size=batch_size,
         )
         if (
-            manifest["encoder_config"] != asdict(config)
+            manifest["encoder_config"] != asdict(baseline_config if role == "baseline" else config)
             or manifest["pooling"] != plan["pooling"]
         ):
             raise ValueError("Matched inference configuration mismatch")
@@ -224,7 +264,7 @@ def run(plan_path, role, output, *, batch_size=8, max_seconds=3600):
         manifests=manifests,
         snapshot_sha256=snapshot_hashes,
         candidate=candidate,
-        encoder_config=asdict(config),
+        encoder_config=asdict(baseline_config if role == "baseline" else config),
         scores=scores,
         backend=jax.default_backend(),
         jax_version=jax.__version__,

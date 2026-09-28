@@ -1,9 +1,11 @@
 """Audit both full bitext exports and compare the frozen matched model pair."""
 
 import argparse
+from dataclasses import asdict
 import json
 from pathlib import Path
 
+from flaxchat.encoder import EncoderConfig
 from flaxchat.encoder_data import file_hash
 from scripts.evaluate_encoder_bitext import evaluate_campaign
 from scripts.export_encoder_bitext_campaign import verify_plan
@@ -14,6 +16,7 @@ def compare(plan_path, baseline, candidate):
     reports = []
     common = None
     inputs = {}
+    role_configs = {}
     for role, root in (("baseline", Path(baseline)), ("candidate", Path(candidate))):
         path = root / "report.json"
         before = file_hash(path)
@@ -46,6 +49,10 @@ def compare(plan_path, baseline, candidate):
                 or manifest["input_sha256"] != expected_inputs
             ):
                 raise ValueError("Unmatched export inputs or configuration")
+            if role == "baseline" and "encoder_config" in frozen["baseline"] and (
+                manifest["encoder_config"] != frozen["baseline"]["encoder_config"]
+            ):
+                raise ValueError("Baseline encoder differs from frozen plan")
             origin = manifest["origin"]
             if role == "baseline":
                 if (
@@ -58,11 +65,10 @@ def compare(plan_path, baseline, candidate):
             elif (
                 manifest["checkpoint"] != frozen["candidate"]["checkpoint"]
                 or manifest["checkpoint_step"] != frozen["candidate"]["step"]
-                or origin != frozen["candidate"]
+                or origin != {key: frozen["candidate"][key] for key in ("checkpoint", "step")}
             ):
                 raise ValueError("Candidate checkpoint origin mismatch")
             match = dict(
-                encoder=manifest["encoder_config"],
                 pooling=manifest["pooling"],
                 tokenizer=manifest["tokenizer_sha256"],
                 source=manifest["export_source_sha256"],
@@ -81,11 +87,37 @@ def compare(plan_path, baseline, candidate):
         if file_hash(path) != before:
             raise ValueError("Campaign report changed during audit")
         inputs[role] = before
+        role_configs[role] = report["encoder_config"]
         reports.append(report)
     left, right = reports
+    if frozen.get("require_physical_tpu") and (
+        left.get("backend") != "tpu" or right.get("backend") != "tpu"
+    ):
+        raise ValueError("Paired benchmark reports require physical TPU inference")
+    if "encoder_config" not in frozen["baseline"]:
+        if role_configs["baseline"] != role_configs["candidate"]:
+            raise ValueError("Legacy matched campaign requires identical encoders")
+    else:
+        candidate_config = EncoderConfig(**role_configs["candidate"])
+        baseline_config = EncoderConfig(**role_configs["baseline"])
+        released = EncoderConfig.from_hf(
+            json.loads((Path(frozen["baseline"]["snapshot"]) / "config.json").read_text()),
+            **{key: getattr(candidate_config, key) for key in (
+                "compute_dtype", "residual_dtype", "use_remat", "attention_backend",
+                "loss_chunk_size", "mlm_projection", "mlm_loss_backend", "mlm_vocab_tile",
+            )},
+        )
+        if baseline_config != released or asdict(baseline_config) != frozen["baseline"]["encoder_config"]:
+            raise ValueError("Baseline must use released mmBERT architecture under matched runtime")
+        for field in (
+            "vocab_size", "hidden_size", "num_hidden_layers", "num_attention_heads",
+            "max_position_embeddings", "pad_token_id", "mask_token_id",
+            "compute_dtype", "residual_dtype", "attention_backend", "use_remat",
+        ):
+            if getattr(candidate_config, field) != getattr(baseline_config, field):
+                raise ValueError(f"Unmatched inference field: {field}")
     for key in (
         "source_sha256",
-        "encoder_config",
         "batch_size",
         "jax_version",
         "backend",

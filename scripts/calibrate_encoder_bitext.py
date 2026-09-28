@@ -11,7 +11,7 @@ import jax
 
 from flaxchat.checkpoint import load_checkpoint_metadata
 from flaxchat.encoder import EncoderConfig
-from scripts.export_encoder_bitext_campaign import verify_plan
+from scripts.export_encoder_bitext_campaign import _metadata_sha256, verify_plan
 from scripts.export_encoder_retrieval import EmbeddingSession
 from scripts.workload_deadline import WorkloadDeadline
 
@@ -71,6 +71,10 @@ def run(plan_path, role, output, *, batch_size=32, max_seconds=1500):
     deadline = WorkloadDeadline(max_seconds)
     before = time.monotonic()
     plan, identity, entries, directories, snapshot = verify_plan(plan_path)
+    if plan.get("require_physical_tpu") and (
+        jax.default_backend() != "tpu" or jax.process_count() != 1
+    ):
+        raise ValueError("Frozen paired benchmark requires a physical single-host TPU")
     verification_seconds = time.monotonic() - before
     selected = sorted(entries, key=lambda e: (-e["pairs"], e["subset"]))[:2]
     if len(selected) != 2:
@@ -80,13 +84,17 @@ def run(plan_path, role, output, *, batch_size=32, max_seconds=1500):
     )
     if (
         metadata.get("step") != plan["candidate"]["step"]
-        or metadata.get("model_family") != "modernbert"
+        or metadata.get("model_family") != plan["candidate"].get("model_family", "modernbert")
+        or (plan["candidate"].get("metadata_sha256") is not None and
+            _metadata_sha256(metadata) != plan["candidate"]["metadata_sha256"])
     ):
         raise ValueError("Checkpoint identity mismatch")
-    config = EncoderConfig(**metadata["resolved_config"]["encoder"])
+    baseline_config = EncoderConfig(**plan["baseline"].get("encoder_config", metadata["resolved_config"]["encoder"]))
+    if metadata["tokenizer_identity"] != snapshot["tokenizer.json"]:
+        raise ValueError("Candidate and released-mmBERT tokenizers differ")
     before = time.monotonic()
     session = (
-        EmbeddingSession.from_pretrained(plan["baseline"]["snapshot"], config=config)
+        EmbeddingSession.from_pretrained(plan["baseline"]["snapshot"], config=baseline_config)
         if role == "baseline"
         else EmbeddingSession(
             plan["candidate"]["checkpoint"], step=plan["candidate"]["step"]
