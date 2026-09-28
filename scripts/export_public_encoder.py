@@ -20,12 +20,14 @@ def main():
     parser.add_argument("checkpoint_manifest", type=Path)
     parser.add_argument("tokenizer", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--model-family", default="modernbert")
+    parser.add_argument("--step", type=int, default=48236)
     args = parser.parse_args()
-    args.output.mkdir(parents=True, exist_ok=True)
     metadata = json.loads(args.checkpoint_metadata.read_text())
     manifest = json.loads(args.checkpoint_manifest.read_text())
-    if metadata.get("model_family") != "modernbert" or manifest.get("step") != 48236:
-        raise ValueError("Expected the final step-48236 encoder checkpoint")
+    if metadata.get("model_family") != args.model_family or manifest.get("step") != args.step:
+        raise ValueError(f"Expected {args.model_family} step-{args.step} encoder checkpoint")
+    args.output.mkdir(parents=True, exist_ok=True)
     model_path = args.checkpoint_model.resolve()
     metadata_tree = ocp.PyTreeCheckpointHandler().metadata(model_path)
     state = ocp.PyTreeCheckpointer().restore(
@@ -40,7 +42,10 @@ def main():
     (args.output / "config.json").write_text(json.dumps(asdict(config), indent=2) + "\n")
     shutil.copyfile(args.tokenizer, args.output / "tokenizer.json")
     (args.output / "export.json").write_text(json.dumps({
-        "source_checkpoint_step": 48236,
+        "source_checkpoint_step": args.step,
+        "source_model_family": args.model_family,
+        "source_checkpoint_metadata_sha256": manifest["metadata_sha256"],
+        "source_checkpoint_manifest_identity_sha256": manifest["identity_sha256"],
         "source_python_sha256": metadata["source_python_sha256"],
         "tokenizer_identity": metadata["tokenizer_identity"],
         **report,
