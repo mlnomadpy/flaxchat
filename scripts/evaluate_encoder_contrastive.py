@@ -177,7 +177,7 @@ def evaluate(args: argparse.Namespace) -> dict:
         expected_identity=dict(resolved_config=metadata["resolved_config"],
                                tokenizer=tokenizer_hash),
     )
-    if restored != metadata:
+    if _metadata_sha256(restored) != _metadata_sha256(metadata):
         raise ValueError("Checkpoint metadata changed during restore")
 
     @nnx.jit
