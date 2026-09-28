@@ -375,6 +375,33 @@ def test_iap_fallback_reattaches_same_command_with_remaining_wall_budget(monkeyp
     assert [a['route'] for a in attempts] == ['public', 'iap']
 
 
+def test_long_running_public_attachment_does_not_switch_to_iap(monkeypatch):
+    import io
+    import threading
+    from scripts import gcp_tpu_run as runner
+
+    clock = {'value': 0.}
+    monkeypatch.setattr(runner.time, 'monotonic', lambda: clock['value'])
+    monkeypatch.setattr(runner.time, 'time', lambda: clock['value'])
+    calls = []
+
+    def transport(argv, log, timeout, cancelled):
+        calls.append((argv, timeout))
+        log.write('FLAXCHAT_REMOTE_STARTED_fixture_0=1\n')
+        if len(calls) == 1:
+            clock['value'] += 90
+            return 124
+        return 0
+
+    monkeypatch.setattr(runner, 'run_transport', transport)
+    code, attempts = runner.attach_worker('node', 'project', 'zone', 0,
+        'same-command', io.StringIO(), 600, threading.Event(), iap_fallback=True)
+    assert code == 0
+    assert [a['route'] for a in attempts] == ['public', 'public']
+    assert [a['remote_started'] for a in attempts] == [True, True]
+    assert [c[1] for c in calls] == [90, 300]
+
+
 @pytest.mark.parametrize('mode', ['remote_failure', 'cancelled', 'expired', 'iap_only'])
 def test_iap_fallback_does_not_retry_unrecoverable_or_completed_attachment(monkeypatch, mode):
     import io
