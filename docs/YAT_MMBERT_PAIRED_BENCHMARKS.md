@@ -58,8 +58,9 @@ pilot audit does not cover the expanded contrastive corpus.
 
 ## Exploratory MTEB v2 slice
 
-The optional MTEB adapter uses MTEB `2.21.8` to score `STSBenchmark`, `STS17`,
-`SciFact`, and `NFCorpus` on a physical single-host TPU. Both roles share a
+The optional MTEB adapter uses MTEB `2.21.8` to score `STSBenchmark.v2`,
+`STS17`, `SciFact`, and `NFCorpus` test splits on a physical single-host TPU.
+The MTEB wheel and the four dataset revisions are pinned. Both roles share a
 512-token cap (unless frozen otherwise), tokenizer, mean pooling, L2
 normalization, no prompts, and MTEB's task/metric code. It records any
 truncated texts. Install `mteb==2.21.8` on the TPU worker, then:
@@ -79,7 +80,8 @@ python -m scripts.evaluate_encoder_mteb_v2 --compare \
 ```
 
 The adapter preserves each task's dataset revision, split, subset, and raw
-metrics. This four-task slice is **not** the mmBERT paper suite or a leaderboard
+metrics, and writes a partial receipt after each task. This four-task slice is
+**not** the mmBERT paper suite or a leaderboard
 aggregate. Its datasets are not sealed under the current training-data audit;
 until that audit is done, use the scores for diagnosis, not a contamination-free
 quality claim. Pin a new plan for every selected continuation checkpoint.

@@ -24,7 +24,13 @@ from scripts.export_encoder_retrieval import EmbeddingSession
 
 
 MTEB_VERSION = "2.21.8"
-TASKS = ("STSBenchmark", "STS17", "SciFact", "NFCorpus")
+TASKS = ("STSBenchmark.v2", "STS17", "SciFact", "NFCorpus")
+TASK_REVISIONS = {
+    "STSBenchmark.v2": "93b628c3969a75e76727db2b7ee252e53e96268d",
+    "STS17": "faeb762787bd10488a50c8b5be4a3b82e411949c",
+    "SciFact": "d56462d0e63a25450459c4f213e49ffdb866f7f9",
+    "NFCorpus": "ec0fa4fe99da2ff19ca1214b7966684033a58814",
+}
 RUNTIME_FIELDS = (
     "compute_dtype", "residual_dtype", "use_remat", "attention_backend",
     "loss_chunk_size", "mlm_projection", "mlm_loss_backend", "mlm_vocab_tile",
@@ -37,6 +43,8 @@ def verify_plan(path):
     plan = json.loads(path.read_text())
     if plan.get("mteb_version") != MTEB_VERSION or plan.get("tasks") != list(TASKS):
         raise ValueError("Unexpected MTEB version or diagnostic tasks")
+    if plan.get("task_revisions") != TASK_REVISIONS or plan.get("eval_splits") != ["test"]:
+        raise ValueError("Unexpected MTEB task revisions or split selection")
     if type(plan.get("sequence_length")) is not int or not 1 <= plan["sequence_length"] <= 8192:
         raise ValueError("Invalid frozen sequence length")
     if plan.get("pooling") != "mean of nonpadding token states, including special tokens" or plan.get("normalization") != "L2 FP32":
@@ -81,7 +89,8 @@ def build_plan(checkpoint, step, snapshot, output, *, sequence_length=512):
         raise ValueError("Require a YAT contrastive checkpoint with the mmBERT tokenizer")
     plan = dict(
         scope="paired_zero_shot_mteb_v2_diagnostic_slice", mteb_version=MTEB_VERSION,
-        tasks=list(TASKS), sequence_length=sequence_length,
+        tasks=list(TASKS), task_revisions=TASK_REVISIONS,
+        eval_splits=["test"], sequence_length=sequence_length,
         pooling="mean of nonpadding token states, including special tokens",
         normalization="L2 FP32", prompts="none for either model",
         long_text_policy="truncate both models to frozen sequence length; count truncations",
@@ -148,7 +157,7 @@ class MtebEncoder:
         return np.concatenate(output, axis=0) if output else np.empty((0, self.config.hidden_size), np.float32)
 
 
-def run(plan_path, role, output, *, batch_size=16):
+def run(plan_path, role, output, *, batch_size=16, progress=None):
     import mteb
     from mteb.models.abs_encoder import AbsEncoder
 
@@ -170,13 +179,43 @@ def run(plan_path, role, output, *, batch_size=16):
 
     model = Adapter(session, snapshot / "tokenizer.json", config,
                     plan["sequence_length"], name, revision)
-    tasks = mteb.get_tasks(tasks=list(TASKS))
+    tasks = mteb.get_tasks(tasks=list(TASKS), eval_splits=["test"])
     if {task.metadata.name for task in tasks} != set(TASKS):
         raise ValueError("MTEB task selection differs from frozen plan")
-    result = mteb.evaluate(model, tasks=tasks, encode_kwargs={"batch_size": batch_size},
-                           cache=None, overwrite_strategy="always", co2_tracker=False,
-                           show_progress_bar=False)
-    raw_result = result.model_dump(mode="json")
+    for task in tasks:
+        if (task.metadata.dataset.get("revision") != TASK_REVISIONS[task.metadata.name]
+                or list(task.eval_splits) != ["test"]):
+            raise ValueError(f"MTEB task revision or test split changed: {task.metadata.name}")
+    progress = Path(progress) if progress is not None else None
+    if progress is not None and progress.exists():
+        raise ValueError("Refusing existing MTEB progress receipt")
+    raw_result = dict(model_name=name, model_revision=revision,
+                      task_results=[], exceptions=None)
+    for task in tasks:
+        result = mteb.evaluate(model, tasks=[task],
+                               encode_kwargs={"batch_size": batch_size},
+                               cache=None, overwrite_strategy="always",
+                               co2_tracker=False, show_progress_bar=False)
+        partial = result.model_dump(mode="json")
+        if (partial.get("exceptions") or len(partial.get("task_results", [])) != 1
+                or partial["task_results"][0].get("task_name") != task.metadata.name):
+            raise ValueError(f"MTEB task did not complete: {task.metadata.name}")
+        task_result = partial["task_results"][0]
+        if (task_result.get("dataset_revision") != TASK_REVISIONS[task.metadata.name]
+                or set(task_result.get("scores", {})) != {"test"}
+                or not task_result["scores"]["test"]):
+            raise ValueError(f"MTEB task dataset or test scores changed: {task.metadata.name}")
+        raw_result["task_results"].extend(partial["task_results"])
+        if progress is not None:
+            progress.parent.mkdir(parents=True, exist_ok=True)
+            temporary = progress.with_suffix(progress.suffix + ".tmp")
+            temporary.write_text(json.dumps(dict(
+                complete=False, role=role, plan_sha256=identity,
+                completed_tasks=[item["task_name"] for item in raw_result["task_results"]],
+                task_results=raw_result["task_results"],
+                encoded_texts=model.encoded, truncated_texts=model.truncated,
+            ), indent=2) + "\n")
+            temporary.replace(progress)
     completed = {item["task_name"] for item in raw_result["task_results"]}
     if completed != set(TASKS) or raw_result.get("exceptions"):
         raise ValueError("MTEB did not complete every frozen task")
@@ -185,6 +224,7 @@ def run(plan_path, role, output, *, batch_size=16):
     output = Path(output)
     report = dict(role=role, plan_sha256=identity, model=name, revision=revision,
                   mteb_version=mteb.__version__, tasks=list(TASKS),
+                  task_revisions=TASK_REVISIONS, eval_splits=["test"],
                   sequence_length=plan["sequence_length"], pooling=plan["pooling"],
                   normalization=plan["normalization"], prompts=plan["prompts"],
                   encoded_texts=model.encoded, truncated_texts=model.truncated,
@@ -200,7 +240,8 @@ def run(plan_path, role, output, *, batch_size=16):
 def compare(baseline_path, candidate_path, output):
     left = json.loads(Path(baseline_path).read_text())
     right = json.loads(Path(candidate_path).read_text())
-    for key in ("plan_sha256", "mteb_version", "tasks", "sequence_length", "pooling",
+    for key in ("plan_sha256", "mteb_version", "tasks", "task_revisions", "eval_splits",
+                "sequence_length", "pooling",
                 "normalization", "prompts", "source_sha256", "backend"):
         if left.get(key) != right.get(key):
             raise ValueError(f"Unmatched MTEB protocol: {key}")
@@ -217,6 +258,12 @@ def compare(baseline_path, candidate_path, output):
             raise ValueError(f"Mismatched MTEB task provenance: {name}")
         if before.get("scores", {}).keys() != after.get("scores", {}).keys():
             raise ValueError(f"Mismatched MTEB splits: {name}")
+        for split in before["scores"]:
+            left_subsets = [row.get("hf_subset") for row in before["scores"][split]]
+            right_subsets = [row.get("hf_subset") for row in after["scores"][split]]
+            if (not left_subsets or len(left_subsets) != len(set(left_subsets))
+                    or left_subsets != right_subsets):
+                raise ValueError(f"Mismatched MTEB subsets: {name}/{split}")
         per_task[name] = dict(dataset_revision=before.get("dataset_revision"),
                               baseline=before["scores"], candidate=after["scores"])
     report = dict(plan_sha256=left["plan_sha256"], tasks=left["tasks"],
@@ -248,6 +295,7 @@ def main():
     parser.add_argument("--candidate-report")
     parser.add_argument("--sequence-length", type=int, default=512)
     parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--progress")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     if args.build_plan:
@@ -256,7 +304,8 @@ def main():
     elif args.compare:
         result = compare(args.baseline_report, args.candidate_report, args.output)
     else:
-        result = run(args.plan, args.role, args.output, batch_size=args.batch_size)
+        result = run(args.plan, args.role, args.output, batch_size=args.batch_size,
+                     progress=args.progress)
     print(json.dumps({key: value for key, value in result.items() if key != "result"}))
 
 
