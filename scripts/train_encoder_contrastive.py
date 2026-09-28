@@ -64,7 +64,7 @@ def source_identity():
 
 
 def schedule(peak, steps, warmup, final_ratio):
-    if (not np.isfinite(peak) or peak <= 0 or not 1 <= steps <= 5000
+    if (not np.isfinite(peak) or peak <= 0 or not 1 <= steps <= 100000
             or not 0 <= warmup < steps or not 0 <= final_ratio <= 1):
         raise ValueError("Invalid bounded contrastive schedule")
     if warmup:
@@ -105,6 +105,41 @@ def load_parent_for_preflight(metadata_file, manifest_file):
     return metadata
 
 
+def load_contrastive_parent_for_preflight(metadata_file, manifest_file, step):
+    """Authenticate a local copy of committed contrastive parent metadata."""
+    metadata = json.loads(Path(metadata_file).read_text())
+    manifest = json.loads(Path(manifest_file).read_text())
+    digest = metadata_digest(metadata)
+    if (manifest.get("step") != step or manifest.get("metadata_sha256") != digest
+            or metadata.get("step", step) != step):
+        raise ValueError("Offline contrastive parent metadata is not pinned by its committed manifest")
+    return {**metadata, "step": step}
+
+
+def contrastive_parent_receipt(metadata, path, step, tokenizer_hash, encoder):
+    """Authenticate a completed contrastive stage before starting a new one.
+
+    The new stage retains its weights and lineage but starts a fresh optimizer,
+    schedule, and replayable data cursor. It never pretends that changing the
+    previous stage's fixed horizon or dataset is an exact optimizer resume.
+    """
+    if (metadata.get("model_family") != "modernbert_contrastive_encoder"
+            or metadata.get("step") != step or step < 1
+            or metadata.get("tokenizer_identity") != tokenizer_hash):
+        raise ValueError("Invalid contrastive parent checkpoint identity")
+    recipe = metadata.get("resolved_config", {})
+    prior = recipe.get("parent", {})
+    if (recipe.get("encoder") != encoder or prior.get("step") != PARENT_STEP
+            or prior.get("metadata_sha256") != PARENT_METADATA_SHA256
+            or not isinstance(recipe.get("data_manifest_sha256"), str)
+            or not isinstance(metadata.get("data_manifest_identity"), str)
+            or metadata["data_manifest_identity"] != recipe["data_manifest_sha256"]):
+        raise ValueError("Contrastive parent has incompatible model or MLM lineage")
+    return dict(path=path, step=step, metadata_sha256=metadata_digest(metadata),
+                data_manifest_sha256=metadata["data_manifest_identity"],
+                policy="model_weights_only; fresh_optimizer_schedule_and_data_cursor")
+
+
 def run(args):
     if args.distributed and not jax.distributed.is_initialized():
         jax.distributed.initialize()
@@ -114,6 +149,16 @@ def run(args):
         raise ValueError("Preflight does not restore live optimizer state")
     if args.output and _same_path(args.parent_checkpoint, args.output):
         raise ValueError("Contrastive checkpoints require a new output location")
+    if bool(args.contrastive_parent_checkpoint) != bool(args.contrastive_parent_step):
+        raise ValueError("Contrastive parent checkpoint and step must be provided together")
+    if bool(args.contrastive_parent_metadata_file) != bool(args.contrastive_parent_manifest_file):
+        raise ValueError("Offline contrastive parent requires metadata and manifest files")
+    if args.contrastive_parent_metadata_file and (
+            not args.preflight_only or not args.contrastive_parent_checkpoint):
+        raise ValueError("Offline contrastive parent metadata is for preflight only")
+    if (args.contrastive_parent_checkpoint and
+            _same_path(args.contrastive_parent_checkpoint, args.output)):
+        raise ValueError("A new contrastive stage needs a new output location")
     if (args.seed < 0 or args.batch_size < 2 or args.batch_size % jax.device_count()
             or args.save_every < 1 or args.keep_checkpoints < 1
             or not 1 <= args.sequence_length <= 512
@@ -156,6 +201,16 @@ def run(args):
     parent_receipt = dict(path=args.parent_checkpoint, step=PARENT_STEP,
         metadata_sha256=PARENT_METADATA_SHA256,
         policy="model_weights_only; fresh_optimizer_schedule_and_data_cursor")
+    continuation_receipt = None
+    if args.contrastive_parent_checkpoint:
+        prior = (load_contrastive_parent_for_preflight(
+            args.contrastive_parent_metadata_file, args.contrastive_parent_manifest_file,
+            args.contrastive_parent_step) if args.contrastive_parent_metadata_file else
+            load_checkpoint_metadata(args.contrastive_parent_checkpoint,
+                                     step=args.contrastive_parent_step))
+        continuation_receipt = contrastive_parent_receipt(
+            prior, args.contrastive_parent_checkpoint, args.contrastive_parent_step,
+            tokenizer_hash, parent["resolved_config"]["encoder"])
     recipe = dict(encoder=parent["resolved_config"]["encoder"], parent=parent_receipt,
         data_manifest_sha256=data_manifest_sha, seed=args.seed, steps=args.steps,
         global_batch_size=args.batch_size, sequence_length=args.sequence_length,
@@ -166,6 +221,8 @@ def run(args):
         shuffle="replayable_epoch_permutation", gradient_clip_norm=1.0,
         weight_decay=args.weight_decay, optimizer="adamw_fp32_state",
         runtime=runtime_identity())
+    if continuation_receipt is not None:
+        recipe["contrastive_parent"] = continuation_receipt
     identity_source = source_identity()
     metadata = dict(model_family="modernbert_contrastive_encoder",
         resolved_config=recipe, tokenizer_identity=tokenizer_hash,
@@ -180,14 +237,19 @@ def run(args):
         if jax.process_index() == 0:
             print(json.dumps(dict(event="contrastive_preflight", pairs=len(arrays["query_tokens"]),
                 parent=parent_receipt, data_manifest_sha256=data_manifest_sha,
+                contrastive_parent=continuation_receipt,
+                planned_pair_passes=args.steps * args.batch_size / len(arrays["query_tokens"]),
                 source_python_sha256=identity_source, devices=jax.device_count())), flush=True)
         return
 
     model = ModernBert(config, rngs=nnx.Rngs(args.seed))
     if not args.resume:
-        pinned = restore_model_from_checkpoint(model, args.parent_checkpoint, step=PARENT_STEP)
-        if metadata_digest(pinned) != parent_receipt["metadata_sha256"]:
-            raise ValueError("MLM parent metadata changed during model-only restore")
+        source_path = (args.contrastive_parent_checkpoint or args.parent_checkpoint)
+        source_step = (args.contrastive_parent_step or PARENT_STEP)
+        source_receipt = continuation_receipt or parent_receipt
+        pinned = restore_model_from_checkpoint(model, source_path, step=source_step)
+        if metadata_digest(pinned) != source_receipt["metadata_sha256"]:
+            raise ValueError("Parent metadata changed during model-only restore")
     mesh = Mesh(np.asarray(jax.devices()), ("data",))
     nnx.update(model, replicate_on_mesh(nnx.state(model), mesh))
     optimizer = nnx.Optimizer(model, optax.chain(
@@ -228,7 +290,8 @@ def run(args):
     if jax.process_index() == 0:
         print(json.dumps(dict(event="contrastive_run_config", recipe=recipe,
             devices=jax.device_count(), processes=jax.process_count(),
-            backend=jax.default_backend(), pairs=len(arrays["query_tokens"]))), flush=True)
+            backend=jax.default_backend(), pairs=len(arrays["query_tokens"]),
+            planned_pair_passes=args.steps * args.batch_size / len(arrays["query_tokens"]))), flush=True)
     try:
         for step in range(start, stop):
             begun = time.monotonic()
@@ -260,6 +323,12 @@ def parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--parent-checkpoint", required=True)
     p.add_argument("--parent-step", type=int, default=PARENT_STEP)
+    p.add_argument("--contrastive-parent-checkpoint", help="Completed contrastive stage supplying model weights")
+    p.add_argument("--contrastive-parent-step", type=int, help="Committed step in the contrastive parent stage")
+    p.add_argument("--contrastive-parent-metadata-file", type=Path,
+                   help="Manifest-authenticated local contrastive parent metadata for preflight only")
+    p.add_argument("--contrastive-parent-manifest-file", type=Path,
+                   help="Committed manifest authenticating offline contrastive metadata")
     p.add_argument("--parent-metadata-file", type=Path, help="Manifest-authenticated saved metadata for offline preflight only")
     p.add_argument("--parent-manifest-file", type=Path, help="Committed manifest authenticating offline metadata")
     p.add_argument("--data", required=True)

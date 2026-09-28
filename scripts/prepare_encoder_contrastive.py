@@ -83,6 +83,8 @@ def prepare(
     tokenizer_sha256=None,
     sequence_length=256,
     pad_token_id=0,
+    heldout_path=None,
+    heldout_sha256=None,
 ):
     """Split connected text components so no normalized text crosses train/dev."""
     output = Path(output)
@@ -96,6 +98,17 @@ def prepare(
     for path, _ in sealed:
         for _, row in rows(path):
             forbidden.update(text_hash(row[k]) for k in ("sentence1", "sentence2"))
+    sealed_texts = forbidden.copy()
+    sealed_unique_texts = len(forbidden)
+    heldout_texts = set()
+    if (heldout_path is None) != (heldout_sha256 is None):
+        raise ValueError("Held-out path and SHA-256 must be supplied together")
+    if heldout_path is not None:
+        if file_hash(heldout_path) != heldout_sha256:
+            raise ValueError("Held-out checksum mismatch")
+        for _, row in rows(Path(heldout_path)):
+            heldout_texts.update(text_hash(row[k]) for k in ("sentence1", "sentence2"))
+        forbidden.update(heldout_texts)
     pairs = {}
     excluded = Counter()
     parent = {}
@@ -115,8 +128,11 @@ def prepare(
                 for k in ("language1", "language2")
             ):
                 raise ValueError("Explicit language1 and language2 required")
-            if left in forbidden or right in forbidden:
+            if left in sealed_texts or right in sealed_texts:
                 excluded["sealed_text_overlap"] += 1
+                continue
+            if left in heldout_texts or right in heldout_texts:
+                excluded["heldout_text_overlap"] += 1
                 continue
             if left == right:
                 excluded["identical_text"] += 1
@@ -187,6 +203,8 @@ def prepare(
         # Detect inputs changing during construction before publishing anything.
         inputs(source_manifest, source_manifest_sha256, "train")
         inputs(sealed_manifest, sealed_manifest_sha256, "test")
+        if heldout_path is not None and file_hash(heldout_path) != heldout_sha256:
+            raise ValueError("Held-out checksum changed during preparation")
         receipt = dict(
             format="flaxchat-contrastive-text-pairs-v1",
             files=inventory,
@@ -195,7 +213,9 @@ def prepare(
             seed=seed,
             dev_fraction=dev_fraction,
             excluded=dict(excluded),
-            sealed_unique_texts=len(forbidden),
+            sealed_unique_texts=sealed_unique_texts,
+            heldout_unique_texts=len(heldout_texts),
+            heldout_sha256=heldout_sha256,
             components=len(components),
             largest_component_pairs=max(components.values()),
             normalization="NFKC, casefold, whitespace collapse; SHA256 UTF8",
@@ -401,6 +421,8 @@ def main():
     parser.add_argument("--pad-token-id", type=int, default=0)
     parser.add_argument("--seed", type=int, default=18)
     parser.add_argument("--dev-fraction", type=float, default=0.02)
+    parser.add_argument("--heldout-path")
+    parser.add_argument("--heldout-sha256")
     print(json.dumps(prepare(**vars(parser.parse_args())), indent=2))
 
 

@@ -167,6 +167,33 @@ class PreparationTests(unittest.TestCase):
     def test_normalization(self):
         self.assertEqual(prep.text_hash(" Ａ  B "), prep.text_hash("a b"))
 
+    def test_prior_dev_is_quarantined_when_resuming(self):
+        with tempfile.TemporaryDirectory() as t:
+            r = Path(t)
+            args = self.fixture(r)
+            heldout = r / "previous-dev.jsonl"
+            heldout.write_text(json.dumps({
+                "sentence1": "question 4", "sentence2": "answer 4"
+            }) + "\n")
+            prep.prepare(
+                output=r / "expanded", **args,
+                heldout_path=heldout,
+                heldout_sha256=prep.file_hash(heldout),
+            )
+            m = prep.verify(r / "expanded")
+            self.assertEqual(m["heldout_sha256"], prep.file_hash(heldout))
+            self.assertEqual(m["heldout_unique_texts"], 2)
+            self.assertEqual(m["excluded"]["heldout_text_overlap"], 1)
+            for split in ("train", "dev"):
+                for _, row in prep.rows(r / "expanded" / f"{split}.jsonl"):
+                    self.assertNotIn(prep.text_hash("question 4"), row["text_hashes"])
+            with self.assertRaisesRegex(ValueError, "Held-out checksum"):
+                prep.prepare(
+                    output=r / "bad", **args,
+                    heldout_path=heldout,
+                    heldout_sha256="0" * 64,
+                )
+
 
 if __name__ == "__main__":
     assert not any(

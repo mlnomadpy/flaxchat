@@ -159,8 +159,10 @@ def evaluate(args: argparse.Namespace) -> dict:
     if checked_manifest != manifest:
         raise ValueError("Development manifest changed during loading")
     data_hash = file_hash(manifest_path)
-    if family == CONTRASTIVE_FAMILY and metadata.get("data_manifest_identity") != data_hash:
-        raise ValueError("Contrastive checkpoint and development data differ")
+    training_data_hash = metadata.get("data_manifest_identity") if family == CONTRASTIVE_FAMILY else None
+    data_matches_training = training_data_hash == data_hash if training_data_hash else None
+    if family == CONTRASTIVE_FAMILY and not data_matches_training and not args.allow_external_data:
+        raise ValueError("Contrastive checkpoint and development data differ; pass --allow-external-data for an explicit cross-dataset evaluation")
     config = EncoderConfig(**metadata["resolved_config"]["encoder"])
     if sequence_length > config.max_position_embeddings or config.attention_backend != "xla":
         raise ValueError("Development length/backend is incompatible with checkpoint")
@@ -262,6 +264,9 @@ def evaluate(args: argparse.Namespace) -> dict:
                         model_family=family, metadata_sha256=_metadata_sha256(metadata),
                         source_python_sha256=metadata.get("source_python_sha256")),
         data=dict(path=str(data_root), manifest_sha256=data_hash,
+                  checkpoint_training_manifest_sha256=training_data_hash,
+                  matches_checkpoint_training_manifest=data_matches_training,
+                  external_data_authorized=bool(args.allow_external_data),
                   dev_jsonl_sha256=file_hash(dev_path),
                   tokenizer_sha256=tokenizer_hash,
                   source_manifest_sha256=manifest["source_manifest_sha256"],
@@ -302,6 +307,8 @@ def main() -> None:
     parser.add_argument("--output", required=True)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--score-block-size", type=int, default=64)
+    parser.add_argument("--allow-external-data", action="store_true",
+                        help="Evaluate an authenticated checkpoint on a different verified development manifest")
     args = parser.parse_args()
     report = evaluate(args)
     print(json.dumps(dict(scope=report["scope"], pairs=report["pairs"],
