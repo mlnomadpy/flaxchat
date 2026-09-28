@@ -14,7 +14,7 @@ def test_aligned_pairs_are_better_than_swapped_pairs():
     documents = jnp.eye(3, dtype=jnp.bfloat16)
     ids = jnp.arange(3, dtype=jnp.int32)
     aligned = symmetric_infonce(queries, documents, ids, ids, ids)
-    swapped = symmetric_infonce(queries, documents[[1, 0, 2]], ids, ids, ids)
+    swapped = symmetric_infonce(queries, documents[jnp.array([1, 0, 2])], ids, ids, ids)
     assert aligned.dtype == jnp.float32
     assert float(aligned) < float(swapped)
 
