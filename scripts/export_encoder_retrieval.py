@@ -184,13 +184,18 @@ class EmbeddingSession:
             (Path(corpus), "document_ids"),
         ):
             rows, manifest = load_prepared_rows(directory, config)
+            # Contrastive checkpoints pin the tokenizer hash but do not repeat
+            # its special-token list in resolved_config.
             if (
                 manifest.get("split") != task["split"]
                 or manifest.get("dataset") != task["dataset"]
                 or manifest.get("revision") != task["revision"]
                 or manifest["tokenizer_sha256"] != metadata["tokenizer_identity"]
-                or manifest["special_token_ids"]
-                != metadata["resolved_config"]["special_token_ids"]
+                or (
+                    "special_token_ids" in metadata["resolved_config"]
+                    and manifest["special_token_ids"]
+                    != metadata["resolved_config"]["special_token_ids"]
+                )
             ):
                 raise ValueError("Retrieval data/checkpoint identity mismatch")
             ids = task.get(key)

@@ -85,3 +85,31 @@ metrics, and writes a partial receipt after each task. This four-task slice is
 aggregate. Its datasets are not sealed under the current training-data audit;
 until that audit is done, use the scores for diagnosis, not a contamination-free
 quality claim. Pin a new plan for every selected continuation checkpoint.
+
+## Step 12,000 result (September 2026)
+
+The 631,332-pair, 28-language Global Voices continuation trained for 12,000
+updates at batch 64 and sequence length 128. Its final checkpoint and
+development evaluation completed on a physical v5e-8. The zero-shot comparison
+used the released `jhu-clsp/mmBERT-base` model and the same tokenizer, mean
+pooling, FP32 L2 normalization, and BF16 inference settings.
+
+| Test | mmBERT-base | YAT step 12,000 |
+| --- | ---: | ---: |
+| Tatoeba, 112-subset macro F1 | 0.3016 | 0.5269 |
+| Tatoeba, 88,877-pair accuracy | 0.3390 | 0.5683 |
+| STSBenchmark.v2 test Spearman | 0.5393 | 0.6733 |
+| STS17 test, mean of 11 subset Spearman scores | 0.4889 | 0.6383 |
+| SciFact test nDCG@10 | 0.0365 | 0.2991 |
+| NFCorpus test nDCG@10 | 0.0259 | 0.1124 |
+
+The complete Tatoeba report is at
+`gs://tpubuilders-flaxchat-validation-0921/encoder-contrastive-global-voices-50k-carry-0928/benchmark-reports-r5/tatoeba-paired.json`;
+the MTEB diagnostic report is at
+`gs://tpubuilders-flaxchat-validation-0921/encoder-contrastive-global-voices-50k-carry-0928/mteb-v2-reports-r2/mteb-paired.json`.
+The Tatoeba audit found no exact normalized-text overlap with the continuation
+training data, but cannot rule out paraphrase overlap or exposure during the
+earlier base-model pretraining. The four MTEB tasks have not had a train-overlap
+audit. These are zero-shot comparisons with released mmBERT-base, not the
+paper's MS MARCO-fine-tuned full MTEB result. Native Tatoeba scoring also has
+unverified official MTEB tie parity.
