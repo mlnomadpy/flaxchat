@@ -3,9 +3,9 @@
 The 28 English–other-language *train* shards are fetched at an immutable Hub
 revision. Raw Parquet hashes, tokenizer hash, selected row coordinates, and
 the preparation manifests form a replayable receipt. No test labels are used
-for sampling. Pass both previous pilot train and dev files as repeated
-``--heldout`` arguments when resuming its checkpoint. This prevents earlier
-training text from appearing in the new dev split.
+for sampling. When resuming, pass each earlier train file as ``--prior-train``
+and each earlier dev file as ``--heldout``. Previously trained text components
+remain in train, while prior development text is excluded from both splits.
 
 This is an aligned news-domain source, not a representative multilingual
 retrieval corpus. Global Voices content requires CC-BY-3.0 attribution.
@@ -147,6 +147,9 @@ def build(args):
     heldout = output / "previous-stage-heldout.jsonl" if args.heldout else None
     heldout_sources = combine_heldout(args.heldout, heldout) if heldout else []
     heldout_sha = file_hash(heldout) if heldout else None
+    prior_train = output / "previous-stage-train.jsonl" if args.prior_train else None
+    prior_train_sources = combine_heldout(args.prior_train, prior_train) if prior_train else []
+    prior_train_sha = file_hash(prior_train) if prior_train else None
     sources = []
     statistics = []
     for relative in paths:
@@ -206,6 +209,8 @@ def build(args):
         sealed_manifest_sha256=args.sealed_manifest_sha256,
         heldout_path=heldout,
         heldout_sha256=heldout_sha,
+        prior_train_path=prior_train,
+        prior_train_sha256=prior_train_sha,
         seed=args.seed,
         dev_fraction=args.dev_fraction,
         tokenizer=tokenizer_path,
@@ -220,6 +225,8 @@ def build(args):
         "sealed_manifest_sha256": args.sealed_manifest_sha256,
         "heldout_sha256": heldout_sha,
         "heldout_sources": heldout_sources,
+        "prior_train_sha256": prior_train_sha,
+        "prior_train_sources": prior_train_sources,
         "statistics": statistics,
         "prepared_files": prepared["files"],
         "excluded": prepared["excluded"],
@@ -237,7 +244,9 @@ def main():
     parser.add_argument("--sealed-manifest", required=True)
     parser.add_argument("--sealed-manifest-sha256", required=True)
     parser.add_argument("--heldout", action="append", default=[],
-                        help="Previous-stage train and dev JSONL; repeat for each when resuming")
+                        help="Previous-stage dev JSONL to exclude; repeat for each stage")
+    parser.add_argument("--prior-train", action="append", default=[],
+                        help="Previous-stage train JSONL; repeat for each stage. Its text components stay in train.")
     parser.add_argument("--max-pairs-per-language", type=int, default=10000)
     parser.add_argument("--min-tokens", type=int, default=8)
     parser.add_argument("--sequence-length", type=int, default=128)

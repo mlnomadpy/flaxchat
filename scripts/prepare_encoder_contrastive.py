@@ -85,6 +85,8 @@ def prepare(
     pad_token_id=0,
     heldout_path=None,
     heldout_sha256=None,
+    prior_train_path=None,
+    prior_train_sha256=None,
 ):
     """Split connected text components so no normalized text crosses train/dev."""
     output = Path(output)
@@ -109,6 +111,14 @@ def prepare(
         for _, row in rows(Path(heldout_path)):
             heldout_texts.update(text_hash(row[k]) for k in ("sentence1", "sentence2"))
         forbidden.update(heldout_texts)
+    prior_train_texts = set()
+    if (prior_train_path is None) != (prior_train_sha256 is None):
+        raise ValueError("Prior train path and SHA-256 must be supplied together")
+    if prior_train_path is not None:
+        if file_hash(prior_train_path) != prior_train_sha256:
+            raise ValueError("Prior train checksum mismatch")
+        for _, row in rows(Path(prior_train_path)):
+            prior_train_texts.update(text_hash(row[k]) for k in ("sentence1", "sentence2"))
     pairs = {}
     excluded = Counter()
     parent = {}
@@ -161,12 +171,17 @@ def prepare(
         raise ValueError("No eligible pairs after quarantine")
     partition = {"train": [], "dev": []}
     components = Counter()
+    forced_train_components = {find(h) for h in prior_train_texts if h in parent}
+    forced_train_pairs = 0
     for key, row in sorted(pairs.items()):
         component = find(key[0])
         draw = (
             int(hashlib.sha256(f"{seed}:{component}".encode()).hexdigest(), 16) / 2**256
         )
-        split = "dev" if draw < dev_fraction else "train"
+        split = "train" if component in forced_train_components else (
+            "dev" if draw < dev_fraction else "train"
+        )
+        forced_train_pairs += component in forced_train_components
         row.update(
             id=hashlib.sha256(":".join(key).encode()).hexdigest(),
             split=split,
@@ -205,6 +220,8 @@ def prepare(
         inputs(sealed_manifest, sealed_manifest_sha256, "test")
         if heldout_path is not None and file_hash(heldout_path) != heldout_sha256:
             raise ValueError("Held-out checksum changed during preparation")
+        if prior_train_path is not None and file_hash(prior_train_path) != prior_train_sha256:
+            raise ValueError("Prior train checksum changed during preparation")
         receipt = dict(
             format="flaxchat-contrastive-text-pairs-v1",
             files=inventory,
@@ -216,6 +233,10 @@ def prepare(
             sealed_unique_texts=sealed_unique_texts,
             heldout_unique_texts=len(heldout_texts),
             heldout_sha256=heldout_sha256,
+            prior_train_sha256=prior_train_sha256,
+            prior_train_unique_texts=len(prior_train_texts),
+            forced_train_components=len(forced_train_components),
+            forced_train_pairs=forced_train_pairs,
             components=len(components),
             largest_component_pairs=max(components.values()),
             normalization="NFKC, casefold, whitespace collapse; SHA256 UTF8",
@@ -423,6 +444,8 @@ def main():
     parser.add_argument("--dev-fraction", type=float, default=0.02)
     parser.add_argument("--heldout-path")
     parser.add_argument("--heldout-sha256")
+    parser.add_argument("--prior-train-path")
+    parser.add_argument("--prior-train-sha256")
     print(json.dumps(prepare(**vars(parser.parse_args())), indent=2))
 
 

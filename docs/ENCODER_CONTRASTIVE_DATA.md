@@ -22,3 +22,11 @@ The same 4,048-pair development split was scored on a physical TPU. The cross-da
 | New stage step 6,000 | **0.9654** | **0.9503** | **0.9430** |
 
 These are within-source, sentence-translation retrieval results, not MTEB or an independent multilingual retrieval benchmark. The 112-subset Tatoeba test remains sealed. For the next quality stage, add licensed, pinned non-news data and real multilingual query–document relevance pairs; retain disjoint training and evaluation identities and measure low-resource languages separately.
+
+## Larger continuation build
+
+The 50,000-pair-per-language cap uses the same pinned 28 Global Voices train shards and tokenizer. The verified 2026-09-28 build is at `artifacts/encoder-contrastive-global-voices-50k-carry-0928/prepared`, with **631,332 train pairs across all 28 language pairs** and **5,987 fresh dev pairs across 15 language pairs**. Its prepared manifest SHA-256 is `0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923`. The prepared directory contains 1,384,584,020 bytes; this is the data payload to stage for TPU training. The other 13 language pairs have no fresh examples outside the previous stage's training text, so the new dev split cannot measure them independently.
+
+The builder now takes previous **train** files through repeated `--prior-train` flags and previous **dev** files through repeated `--heldout` flags. It keeps every connected text component touching an earlier training row in train, excludes prior dev text from both splits, and continues to exclude exact normalized text from the sealed Tatoeba inventory. The verified build has zero normalized-text overlap from previous training to new dev, previous dev to either new split, and new train to new dev. It forced 333,086 prior-training-connected pairs into train. This preserves the 28-language training coverage while making the fresh development scores honest about their narrower coverage.
+
+This remains an English-pivot news translation corpus. The larger row count does not make it a broad-domain retrieval dataset; evaluate independently on the same benchmark tasks, splits, pooling, and metrics used for the mmBERT comparison before claiming better embeddings.
