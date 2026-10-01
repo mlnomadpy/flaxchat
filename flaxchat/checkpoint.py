@@ -388,7 +388,7 @@ def load_checkpoint(
     return model_state, opt_state, restored["metadata"], training_state
 
 
-def load_checkpoint_metadata(checkpoint_dir: str, step: int | None = None) -> dict:
+def load_checkpoint_metadata(checkpoint_dir: str, step: int | None = None, *, include_receipt: bool = False) -> dict:
     """Read integrity-checked metadata before constructing a live model."""
     manager = create_checkpoint_manager(
         checkpoint_dir, max_to_keep=999, async_checkpointing=False
@@ -413,7 +413,13 @@ def load_checkpoint_metadata(checkpoint_dir: str, step: int | None = None) -> di
         # Older, integrity-checked artifacts omit this redundant field. Bind
         # the returned metadata to the actual selected directory without
         # rewriting the artifact or relaxing its original checksum.
-        return {**metadata, 'step': selected}
+        result = {**metadata, 'step': selected}
+        if include_receipt:
+            result['committed_receipt'] = {
+                'step': selected, 'manifest_sha256': _json_hash(restored['manifest']),
+                'metadata_sha256': restored['manifest']['metadata_sha256'],
+                'model_state': restored['manifest'].get('model_state', {})}
+        return result
     except CheckpointCompatibilityError:
         raise
     except Exception as exc:

@@ -1,0 +1,101 @@
+{
+  "format": "flaxchat-development-candidate-v1",
+  "purpose": "development-only; never final benchmark reporting",
+  "seed": 29,
+  "max_scanned_rows_per_config": 10000,
+  "max_selected_rows_per_config": 128,
+  "heldout_hash_modulus": 5,
+  "sources": [
+    {
+      "name": "translated_miracl_train",
+      "task": "retrieval",
+      "repo": "nlpai-lab/miracl-multilingual-triplets",
+      "revision": "71bc9f8e7d86b55203ed3104362b0661789a6c31",
+      "configs": [
+        "en",
+        "ar",
+        "de",
+        "fr",
+        "hi",
+        "ja",
+        "sw",
+        "zh"
+      ],
+      "split": "train",
+      "fields": {
+        "query": "query",
+        "positive": "positive",
+        "negative": "negative",
+        "group": "id"
+      },
+      "group_policy": "aligned-id-across-configs",
+      "metadata_verified_rows_per_config": 2863
+    },
+    {
+      "name": "globalvoices_train",
+      "task": "bitext",
+      "repo": "sentence-transformers/parallel-sentences-global-voices",
+      "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+      "configs": [
+        "en-ar",
+        "en-de",
+        "en-fr",
+        "en-hi",
+        "en-ko",
+        "en-ur",
+        "en-tr",
+        "en-ru"
+      ],
+      "split": "train",
+      "fields": {
+        "query": "english",
+        "positive": "non_english"
+      },
+      "group_policy": "english-text-across-configs"
+    },
+    {
+      "name": "codesearchnet_train",
+      "task": "code",
+      "repo": "sentence-transformers/codesearchnet",
+      "revision": "079a958b01dc87cf07b66a68414c4b4196d889cc",
+      "configs": [
+        "pair"
+      ],
+      "split": "train",
+      "fields": {
+        "query": "comment",
+        "positive": "code"
+      },
+      "group_policy": "query-text",
+      "programming_language": "unknown",
+      "metadata_verified_total_rows": 1375067
+    },
+    {
+      "name": "stsb_validation",
+      "task": "sts",
+      "repo": "sentence-transformers/stsb",
+      "revision": "ab7a5ac0e35aa22088bdcf23e7fd99b220e53308",
+      "configs": [
+        "default"
+      ],
+      "split": "validation",
+      "fields": {
+        "query": "sentence1",
+        "positive": "sentence2",
+        "score": "score"
+      },
+      "group_policy": "pair-text",
+      "score_range": [
+        0,
+        1
+      ],
+      "metadata_verified_total_rows": 1500
+    }
+  ],
+  "admission": {
+    "official_benchmark_dev_or_test_allowed": false,
+    "quarantine_all_training_sources": true,
+    "existing_parent_exposure_must_be_checked": true,
+    "prepared_rows": false
+  }
+}
