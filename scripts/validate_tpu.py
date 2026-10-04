@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ET
 
 def source_digest(root):
     digest = hashlib.sha256()
-    files = sorted(p for folder in ('flaxchat', 'scripts', 'tests', 'benchmarks', 'tasks', 'infra', 'accelerators')
+    files = sorted(p for folder in ('flaxchat', 'scripts', 'tests', 'benchmarks', 'tasks', 'infra', 'accelerators', 'torch_port')
                    for p in (root / folder).rglob('*.py'))
     for path in files:
         digest.update(str(path.relative_to(root)).encode() + b'\0' + path.read_bytes())

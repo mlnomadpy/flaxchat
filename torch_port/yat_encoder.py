@@ -1,7 +1,7 @@
 """PyTorch inference implementation of FlaxChat's released YAT encoder.
 
 This module intentionally has no JAX dependency. It preserves BF16 feature and
-distance arithmetic and FP32 residuals/scores from the step-12,000 checkpoint.
+distance arithmetic and FP32 residuals/scores from the released checkpoints.
 The dense distance fallback favors a fixed-shape TPU graph over fast inference;
 it should be optimized only after accelerator parity is established.
 """

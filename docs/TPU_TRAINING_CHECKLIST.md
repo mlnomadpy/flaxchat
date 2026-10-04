@@ -1,5 +1,12 @@
 # TPU training checklist
 
+> Historical execution log through September 26, 2026. Session handles, budget
+> observations, and statements that jobs are active below are dated observations;
+> do not use them to infer current cloud state or resume an old controller.
+> The current execution policy is in the
+> [representation training runbook](REPRESENTATION_TRAINING_RUNBOOK.md) and
+> [September 30 audit](SYSTEM_AUDIT_2026-09-30.md).
+
 Updated September 26, 2026. This is the execution queue for the current task.
 Immediate milestone: launch and evaluate a bounded real-data run of the 307M YAT multilingual encoder. Broader optimization, scaling and model-quality goals remain open; they must not create an endless prerequisite loop before the pilot.
 

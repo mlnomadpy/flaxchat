@@ -1,5 +1,12 @@
 # YAT mmBERT training
 
+> Historical MLM adaptation and launch record. The statements below about
+> unlaunched training, credits, pending contrastive stages, and running resources
+> apply to their dated attempts. The later embedding stage completed 14,000
+> updates; see its [model card](YAT_MMBERT_EMBEDDING_V1_MODEL_CARD.md).
+> Continue the trained model using the
+> [representation training runbook](REPRESENTATION_TRAINING_RUNBOOK.md).
+
 The native candidate has 307,786,284 parameters: released mmBERT-base tensors
 plus one trainable FFN alpha and one trainable attention alpha per layer (44
 additional scalars). Initialization copies the pretrained backbone; replacing

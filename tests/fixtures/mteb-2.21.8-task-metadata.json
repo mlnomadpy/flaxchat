@@ -1,0 +1,183 @@
+{
+  "datasets_loaded": false,
+  "inventory": {
+    "MIRACLRetrievalHardNegatives": {
+      "aggregation_policy": "finite-main-score/row-macro/task-macro/category-macro-v1",
+      "category": "Retrieval",
+      "dataset_revision": "d7d94fa4b946cec4a27c84653aa0cf6b33f74a3c",
+      "eval_splits": [
+        "dev"
+      ],
+      "expected_rows": [
+        [
+          "dev",
+          "ar"
+        ],
+        [
+          "dev",
+          "bn"
+        ],
+        [
+          "dev",
+          "de"
+        ],
+        [
+          "dev",
+          "en"
+        ],
+        [
+          "dev",
+          "es"
+        ],
+        [
+          "dev",
+          "fa"
+        ],
+        [
+          "dev",
+          "fi"
+        ],
+        [
+          "dev",
+          "fr"
+        ],
+        [
+          "dev",
+          "hi"
+        ],
+        [
+          "dev",
+          "id"
+        ],
+        [
+          "dev",
+          "ja"
+        ],
+        [
+          "dev",
+          "ko"
+        ],
+        [
+          "dev",
+          "ru"
+        ],
+        [
+          "dev",
+          "sw"
+        ],
+        [
+          "dev",
+          "te"
+        ],
+        [
+          "dev",
+          "th"
+        ],
+        [
+          "dev",
+          "yo"
+        ],
+        [
+          "dev",
+          "zh"
+        ]
+      ],
+      "hf_subsets": [
+        "ar",
+        "bn",
+        "de",
+        "en",
+        "es",
+        "fa",
+        "fi",
+        "fr",
+        "hi",
+        "id",
+        "ja",
+        "ko",
+        "ru",
+        "sw",
+        "te",
+        "th",
+        "yo",
+        "zh"
+      ],
+      "metric": "main_score"
+    },
+    "STSBenchmark": {
+      "aggregation_policy": "finite-main-score/row-macro/task-macro/category-macro-v1",
+      "category": "STS",
+      "dataset_revision": "b0fddb56ed78048fa8b90373c8a3cfc37b684831",
+      "eval_splits": [
+        "test"
+      ],
+      "expected_rows": [
+        [
+          "test",
+          "default"
+        ]
+      ],
+      "hf_subsets": [
+        "default"
+      ],
+      "metric": "main_score"
+    },
+    "WebLINXCandidatesReranking": {
+      "aggregation_policy": "finite-main-score/row-macro/task-macro/category-macro-v1",
+      "category": "Reranking",
+      "dataset_revision": "107fdc2402d2c4bfb2a720dfcfe1f6ff9d21151b",
+      "eval_splits": [
+        "validation",
+        "test_iid",
+        "test_cat",
+        "test_geo",
+        "test_vis",
+        "test_web"
+      ],
+      "expected_rows": [
+        [
+          "validation",
+          "default"
+        ],
+        [
+          "test_iid",
+          "default"
+        ],
+        [
+          "test_cat",
+          "default"
+        ],
+        [
+          "test_geo",
+          "default"
+        ],
+        [
+          "test_vis",
+          "default"
+        ],
+        [
+          "test_web",
+          "default"
+        ]
+      ],
+      "hf_subsets": [
+        "default"
+      ],
+      "metric": "main_score"
+    }
+  },
+  "model_executed": false,
+  "mteb_version": "2.21.8",
+  "physical_tpu_qualified": false,
+  "remaining_checks": [
+    "actual dataset split/subset loading",
+    "emitted result row agreement",
+    "physical model evaluation"
+  ],
+  "scope": "actual_pinned_package_task_metadata_only",
+  "task_source_sha256": {
+    "MIRACLRetrievalHardNegatives": "453fb329687a8ddaebd93867223945c00bc0d1e35a57cebb47040865042bd046",
+    "STSBenchmark": "7c11239c2783b55cf0321812748c22fb38aaa9e2194dadf2f2e498992a287e4e",
+    "WebLINXCandidatesReranking": "74645191ff0668f2006403b0207d68759bacf83a6916ecde459a180168304357"
+  }
+}

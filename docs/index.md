@@ -1,9 +1,26 @@
 ---
+
+Latest reconciled audit: [all open issues, current evidence and tool priorities](SYSTEM_AUDIT_CURRENT_2026-10-01.md). Earlier dated findings below remain historical where superseded.
+
 layout: home
 title: flaxchat
 ---
 
 # flaxchat
+
+For the current YAT embedding model, start with the
+[representation training runbook](REPRESENTATION_TRAINING_RUNBOOK.md),
+[September 30 system audit](SYSTEM_AUDIT_2026-09-30.md),
+[October 1 follow-up audit](SYSTEM_AUDIT_2026-10-01.md),
+[training tools](TRAINING_TOOLS.md), [open-issue checklist](ISSUE_READINESS_CHECKLIST.md),
+[code-language provenance](CODE_LANGUAGE_PROVENANCE.md),
+[benchmark-overlap audit](EMBEDDING_BENCHMARK_OVERLAP.md), and
+[published model card](YAT_MMBERT_EMBEDDING_V1_MODEL_CARD.md).
+Earlier dated reports describe the revision and hardware tested at that time.
+
+The next representation gates are [native MIRACL candidate preparation](NATIVE_MIRACL_CANDIDATE_GATE.md)
+and [actual production-parent restoration](audit-2026-09-30/production-parent-restoration-next-gate.md).
+They remain unqualified until their actual data and physical TPU receipts exist.
 
 A minimal, end-to-end LLM training harness for **Google Cloud TPU pods**, built on **JAX/Flax NNX**.
 
@@ -109,12 +126,13 @@ config = FlaxChatConfig.from_depth(depth=12)
 
 ## Test Suite
 
-**204 collected tests** across 17 files cover model and attention semantics,
-all generation modes, optimizer safety, exact resume, evaluation, guarded execution,
-tokenizers, data/report utilities, sharding, and accelerator parity.
+Tests cover model and attention semantics, generation modes, optimizer safety,
+checkpoint recovery, evaluation, guarded execution, data utilities, and sharding.
+Coverage depends on the selected backend and test suite. The current embedding
+trainer has outstanding dedicated TPU test work documented in the system audit.
 
 ```bash
-pixi run test  # all tests pass on CPU, GPU, and TPU
+pixi run test  # developer suite; not a physical TPU qualification
 ```
 
 ---
@@ -166,3 +184,24 @@ Built on [nanochat](https://github.com/karpathy/nanochat), [JAX](https://github.
 - **[{{ post.title }}]({{ post.url | relative_url }})** — {{ post.date | date: "%B %d, %Y" }}
   {{ post.excerpt | strip_html | truncatewords: 30 }}
 {% endfor %}
+
+- [Pinned representation development recipe](REPRESENTATION_DEVELOPMENT_RECIPE.md)
+- [October 1 physical qualification follow-up](audit-2026-09-30/physical-qualification-2026-10-01.md)
+- [Independent representation development gates](INDEPENDENT_REPRESENTATION_DEVELOPMENT.md)
+- [Parent exposure inventory builder](PARENT_EXPOSURE_INVENTORY_BUILDER.md)
+- [Generation-pinned GCS historical data scan](GCS_PARENT_EXPOSURE_SCAN.md)
+- [Authenticated historical row semantics](HISTORICAL_EXPOSURE_ROW_POLICY.md)
+- [Parallel audit consolidation and remaining gates](audit-2026-09-30/consolidated-followup-2026-10-01.md)
+
+- [Latest parallel system audit, tools and continuation gates](PARALLEL_SYSTEM_AUDIT_2026-10-01.md)
+
+- [Replacement development sources and unresolved exposure](REPRESENTATION_DEVELOPMENT_V2.md)
+
+- [Completed native MIRACL candidate exposure scan](audit-2026-09-30/native-miracl-data-01/README.md) — overlap blocks independent-development admission.
+
+- [Matched embedding comparison contract](MATCHED_EMBEDDING_COMPARISON.md) — authenticates complete measured receipts; no new measured comparison yet.
+
+- [Authenticated retrieval metrics and staged TPU full-corpus scorer](FULL_CORPUS_RETRIEVAL.md)
+- [Bounded artifact transfer diagnostic](ARTIFACT_TRANSFER_DIAGNOSTIC.md)
+- [Global exposure and invocation telemetry](EMBEDDING_TELEMETRY.md)
+- [Paired query uncertainty](EMBEDDING_UNCERTAINTY.md)

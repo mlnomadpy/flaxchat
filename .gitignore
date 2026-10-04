@@ -59,3 +59,11 @@ docs/Gemfile.lock
 #   git log dacli-record
 #   git show dacli-record:.dacli/projects/<p>/tasks/done/<file>
 .dacli/
+
+# Local operational audit receipts; reviewed metadata fixtures live in tests/fixtures.
+docs/audit-2026-09-30/
+# Deployment/financial speed-run receipts retained locally.
+benchmarks/results/yat-mmbert-light-speed-20261003/admission.json
+benchmarks/results/yat-mmbert-light-speed-20261003/campaign-result.json
+benchmarks/results/yat-mmbert-light-speed-20261003/deployment-receipt.json
+benchmarks/results/yat-mmbert-light-speed-20261003/run.json

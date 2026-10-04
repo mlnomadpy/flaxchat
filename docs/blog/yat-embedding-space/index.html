@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f9fa">
+  <meta name="description" content="The YAT mmBERT embedding v1 release: YAT attention and gated FFN equations, TPU results, and comparisons with mmBERT and EmbeddingGemma.">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="YAT mmBERT Embedding v1">
+  <meta property="og:description" content="A multilingual retrieval encoder, its block equations, measured gains, and open limitations.">
+  <title>YAT mmBERT Embedding v1 — Model notes</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+    :root { color-scheme: light; --paper:#f6f9fa; --ink:#172a34; --soft:#4c626d; --line:#d4e2e6; --accent:#176d80; --panel:#e9f3f5; --white:#fff; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',system-ui,sans-serif; font-size:18px; line-height:1.65; }
+    a { color:#075d76; text-decoration-thickness:1px; text-underline-offset:3px; }
+    a:hover { color:#063f52; }
+    a:focus-visible { outline:3px solid #d36d3f; outline-offset:3px; }
+    .masthead { border-bottom:1px solid var(--line); background:var(--white); }
+    .masthead-inner { max-width:1150px; margin:auto; padding:18px 32px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+    .brand { display:flex; align-items:center; gap:12px; color:var(--ink); text-decoration:none; font-size:15px; font-weight:700; letter-spacing:.01em; }
+    .mark { width:30px; height:30px; border:2px solid var(--accent); border-radius:50%; display:grid; place-items:center; color:var(--accent); font-family:'IBM Plex Mono',monospace; font-size:18px; line-height:1; }
+    .masthead nav { display:flex; gap:20px; font-size:14px; }
+    .masthead nav a { text-decoration:none; font-weight:600; }
+    .layout { max-width:1150px; margin:auto; padding:0 32px 110px; display:grid; grid-template-columns:170px minmax(0,780px); gap:72px; }
+    .rail { padding-top:80px; }
+    .rail-inner { position:sticky; top:30px; border-left:2px solid var(--line); padding-left:17px; font-size:13px; color:var(--soft); }
+    .rail-inner strong { display:block; color:var(--ink); margin-bottom:12px; }
+    .rail-inner a { display:block; color:var(--soft); text-decoration:none; margin:8px 0; line-height:1.3; }
+    .rail-inner a:hover { color:var(--accent); }
+    article { min-width:0; padding-top:60px; }
+    article h1 { font-size:clamp(2.5rem,5vw,4.35rem); line-height:1.08; letter-spacing:-.055em; max-width:14ch; margin:0 0 22px; font-weight:600; }
+    article h1 + p { color:var(--accent); font-size:15px; font-family:'IBM Plex Mono',monospace; margin:0 0 35px; }
+    article h2 { margin:68px 0 19px; padding-top:14px; border-top:1px solid var(--line); font-size:clamp(1.7rem,3vw,2.25rem); line-height:1.2; letter-spacing:-.035em; }
+    article p { max-width:70ch; margin:0 0 22px; }
+    article h1 + p + p { font-size:21px; line-height:1.58; color:#273d47; }
+    article strong { font-weight:700; }
+    .math { margin:26px 0 30px; background:var(--panel); border-left:4px solid var(--accent); border-radius:0 10px 10px 0; padding:24px 20px; overflow-x:auto; color:#123944; font-size:1.06rem; }
+    span.math { margin:0; padding:0; background:none; border:0; color:inherit; }
+    .math mjx-container { max-width:100%; }
+    table { display:block; width:100%; overflow-x:auto; border-collapse:collapse; font-size:15px; margin:26px 0 32px; }
+    th, td { padding:11px 14px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
+    th { background:var(--panel); color:#234650; font-weight:600; }
+    tbody tr:nth-child(even) { background:#eff5f6; }
+    td:not(:first-child), th:not(:first-child) { text-align:right; font-variant-numeric:tabular-nums; }
+    code { font-family:'IBM Plex Mono',monospace; font-size:.83em; background:#e8eef0; border-radius:3px; padding:.12em .3em; }
+    .footer { border-top:1px solid var(--line); padding:28px 32px 40px; color:var(--soft); font-size:14px; }
+    .footer-inner { max-width:1150px; margin:auto; }
+    @media (max-width:850px) { .layout { display:block; max-width:800px; padding:0 24px 80px; } .rail { display:none; } article { padding-top:48px; } }
+    @media (max-width:580px) { body { font-size:16px; } .masthead-inner { padding:15px 18px; } .masthead nav { gap:12px; font-size:12px; } .layout { padding:0 18px 70px; } article h1 + p + p { font-size:18px; } article h2 { margin-top:52px; } .math { font-size:.86rem; padding:18px 12px; } }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+  </style>
+  <script>
+    window.MathJax = { tex: { inlineMath: [[String.raw`\(`, String.raw`\)`]], displayMath: [['$$','$$']] }, svg: { fontCache: 'global' } };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+  <header class="masthead"><div class="masthead-inner">
+    <a class="brand" href="https://huggingface.co/mlnomad"><span class="mark">Y</span> YAT model notes</a>
+    <nav aria-label="Model links"><a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1">JAX weights</a><a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1-pytorch">PyTorch weights</a></nav>
+  </div></header>
+  <div class="layout">
+    <aside class="rail" aria-label="Article contents"><div class="rail-inner">
+      <strong>On this page</strong>
+      <a href="#inside-the-yat-blocks">Inside the YAT blocks</a>
+      <a href="#what-improved">What improved</a>
+      <a href="#where-it-stands-against-mmbert-and-embeddinggemma">Against mmBERT and EmbeddingGemma</a>
+      <a href="#using-the-release">Using the release</a>
+      <a href="#what-we-will-improve-next">What comes next</a>
+    </div></aside>
+    <article id="article"><h1>YAT mmBERT Embedding v1: a multilingual encoder for retrieval and code search</h1>
+<p><em>September 2026</em></p>
+<p>We have released <a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1">YAT mmBERT base embedding v1</a>, a 307.8M-parameter bidirectional encoder for multilingual search and code retrieval. The <a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1-pytorch">PyTorch conversion</a> is public alongside the original Flax/JAX weights. It is an embedding fine-tune of our earlier YAT contrastive checkpoint, which itself inherits mmBERT weights. This release is not a from-scratch pretraining result or an architecture-isolated comparison with mmBERT.</p>
+<p>The model combines YAT attention with a YAT GLU feed-forward network. The YAT bias is fixed at 1, epsilon at 0.01, and alpha is trained. We fine-tuned on MS MARCO hard triplets, multilingual MIRACL triplets, and CodeSearchNet query–code pairs. The final stage ran 14,000 updates with a global batch of 128 query–positive pairs on 16 v5e Spot TPU chips. This amounted to 1.792 million sampled pair presentations, including repeats. The <a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1">model card</a> records the data revisions, batch mix, optimizer, and evaluation receipts.</p>
+<h2 id="inside-the-yat-blocks">Inside the YAT blocks</h2>
+<p>For vectors <span class="math">\(u,v\)</span> of the same width, the response used by both blocks is</p>
+<div class="math">$$
+K_{\alpha}(u,v) = \alpha\,\frac{(u^\top v + 1)^2}{\lVert u-v\rVert_2^2 + 0.01}.
+$$</div>
+<p>The numerator bias <strong>1</strong> and denominator epsilon <strong>0.01</strong> are fixed. The scalar <span class="math">\(\alpha\)</span> is learned. The attention and feed-forward blocks each have their own trainable alpha in every encoder layer; the equation describes their common form, not shared parameters. The 0.01 here belongs to the YAT response and should not be confused with the layer-normalization epsilon.</p>
+<p>In an attention head, <span class="math">\(q_i\)</span> and <span class="math">\(k_j\)</span> are projected token vectors after rotary position encoding. Instead of the usual scaled dot-product logit, the model computes <span class="math">\(s_{ij}=K_{\alpha_{\mathrm{attn}}}(q_i,k_j)\)</span>. It masks padding and, on local-attention layers, tokens outside the window. It then applies ordinary softmax and uses the resulting probabilities to combine values:</p>
+<div class="math">$$
+p_{ij}=\operatorname{softmax}_{j}(s_{ij}),\qquad
+o_i=\sum_{j}p_{ij}v_j.
+$$</div>
+<p>The YAT response is therefore the <strong>score supplied to softmax</strong>, not a replacement for softmax itself. The encoder alternates local and global bidirectional attention according to its configuration.</p>
+<p>The feed-forward block has the two linear branches of a gated FFN. Write <span class="math">\(a_j=x^\top w_j\)</span> for the first branch and <span class="math">\(g_j=x^\top u_j\)</span> for the gate branch, where <span class="math">\(w_j\)</span> and <span class="math">\(u_j\)</span> are columns of the respective input projection weights. Its hidden output is</p>
+<div class="math">$$
+h_j=K_{\alpha_{\mathrm{ffn}}}(x,w_j)\,g_j
+=\alpha_{\mathrm{ffn}}\,\frac{(x^\top w_j+1)^2}{\lVert x-w_j\rVert_2^2+0.01}\,(x^\top u_j),
+\qquad \operatorname{FFN}(x)=W_o h.
+$$</div>
+<p>This is the YAT analogue of <span class="math">\(\operatorname{GeGLU}(x)=\operatorname{GELU}(W_a x)\odot(W_g x)\)</span>: the second branch remains a <strong>linear gate</strong>, while the first uses the YAT response. The block adds the attention and FFN projections through FP32 residual paths. Feature vectors and distance calculations use BF16. The feed-forward distance code reuses dot products when safe and falls back to direct coordinate differences for cancellation-sensitive cases; attention forms scores in FP32 before softmax. These are the choices in the released checkpoint, not an all-BF16 or fused-attention claim. The <a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1-pytorch/blob/main/yat_encoder.py">published PyTorch implementation</a> provides an executable definition.</p>
+<h2 id="what-improved">What improved</h2>
+<p>We evaluated the new checkpoint and its step-12,000 parent using the same tokenizer, pooling, truncation, task inventory, dataset revisions, and MTEB 2.21.8 harness on physical TPUs. Scores below are points on a 0–100 scale; the MTEB figures average task categories, while CoIR and MIRACL average their constituent tasks or languages.</p>
+<table>
+<thead>
+<tr>
+  <th>Evaluation</th>
+  <th style="text-align:right">YAT embedding v1</th>
+  <th style="text-align:right">Parent checkpoint</th>
+  <th style="text-align:right">Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>English MTEB v2, 41 tasks</td>
+  <td style="text-align:right">52.78</td>
+  <td style="text-align:right">45.86</td>
+  <td style="text-align:right">+6.92</td>
+</tr>
+<tr>
+  <td>Multilingual MTEB v2, 131 tasks</td>
+  <td style="text-align:right">48.21</td>
+  <td style="text-align:right">46.63</td>
+  <td style="text-align:right">+1.58</td>
+</tr>
+<tr>
+  <td>CoIR, ten tasks</td>
+  <td style="text-align:right">43.45</td>
+  <td style="text-align:right">21.03</td>
+  <td style="text-align:right">+22.42</td>
+</tr>
+<tr>
+  <td>MIRACL hard-negative retrieval, 18 languages</td>
+  <td style="text-align:right">46.37</td>
+  <td style="text-align:right">8.06</td>
+  <td style="text-align:right">+38.31</td>
+</tr>
+</tbody>
+</table>
+<p>The same-protocol gains are substantial for retrieval, especially the MIRACL diagnostic. They are not uniform. Tatoeba bitext mining fell from <strong>52.72 to 35.27</strong>, with declines in 108 of 112 language-pair subsets. Multilingual clustering and bitext category means also declined. The fine-tune included MIRACL data but did not replay the earlier Global Voices bitext pairs; that is a plausible explanation for the lost cross-language alignment, not a proven cause. CodeSearchNet pairs were used in training, so CodeSearchNet-family CoIR scores need a train/evaluation overlap audit before they are treated as independent generalization evidence. The <a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1">full breakdown and receipts</a> let readers inspect the result beyond a single mean.</p>
+<h2 id="where-it-stands-against-mmbert-and-embeddinggemma">Where it stands against mmBERT and EmbeddingGemma</h2>
+<p>The <a href="https://huggingface.co/blog/mmbert">mmBERT release post</a> describes a much broader multilingual pretraining program: over 3 trillion tokens across a staged language and masking schedule, followed by an MS MARCO embedding fine-tune for its retrieval tables. Its paper reports <strong>53.9</strong> on English MTEB v2, <strong>54.1</strong> on multilingual MTEB v2, and <strong>42.2</strong> on CoIR for mmBERT-base. Our reported figures are 52.78, 48.21, and 43.45 respectively. Different fine-tuning data and unpinned paper benchmark revisions mean these numbers give context, not a controlled test of YAT versus mmBERT. Our model also inherits mmBERT weights. See <a href="https://arxiv.org/html/2509.06888v1">Marone et al.</a> for the paper tables and methodology.</p>
+<p><a href="https://huggingface.co/google/embeddinggemma-300m">EmbeddingGemma 300M</a> is the more relevant product target: it is roughly the same size, produces 768-dimensional embeddings, supports a 2,048-token input window, and offers trained 512-, 256-, and 128-dimensional outputs. Its official card reports <strong>65.11</strong> for English MTEB v2 and <strong>54.31</strong> for multilingual MTEB v2 as <em>Mean (TaskType)</em> at 768 dimensions. Our seven-category English and eight-category multilingual means are <strong>52.78</strong> and <strong>48.21</strong>. The nominal gaps are <strong>12.33</strong> and <strong>6.10</strong> points in EmbeddingGemma's favor. These are cross-report gaps, not a head-to-head result: the exact task sets, revisions, prompts, length handling, and inference implementations have not been harmonized. EmbeddingGemma also reports <strong>68.76</strong> on MTEB Code v1; our <strong>43.45 CoIR</strong> score is from a different suite and should not be subtracted from it. Google's <a href="https://huggingface.co/google/embeddinggemma-300m">model card</a> and <a href="https://huggingface.co/blog/embeddinggemma">release post</a> document those scores and its query/document prompts.</p>
+<p>For now, EmbeddingGemma has the stronger published general embedding results and a more mature deployment path. Our current case is narrower: the YAT fine-tune greatly improves retrieval over its own parent and makes the architecture available in both JAX and PyTorch. We have not measured a matched EmbeddingGemma run on our pinned MTEB inventory, CoIR, and MIRACL setup, so we do not claim to outperform it. We also have not measured production latency against it.</p>
+<h2 id="using-the-release">Using the release</h2>
+<p>The <a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1-pytorch">PyTorch repository</a> contains <code>model.safetensors</code>, <code>tokenizer.json</code>, a custom <code>yat_encoder.py</code>, conversion hashes, and TPU parity results. It is not a <code>transformers.AutoModel</code> checkpoint. Its model card shows how to load it with PyTorch, mean-pool non-padding token states, L2-normalize the result, and use cosine similarity. The Flax/JAX checkpoint is available separately on the Hub.</p>
+<p>We checked the conversion on a physical v5e TPU using eight English, multilingual, and code inputs. The minimum pooled-vector cosine similarity between JAX and PyTorch was <strong>0.999960</strong>; top-1 and top-3 neighbor sets matched in that batch, with a maximum pairwise cosine-score drift of <strong>0.003854</strong>. This is a conversion parity check, not an independent PyTorch benchmark or proof of identical outputs on every input.</p>
+<p>The fine-tune used 128-token queries and 256-token documents. We evaluated with a 512-token cap; quality and serving behavior on longer inputs remain open. The PyTorch implementation favors parity over serving speed. Before putting this model into a production search stack, we would measure latency, recall on the actual corpus, cross-language retrieval, and code-search quality separately.</p>
+<h2 id="what-we-will-improve-next">What we will improve next</h2>
+<p>Our next model should target the demonstrated weaknesses instead of optimizing a single aggregate score. We plan to restore cross-language alignment with explicit bitext replay and hard negatives, audit code-data overlap, train and evaluate longer-document retrieval, and test an asymmetric query/document recipe with task prompts. We also want matched runs of YAT, mmBERT, and EmbeddingGemma on the same pinned tasks and hardware, plus serving work for the PyTorch implementation. Those experiments will tell us whether YAT's architecture offers a practical advantage after data and inference differences are controlled.</p>
+<p>The model is available now: <a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1">Flax/JAX weights</a> · <a href="https://huggingface.co/mlnomad/yat-mmbert-base-embedding-v1-pytorch">PyTorch weights</a>.</p>
+</article>
+  </div>
+  <footer class="footer"><div class="footer-inner">YAT mmBERT Embedding v1 · Release notes and measured results · September 2026</div></footer>
+</body>
+</html>

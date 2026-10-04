@@ -19,12 +19,7 @@ import jax
 from flaxchat.common import print0, get_base_dir
 
 
-# GPU/TPU hourly rates (approximate, spot pricing)
-DEVICE_COSTS = {
-    "h100": 3.00, "a100": 1.79, "h200": 3.50,
-    "l40s": 1.20, "l4": 0.50, "t4": 0.35,
-    "tpu v4": 1.50, "tpu v5e": 1.20, "tpu v5p": 2.00, "tpu v6e": 2.50,
-}
+from flaxchat.cost_accounting import estimate_slice_cost
 
 
 def _get_git_info():
@@ -61,20 +56,11 @@ def _get_system_info():
     return info
 
 
-def _estimate_cost(time_seconds, device_kind=None):
-    """Estimate training cost based on device and time."""
-    if device_kind is None:
-        try:
-            device_kind = jax.devices()[0].device_kind
-        except Exception:
-            return None
-
-    kind_lower = device_kind.lower()
-    for pattern, rate in DEVICE_COSTS.items():
-        if pattern in kind_lower:
-            hours = time_seconds / 3600
-            return round(rate * hours * jax.device_count(), 2)
-    return None
+def _estimate_cost(time_seconds, device_kind=None, *, pricing=None):
+    """No rate can be inferred from logical devices. Require whole-slice evidence."""
+    if pricing is None:
+        return None
+    return estimate_slice_cost(time_seconds, pricing)
 
 
 class Report:
@@ -90,7 +76,8 @@ class Report:
         report.save()
     """
 
-    def __init__(self, run_name="default"):
+    def __init__(self, run_name="default", *, pricing=None):
+        self.pricing = pricing
         self.run_name = run_name
         self.sections = []
         self.start_time = time.time()
@@ -138,11 +125,13 @@ class Report:
 
         # Cost estimation
         total_time = time.time() - self.start_time
-        cost = _estimate_cost(total_time)
+        cost = _estimate_cost(total_time, pricing=self.pricing)
         lines.append("## Summary")
         lines.append(f"- **Total wall time**: {total_time:.0f}s ({total_time/60:.1f}m)")
         if cost is not None:
-            lines.append(f"- **Estimated cost**: ${cost:.2f}")
+            lines.append(f"- **Estimated whole-slice cost**: ${cost:.2f} (planning estimate; posted charges unknown)")
+        if cost is None:
+            lines.append("- **Estimated cost**: unknown (verified whole-slice pricing not supplied)")
         lines.append("")
 
         return "\n".join(lines)
@@ -164,6 +153,8 @@ class Report:
         json_path = path.replace(".md", ".json")
         with open(json_path, "w") as f:
             json.dump({
+                "pricing": self.pricing,
+                "posted_cost": None,
                 "run_name": self.run_name,
                 "system": self.system_info,
                 "git": self.git_info,
@@ -175,7 +166,9 @@ class Report:
 
     def to_dict(self):
         return {
-            "run_name": self.run_name,
+            "pricing": self.pricing,
+                "posted_cost": None,
+                "run_name": self.run_name,
             "system": self.system_info,
             "git": self.git_info,
             "sections": self.sections,

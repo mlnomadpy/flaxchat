@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import datetime
 import os
 from pathlib import Path
 import shlex
 import subprocess
-import time
-import math
-import threading
 
 from flaxchat.launch import LaunchSpec
 
@@ -52,6 +48,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--manifest", type=Path, default=Path("artifacts/gcp-launch.json"))
     parser.add_argument("--save-profile")
     parser.add_argument("--repo", help="Git repo to clone")
+    parser.add_argument("--guarded-manifest", type=Path, help="Manifest-driven guarded replacement")
+    parser.add_argument("--manifest-uri", help="Immutable GCS URI of guarded manifest")
+    parser.add_argument("--output", type=Path, help="Local lifecycle receipts directory")
     return parser
 
 
@@ -92,81 +91,24 @@ def run_adapter(args, spec: LaunchSpec, vm, gcs) -> int:
     if args.dry_run:
         vm.dry_run(command, sync=".", secrets=args.secrets)
         return 0
-    if args.save_profile:
-        vm.save_profile(args.save_profile)
-    if args.max_cost is not None:
-        if not math.isfinite(args.max_cost) or args.max_cost <= 0:
-            raise ValueError("--max-cost must be finite and positive")
-        if args.hourly_rate is None or not math.isfinite(args.hourly_rate) or args.hourly_rate <= 0:
-            raise ValueError("--max-cost requires a verified finite positive --hourly-rate for the entire slice")
-        if not args.teardown:
-            raise ValueError("A budgeted run cannot retain an allocated resource")
-    # Waiting must happen before allocation, including the run-once path.
-    if args.start_after:
-        now = datetime.datetime.now()
-        hour, minute = map(int, args.start_after.split(":"))
-        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if target <= now:
-            target += datetime.timedelta(days=1)
-        time.sleep((target - now).total_seconds())
-    expired = threading.Event()
-    cleanup_errors = []
-    def expire():
-        expired.set()
-        try:
-            vm.down()
-        except Exception as error:
-            cleanup_errors.append(error)
-    def check_deadline():
-        if expired.is_set():
-            raise TimeoutError("Allocation budget expired; cleanup was requested")
-    guard = None
-    provision_attempted = False
-    try:
-        provision_attempted = True
-        if args.max_cost is not None:
-            guard = threading.Timer(args.max_cost / args.hourly_rate * 3600, expire)
-            guard.daemon = True
-            guard.start()
-        vm.up_queued() if args.queued else vm.up()
-        check_deadline()
-        vm.setup(extra_pip="flaxchat")
-        vm.verify()
-        check_deadline()
-        if args.repo:
-            vm.clone_repo(args.repo, install=True)
-        if gcs:
-            vm.run_with_resume(
-                command,
-                gcs=gcs,
-                run_name=args.run_name,
-                sync=".",
-                secrets=args.secrets,
-            )
-        else:
-            vm.run(command, sync=".", secrets=args.secrets)
-        check_deadline()
-        if args.recover:
-            vm.watch_notify(command, notify_url=args.notify) if args.notify else vm.watch(command)
-        else:
-            vm.logs(follow=True)
-        check_deadline()
-        vm.cost_summary()
-        if args.collect:
-            vm.collect(args.collect)
-        return 0
-    finally:
-        if guard is not None:
-            guard.cancel()
-        if spec.teardown == "always" and provision_attempted:
-            vm.down()
-        if cleanup_errors:
-            raise RuntimeError("Budget watchdog resource deletion failed") from cleanup_errors[0]
+    raise RuntimeError(
+        "Legacy tpuz paid execution is disabled: its local watchdog cannot survive "
+        "controller loss. Use --guarded-manifest with --manifest-uri and --output, "
+        "or scripts.representation_run launch for a verified cloud lease."
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.guarded_manifest:
+        if not args.manifest_uri or not args.output:
+            parser.error("--guarded-manifest requires --manifest-uri and --output")
+        from scripts.representation_run import main as launch
+        return launch(["launch", "--manifest", str(args.guarded_manifest),
+                       "--manifest-uri", args.manifest_uri, "--output", str(args.output)])
+    if not args.dry_run:
+        parser.error("Paid legacy execution disabled; use --guarded-manifest (see docs/INFRASTRUCTURE_RUNS.md)")
     try:
         from tpuz import GCE, GCS, TPU
     except ImportError:

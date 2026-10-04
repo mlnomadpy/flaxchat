@@ -1,0 +1,60 @@
+{
+  "complete": true,
+  "scope": "single-physical-TPU-device/JAX-harness/encoder-plus-mean-pool-and-L2",
+  "hardware": {
+    "device_kind": "TPU v5 lite",
+    "local_devices": [
+      "TPU_0(process=0,(0,0,0,0))",
+      "TPU_1(process=0,(1,0,0,0))",
+      "TPU_2(process=0,(0,1,0,0))",
+      "TPU_3(process=0,(1,1,0,0))",
+      "TPU_4(process=0,(0,2,0,0))",
+      "TPU_5(process=0,(1,2,0,0))",
+      "TPU_6(process=0,(0,3,0,0))",
+      "TPU_7(process=0,(1,3,0,0))"
+    ],
+    "measured_device": "TPU_0(process=0,(0,0,0,0))",
+    "process_count": 1,
+    "utilized_devices": 1
+  },
+  "rows": [
+    {
+      "batch": 1,
+      "tokens": 128,
+      "yat_ms": 14.882335999999441,
+      "mmbert_ms": 13.020250499977237,
+      "yat_latency_ratio": 1.1430145679628405,
+      "yat_sequences_per_second": 67.19375237866136,
+      "mmbert_sequences_per_second": 76.8034378448977
+    },
+    {
+      "batch": 8,
+      "tokens": 128,
+      "yat_ms": 23.10067149997508,
+      "mmbert_ms": 14.529330500010929,
+      "yat_latency_ratio": 1.5899336517919875,
+      "yat_sequences_per_second": 346.31027933576,
+      "mmbert_sequences_per_second": 550.6103670774082
+    },
+    {
+      "batch": 1,
+      "tokens": 512,
+      "yat_ms": 19.94486599997458,
+      "mmbert_ms": 14.021970499982217,
+      "yat_latency_ratio": 1.422401081217499,
+      "yat_sequences_per_second": 50.13821602016652,
+      "mmbert_sequences_per_second": 71.31665267740138
+    },
+    {
+      "batch": 8,
+      "tokens": 512,
+      "yat_ms": 59.846978000024365,
+      "mmbert_ms": 32.81011500004638,
+      "yat_latency_ratio": 1.8240404826359116,
+      "yat_sequences_per_second": 133.67425168897825,
+      "mmbert_sequences_per_second": 243.8272465667582
+    }
+  ],
+  "posted_charge_usd": null,
+  "new_reservation_usd": 10
+}

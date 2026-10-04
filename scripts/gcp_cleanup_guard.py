@@ -1,6 +1,7 @@
 """Arm/verify a deployed Cloud Workflows expiry guard before TPU allocation."""
 from __future__ import annotations
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -8,6 +9,151 @@ import subprocess
 import time
 
 import yaml
+
+
+def _prefix_condition(expression, resource):
+    """Evaluate only the reviewed prefix-disjunction subset, never arbitrary CEL."""
+    if not isinstance(expression, str) or len(expression) > 16384:
+        raise ValueError('Unsupported cleanup IAM condition')
+    terms = expression.split('||')
+    prefixes = []
+    for term in terms:
+        match = re.fullmatch(r"\s*resource\.name\.startsWith\('([A-Za-z0-9/_-]+)'\)\s*", term)
+        if match is None:
+            raise ValueError('Unsupported cleanup IAM condition; live scope cannot be inferred')
+        prefixes.append(match[1])
+    return any(resource.startswith(prefix) for prefix in prefixes)
+
+
+def validate_cleanup_scope(policy, roles, *, service_account, project, zone, queue):
+    """Require explicit project allow bindings for both resources; not effective IAM.
+
+    Inherited grants, deny policies and unsupported conditions are not evaluated.
+    Live workflow probes remain mandatory even after this model-free admission.
+    """
+    lease(project, zone, queue, 60)
+    if not isinstance(service_account, str) or not re.fullmatch(
+            r'[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.iam\.gserviceaccount\.com', service_account):
+        raise ValueError('Cleanup workflow has no explicit service-account identity')
+    member = 'serviceAccount:' + service_account
+    resources = {
+        'queuedResources': f'projects/{project}/locations/{zone}/queuedResources/{queue}',
+        'nodes': f'projects/{project}/locations/{zone}/nodes/{queue}',
+    }
+    coverage = {kind: set() for kind in resources}
+    # TPU v2 queuedResources GET/DELETE use tpu.nodes.get/delete too:
+    # https://docs.cloud.google.com/tpu/docs/reference/rest/v2/projects.locations.queuedResources/get
+    # https://docs.cloud.google.com/tpu/docs/reference/rest/v2/projects.locations.queuedResources/delete
+    # CEL still evaluates the distinct queue and node resource names.
+    needed = {'tpu.nodes.get', 'tpu.nodes.delete'}
+    unsupported = []
+    for binding in policy.get('bindings', []):
+        if member not in binding.get('members', []):
+            continue
+        role = roles.get(binding.get('role'))
+        if not isinstance(role, dict) or role.get('deleted') or role.get('stage') == 'DISABLED':
+            continue
+        permissions = set(role.get('includedPermissions', []))
+        for kind, resource in resources.items():
+            if not permissions & needed:
+                continue
+            try:
+                condition = binding.get('condition')
+                allowed = condition is None or _prefix_condition(condition.get('expression'), resource)
+            except (ValueError, AttributeError):
+                unsupported.append(binding.get('role'))
+                continue
+            if allowed:
+                coverage[kind].update(permissions & needed)
+    missing = sorted(f'{kind}:{permission}' for kind in resources
+                     for permission in needed - coverage[kind])
+    if missing:
+        raise ValueError('Cleanup IAM scope does not explicitly cover exact zone/name before reservation: '
+                         + ', '.join(missing) + ('; unsupported conditional bindings' if unsupported else ''))
+    def digest(value):
+        return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'),
+                                        allow_nan=False).encode()).hexdigest()
+    return dict(schema='cleanup-project-allow-scope-v1', service_account=service_account,
+                resources=resources, policy_sha256=digest(policy), roles_sha256=digest(roles),
+                supported_project_allow_coverage=True, effective_iam_verified=False,
+                server_permission_probes_required=True)
+
+
+def preflight_cleanup_scope(*, project, zone, queue, location='us-central1',
+                            workflow='flaxchat-validation-cleanup'):
+    """Read-only scope admission before reservation; does not execute a workflow."""
+    lease(project, zone, queue, 60)
+    discovery = {'schema': 'cleanup-scope-discovery-v1', 'reads': [],
+                 'total_timeout_seconds': 120, 'command_timeout_seconds': 20,
+                 'maximum_attempts_per_read': 2}
+    deadline = time.monotonic() + 120
+    def read(arguments):
+        for attempt in range(2):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                error = TimeoutError('Cleanup scope discovery total deadline exhausted before reservation')
+                error.cleanup_scope_discovery = discovery
+                raise error
+            observation = {'operation': arguments[:3], 'attempt': attempt + 1,
+                           'timeout_seconds': min(20, remaining)}
+            discovery['reads'].append(observation)
+            started = time.monotonic()
+            try:
+                output = subprocess.check_output(['gcloud', *arguments, '--format=json'],
+                    text=True, stderr=subprocess.PIPE, timeout=observation['timeout_seconds'])
+                result = json.loads(output)
+                observation.update(status='succeeded',
+                    output_sha256=hashlib.sha256(output.encode()).hexdigest())
+                return result
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as error:
+                transient = isinstance(error, subprocess.TimeoutExpired)
+                if isinstance(error, subprocess.CalledProcessError):
+                    detail = str(error.stderr or '') + str(error.output or '')
+                    detail = detail.lower()
+                    denied = any(marker in detail for marker in
+                        ('permission', 'forbidden', 'unauthenticated', '403', '401',
+                         'access denied', 'credentials'))
+                    transient = not denied and any(marker in detail for marker in
+                        ('connection reset', 'connection aborted', 'connection refused',
+                         'temporarily unavailable', 'service unavailable', '503',
+                         'timed out', 'timeout', 'unexpected eof', 'remote disconnected'))
+                observation.update(status='transient_failure' if transient else 'terminal_failure',
+                                   error_type=type(error).__name__)
+                if not transient or attempt == 1:
+                    error.cleanup_scope_discovery = discovery
+                    raise
+            except (ValueError, OSError) as error:
+                observation.update(status='terminal_failure', error_type=type(error).__name__)
+                error.cleanup_scope_discovery = discovery
+                raise
+            finally:
+                observation['elapsed_seconds'] = time.monotonic() - started
+    deployed = read(['workflows', 'describe', workflow, '--project', project, '--location', location])
+    source = Path(__file__).parents[1] / 'infra/tpu/cleanup_workflow.yaml'
+    if yaml.safe_load(deployed.get('sourceContents', '')) != yaml.safe_load(source.read_text()):
+        raise ValueError('Cleanup workflow source does not match reviewed permission probes')
+    service_account = deployed.get('serviceAccount', '').split('/')[-1]
+    policy = read(['projects', 'get-iam-policy', project])
+    roles = {}
+    for binding in policy.get('bindings', []):
+        name = binding.get('role', '')
+        if 'serviceAccount:' + service_account not in binding.get('members', []) or name in roles:
+            continue
+        if name.startswith('roles/'):
+            arguments = ['iam', 'roles', 'describe', name]
+        else:
+            match = re.fullmatch(r'(projects|organizations)/([A-Za-z0-9_-]+)/roles/([A-Za-z0-9_.]+)', name)
+            if match is None:
+                raise ValueError('Unsupported cleanup IAM role identity')
+            arguments = ['iam', 'roles', 'describe', match[3],
+                         '--project' if match[1] == 'projects' else '--organization', match[2]]
+        roles[name] = read(arguments)
+    receipt = validate_cleanup_scope(policy, roles, service_account=service_account,
+                                     project=project, zone=zone, queue=queue)
+    receipt.update(workflow_revision=deployed.get('revisionId'),
+                   workflow_sha256=hashlib.sha256(json.dumps(deployed, sort_keys=True).encode()).hexdigest(),
+                   observed_unix=time.time(), discovery=discovery)
+    return receipt
 
 
 def lease(project, zone, queue, seconds, *, now=None):

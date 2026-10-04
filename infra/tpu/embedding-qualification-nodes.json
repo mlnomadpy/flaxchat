@@ -1,0 +1,27 @@
+{
+  "tests/test_embedding_hard_negative_physical_tpu.py": [
+    "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[True-True]",
+    "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[True-False]",
+    "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[False-True]",
+    "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[False-False]"
+  ],
+  "tests/test_embedding_gradient_cache_physical_tpu.py": [
+    "tests.test_embedding_gradient_cache_physical_tpu::test_global_gradient_cache_preserves_loss_remote_gradients_and_rng",
+    "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_yat_cache_matches_encoder_gradients_and_optimizer_update[True]",
+    "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_yat_cache_matches_encoder_gradients_and_optimizer_update[False]",
+    "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_cache_shape_matched_reference_and_adam_moments[True]",
+    "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_cache_shape_matched_reference_and_adam_moments[False]"
+  ],
+  "tests/test_embedding_trainer_physical_tpu.py": [
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-None]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-None]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[True-False-None]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[True-True-None]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[True-True-best4]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-baseline0]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[True-True-gate4]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-gatehorizon]",
+    "tests.test_embedding_trainer_physical_tpu::test_physical_rejected_update_preserves_model_and_optimizer",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-independent]"
+  ]
+}
