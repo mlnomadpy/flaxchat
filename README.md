@@ -1,5 +1,8 @@
 # flaxchat
 
+Latest reconciled audit: [all open issues, current evidence and tool priorities](docs/SYSTEM_AUDIT_CURRENT_2026-10-01.md). Earlier dated findings below remain historical where superseded.
+
+
 Reproducibility and checkpoint contracts are documented in
 [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) and
 [docs/CHECKPOINT_FORMAT.md](docs/CHECKPOINT_FORMAT.md).
@@ -7,8 +10,17 @@ Release gates and compatibility are documented in
 [docs/RELEASES.md](docs/RELEASES.md).
 Exact accelerator measurements and their limitations are in
 [docs/RESULTS.md](docs/RESULTS.md).
-The current engineering risks, refactoring target, and prioritized backlog are
-in [docs/SYSTEM_AUDIT_2026-09-03.md](docs/SYSTEM_AUDIT_2026-09-03.md).
+The current engineering risks and prioritized backlog are in the
+[September 30 system audit](docs/SYSTEM_AUDIT_2026-09-30.md).
+
+The [October 1 follow-up audit](docs/SYSTEM_AUDIT_2026-10-01.md) records the
+remaining recovery, admission and release blockers in the new local fixes.
+The [complete open-issue checklist](docs/ISSUE_READINESS_CHECKLIST.md) identifies the remaining acceptance for all 29 issues.
+For continued YAT embedding representation training, use the
+[training runbook](docs/REPRESENTATION_TRAINING_RUNBOOK.md),
+[tool inventory](docs/TRAINING_TOOLS.md), and versioned
+[training skill](skills/flaxchat-training/SKILL.md).
+The [September 3 audit](docs/SYSTEM_AUDIT_2026-09-03.md) is historical.
 The [Spot TPU validation report](docs/TPU_VALIDATION_2026-09-21.md) records the
 prepared-data training fixes, interruption recovery, and
 [complete TPU test inventory](docs/TPU_TEST_INVENTORY_2026-09-21.md).
@@ -45,6 +57,7 @@ flaxchat is the complete LLM pipeline running natively on TPUs and GPUs with aut
 | Tokenizer | `scripts/tok_train.py` | Train BPE, or select training-free ByT5/MrT5 bytes |
 | Pretrain | `scripts/pretrain.py` | Pretrain GPT on ClimbMix-400B or TinyStories |
 | Encoder MLM | `scripts/train_encoder.py` | ModernBERT/mmBERT continued masked pretraining; [guide and limits](docs/ENCODER_TRAINING.md) |
+| Encoder embeddings | `scripts/train_yat_embedding_finetune.py` | Continue trained YAT weights with retrieval pairs/triplets; [quality gates and pending upgrades](docs/REPRESENTATION_TRAINING_RUNBOOK.md) |
 | SFT | `scripts/sft.py` | Supervised fine-tuning on conversations |
 | RL | `scripts/rl.py` | GRPO/REINFORCE on GSM8K with tool use |
 | Eval | `scripts/eval.py` | CORE metric, MMLU, ARC, GSM8K, HumanEval |
@@ -52,7 +65,8 @@ flaxchat is the complete LLM pipeline running natively on TPUs and GPUs with aut
 | Local | `scripts/run_tinystories.py` | Full pipeline on TinyStories (laptop or GPU) |
 | Export | `scripts/convert_to_tflite.py` | LiteRT/TFLite export for edge deployment |
 
-~7,500 lines of readable, hackable JAX/Flax NNX code across 45 Python files.
+The repository contains shared training services, encoder and decoder models,
+cloud adapters, evaluation tools, and a PyTorch export implementation.
 
 ## Architecture
 

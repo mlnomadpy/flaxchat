@@ -2,6 +2,25 @@ import pytest
 from flaxchat.operations import RunLedger, run_spot_attempt
 
 
+@pytest.fixture(autouse=True)
+def cleanup_scope_provider_fixture(monkeypatch):
+    # These lifecycle tests fake all provider I/O. Exact scope semantics are
+    # exercised separately in test_gcp_cleanup_guard.py.
+    monkeypatch.setattr('scripts.gcp_cleanup_guard.preflight_cleanup_scope',
+                        lambda **kwargs: {'server_permission_probes_required': True})
+
+
+def test_free_compute_still_reserves_ancillary_exposure_and_shared_cap(tmp_path):
+    ledger = RunLedger(tmp_path / 'ledger.json', 2)
+    assert ledger.reserve('free-scan', 'cloud-shell/owned-job', 0, 900, 1) == 1
+    assert ledger.summary()['reserved_usd'] == 1
+    assert ledger.summary()['posted_usage_usd'] is None
+    with pytest.raises(ValueError, match='positive reservation'):
+        ledger.reserve('unaccounted', 'cloud-shell/unaccounted', 0, 900)
+    with pytest.raises(ValueError, match='budget exhausted'):
+        ledger.reserve('over-cap', 'cloud-shell/over-cap', 0, 900, 2)
+
+
 def test_attempt_names_cannot_reuse_prior_expiry_guard_identity():
     from scripts.gcp_spot_supervisor import attempt_resource_name
     prefix = 'flaxchat-validation-yat-mmbert-copied-launch'
@@ -89,6 +108,7 @@ def test_provisioning_read_timeout_does_not_recreate_resource(tmp_path, monkeypa
     from pathlib import Path
     from scripts import gcp_spot_supervisor as supervisor
     state = {'exists': False, 'timed_out': False, 'creates': 0}
+    provider_labels = {}
     def cloud(argv, **kwargs):
         if argv[3] == 'create':
             assert ('--spot' in argv) == (mode == 'spot')
@@ -97,12 +117,14 @@ def test_provisioning_read_timeout_does_not_recreate_resource(tmp_path, monkeypa
                 assert 0 < int(argv[argv.index('--max-run-duration') + 1][:-1]) <= duration
             state['exists'] = True
             state['creates'] += 1
+            provider_labels.update(dict(item.split('=', 1) for item in argv[argv.index('--labels') + 1].split(',')))
+            return {'state': 'READY'}
         elif argv[3] == 'delete':
             state['exists'] = False
         elif state['exists'] and not state['timed_out']:
             state['timed_out'] = True
             raise subprocess.TimeoutExpired(argv, 60)
-        return {'state': 'READY'} if state['exists'] else None
+        return {'state': 'READY', 'labels': provider_labels} if state['exists'] else None
     def arm(argv):
         Path(argv[argv.index('--receipt') + 1]).write_text(json.dumps({'verified': True}))
         return 0
@@ -208,6 +230,7 @@ def test_supervisor_retries_only_after_verified_cleanup_with_resume(tmp_path, mo
     from pathlib import Path
     from scripts import gcp_spot_supervisor as supervisor
     states, events = {}, []
+    provider_labels = {}
     def cloud(argv, **kwargs):
         operation, name = argv[3:5]
         if operation == 'create':
@@ -215,13 +238,15 @@ def test_supervisor_retries_only_after_verified_cleanup_with_resume(tmp_path, mo
             assert kwargs['timeout'] <= 60
             assert not states, 'previous attempt must be absent before retry'
             states[name] = 'READY'
+            provider_labels[name] = dict(item.split('=', 1) for item in argv[argv.index('--labels') + 1].split(','))
             events.append(('create', name))
             return {}
         if operation == 'delete':
             states.pop(name, None)
+            provider_labels.pop(name, None)
             events.append(('delete', name))
             return {}
-        return {'state': states[name]} if name in states else None
+        return {'state': states[name], 'labels': provider_labels[name]} if name in states else None
     def arm(argv):
         Path(argv[argv.index('--receipt') + 1]).write_text(json.dumps({'verified': True}))
         return 0
@@ -341,3 +366,85 @@ def test_supervisor_rejects_underfunded_attempt_before_side_effects(tmp_path, mo
     assert error.value.code == 2
     assert 'requires $7.20' in capsys.readouterr().err
     assert not output.exists()
+
+
+def readiness_clock(monkeypatch, supervisor):
+    clock = {'elapsed': 0.}
+    monkeypatch.setattr(supervisor.time, 'monotonic', lambda: clock['elapsed'])
+    monkeypatch.setattr(supervisor.time, 'time', lambda: 1000 + clock['elapsed'])
+    monkeypatch.setattr(supervisor.time, 'sleep', lambda seconds: clock.update(elapsed=clock['elapsed'] + seconds))
+    return clock
+
+
+def test_provisioning_switches_to_startup_budget_and_preserves_state_transitions(monkeypatch):
+    from scripts import gcp_spot_supervisor as supervisor
+    clock = readiness_clock(monkeypatch, supervisor)
+    calls, observations, phases = [], [], []
+    def cloud(argv, **kwargs):
+        calls.append(argv)
+        if argv[2] == 'queued-resources':
+            return {'state': {'state': 'ACCEPTED' if clock['elapsed'] < 10 else 'PROVISIONING'}}
+        return None if clock['elapsed'] < 10 else {'state': 'READY' if clock['elapsed'] >= 40 else 'CREATING'}
+    monkeypatch.setattr(supervisor, 'cloud', cloud)
+    supervisor.wait_for_ready('owned', [], lambda: 300, 15, 60,
+                              observe=observations.append, phase=phases.append)
+    assert clock['elapsed'] == 40  # Longer than capacity budget, inside startup budget.
+    assert phases == ['startup_wait']
+    assert observations[0]['queue_state'] == 'ACCEPTED'
+    assert any(item['queue_state'] == 'PROVISIONING' and item['wait_phase'] == 'startup_wait' for item in observations)
+    assert observations[-1]['node_state'] == 'READY'
+    assert all(call[3] == 'describe' for call in calls)
+
+
+def test_allocated_but_slow_startup_has_distinct_failure(monkeypatch):
+    from scripts import gcp_spot_supervisor as supervisor
+    readiness_clock(monkeypatch, supervisor)
+    monkeypatch.setattr(supervisor, 'cloud', lambda argv, **kwargs:
+        {'state': {'state': 'PROVISIONING'}} if argv[2] == 'queued-resources' else {'state': 'CREATING'})
+    observations = []
+    with pytest.raises(TimeoutError, match='startup wait budget exhausted after allocation'):
+        supervisor.wait_for_ready('owned', [], lambda: 300, 5, 15, observe=observations.append)
+    assert observations[-1]['wait_phase'] == 'startup_wait'
+    assert observations[-1]['node_state'] == 'CREATING'
+
+
+@pytest.mark.parametrize('kind', ['timeout', 'transport'])
+def test_unknown_provider_read_reattaches_same_resource_and_never_creates(monkeypatch, kind):
+    import subprocess
+    from scripts import gcp_spot_supervisor as supervisor
+    readiness_clock(monkeypatch, supervisor)
+    calls, observations = [], []
+    def cloud(argv, **kwargs):
+        calls.append(argv)
+        if len(calls) == 1:
+            if kind == 'timeout':
+                raise subprocess.TimeoutExpired(argv, 10)
+            raise RuntimeError('Connection reset by peer')
+        return {'state': {'state': 'PROVISIONING'}} if argv[2] == 'queued-resources' else {'state': 'READY'}
+    monkeypatch.setattr(supervisor, 'cloud', cloud)
+    supervisor.wait_for_ready('same-owned', [], lambda: 300, 60, 60, observe=observations.append)
+    assert observations[0]['observation_error'] is not None
+    assert all(call[3] == 'describe' and call[4] == 'same-owned' for call in calls)
+
+
+def test_provider_permission_failure_never_becomes_transport_wait(monkeypatch):
+    from scripts import gcp_spot_supervisor as supervisor
+    monkeypatch.setattr(supervisor, 'cloud', lambda *a, **kw: (_ for _ in ()).throw(
+        RuntimeError('403 Permission denied: service unavailable')))
+    monkeypatch.setattr(supervisor.time, 'sleep', lambda _: pytest.fail('No retry for denied permission'))
+    with pytest.raises(RuntimeError, match='Permission denied'):
+        supervisor.wait_for_ready('owned', [], lambda: 300, 60, 60)
+
+
+def test_readiness_does_not_override_expired_global_lease(monkeypatch):
+    from scripts import gcp_spot_supervisor as supervisor
+    monkeypatch.setattr(supervisor, 'cloud', lambda argv, **kw:
+        {'state': {'state': 'ACTIVE'}} if argv[2] == 'queued-resources' else {'state': 'READY'})
+    calls = {'remaining': 0}
+    def remaining():
+        calls['remaining'] += 1
+        if calls['remaining'] >= 3:
+            raise TimeoutError('Attempt lease is expiring')
+        return 300
+    with pytest.raises(TimeoutError, match='lease is expiring'):
+        supervisor.wait_for_ready('owned', [], remaining, 60, 60)

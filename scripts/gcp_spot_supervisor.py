@@ -6,8 +6,10 @@ No retry is allowed while prior resource absence remains unverified.
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -27,6 +29,21 @@ def attempt_resource_name(prefix, index, nonce):
         raise ValueError('Invalid attempt index or run nonce')
     suffix = f'-{index}-{nonce}'
     return prefix[:63-len(suffix)].rstrip('-') + suffix
+
+
+def billing_label(value):
+    """Normalize provider labels without losing identity through truncation."""
+    normalized = re.sub('[^a-z0-9_-]', '-', value.lower()).strip('-_') or 'run'
+    if normalized != value or len(normalized) > 63:
+        normalized = normalized[:50].rstrip('-_') + '-' + hashlib.sha256(value.encode()).hexdigest()[:12]
+    return normalized
+
+
+def verify_node_labels(node, expected):
+    actual = node.get('labels', {}) if isinstance(node, dict) else {}
+    if any(actual.get(key) != value for key, value in expected.items()):
+        raise ValueError('Provider node labels differ from campaign identities')
+    return actual
 
 
 def cloud(argv, *, timeout: float = 60):
@@ -53,7 +70,7 @@ def cloud(argv, *, timeout: float = 60):
     return json.loads(result.stdout) if result.stdout.strip() else {}
 
 
-def cleanup_resource(name, flags, *, timeout=1800):
+def cleanup_resource(name, flags, *, timeout=1800, observe=None):
     """Request deletion asynchronously, then verify queue AND worker absence."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -68,6 +85,9 @@ def cleanup_resource(name, flags, *, timeout=1800):
         try:
             queue = bounded(['compute', 'tpus', 'queued-resources', 'describe', name, *flags])
             node = bounded(['compute', 'tpus', 'tpu-vm', 'describe', name, *flags])
+            if observe:
+                observe(dict(queue_absent=queue is None, node_absent=node is None,
+                    queue_state=(queue or {}).get('state'), node_state=(node or {}).get('state'), observed_unix=time.time()))
             if queue is None and node is None:
                 return True
         except subprocess.TimeoutExpired:
@@ -91,35 +111,83 @@ def remaining_seconds(monotonic_deadline, wall_deadline):
     return seconds
 
 
-def wait_for_ready(name, flags, remaining, capacity_wait_seconds=None):
-    """Bound capacity waiting separately from compute; never recreate a request."""
+def wait_for_ready(name, flags, remaining, capacity_wait_seconds=None,
+                   startup_wait_seconds=None, *, observe=None, phase=None):
+    """Separate queue capacity from allocated-resource startup under one lease.
+
+    PROVISIONING means selected from the queue and resources being allocated,
+    not another capacity wait. Transport uncertainty never creates a new request.
+    """
     started, wall_started = time.monotonic(), time.time()
+    startup_started = startup_wall_started = None
+    queue_state = node_state = None
+    last_observation = None
+    def publish(error=None):
+        nonlocal last_observation
+        observation = dict(queue_state=queue_state, node_state=node_state,
+            wait_phase='startup_wait' if startup_started is not None else 'capacity_wait',
+            observation_error=error)
+        if observation != last_observation:
+            if observe:
+                observe({**observation, 'observed_unix': time.time()})
+            last_observation = observation
+    def begin_startup():
+        nonlocal startup_started, startup_wall_started
+        if startup_started is None:
+            startup_started, startup_wall_started = time.monotonic(), time.time()
+            if phase:
+                phase('startup_wait')
     def time_left():
         seconds = remaining()
-        if capacity_wait_seconds is not None:
-            elapsed = max(time.monotonic() - started, time.time() - wall_started)
-            seconds = min(seconds, capacity_wait_seconds - elapsed)
+        if startup_started is not None:
+            budget, mono_start, wall_start = startup_wait_seconds, startup_started, startup_wall_started
+            label = 'TPU startup wait budget exhausted after allocation was observed'
+        else:
+            budget, mono_start, wall_start = capacity_wait_seconds, started, wall_started
+            label = 'Spot capacity wait budget exhausted; allocation has not been observed'
+        if budget is not None:
+            elapsed = max(time.monotonic() - mono_start, time.time() - wall_start)
+            seconds = min(seconds, budget - elapsed)
             if seconds <= 0:
-                raise TimeoutError('Spot capacity wait budget exhausted')
+                raise TimeoutError(f'{label}; queue={queue_state or "unknown"}; node={node_state or "unknown"}')
         return seconds
     while True:
         try:
-            node = cloud(['compute', 'tpus', 'tpu-vm', 'describe', name, *flags],
-                         timeout=min(60, time_left()))
-            if node and node['state'] == 'READY':
-                return
             queue = cloud(['compute', 'tpus', 'queued-resources', 'describe', name, *flags],
                           timeout=min(60, time_left()))
             state = (queue or {}).get('state', {})
-            state = state.get('state') if isinstance(state, dict) else state
-            if queue is None or state in ('FAILED', 'SUSPENDING', 'SUSPENDED', 'DELETING'):
+            queue_state = state.get('state') if isinstance(state, dict) else state
+            if queue_state in ('PROVISIONING', 'ACTIVE'):
+                begin_startup()
+            publish()
+            if queue is None or queue_state in ('FAILED', 'SUSPENDING', 'SUSPENDED', 'DELETING'):
                 detail = json.dumps(queue) if queue else (
                     'inspect the saved create-response.json operation and TPU audit logs; '
                     'absence alone does not establish capacity exhaustion'
                 )
-                raise RuntimeError(f'Spot request unavailable: {state or "absent"}; {detail}')
+                raise RuntimeError(f'Spot request unavailable: {queue_state or "absent"}; {detail}')
+            node = cloud(['compute', 'tpus', 'tpu-vm', 'describe', name, *flags],
+                         timeout=min(60, time_left()))
+            node_state = (node or {}).get('state')
+            if node_state in ('CREATING', 'STARTING', 'READY'):
+                begin_startup()
+            publish()
+            if node_state == 'READY':
+                remaining()  # Never admit ready hardware after the global lease expires.
+                return
         except subprocess.TimeoutExpired:
-            # A read timeout is not permission to submit a second allocation.
+            publish('read_timeout; current provider state unknown')
+            remaining()
+        except RuntimeError as error:
+            text = str(error).lower()
+            denied = any(token in text for token in ('permission', 'forbidden', '403', '401',
+                                                     'unauthenticated', 'credentials'))
+            transient = not denied and any(token in text for token in
+                ('connection reset', 'connection aborted', 'temporarily unavailable',
+                 'service unavailable', '503', 'timed out', 'unexpected eof', 'remote disconnected'))
+            if not transient:
+                raise
+            publish('transient_transport_failure; current provider state unknown')
             remaining()
         time.sleep(max(0, min(10, time_left())))
 
@@ -133,11 +201,16 @@ def main(argv=None):
     parser.add_argument('--provisioning-model', choices=['spot', 'flex-start'], default='spot')
     parser.add_argument('--name', required=True, help='flaxchat-validation-* prefix; actual names include a fresh per-run suffix')
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--run-id', help='Billing run identity; defaults to requested resource prefix')
+    parser.add_argument('--stage-id', default='qualification', help='Billing stage identity')
+    parser.add_argument('--campaign-ledger', type=Path, help='Shared durable campaign budget ledger; use the same path and cap for every run')
     parser.add_argument('--hourly-usd', type=float, required=True, help='Conservative whole-slice rate')
     parser.add_argument('--budget-usd', type=float, required=True)
     parser.add_argument('--attempt-seconds', type=int, default=1800)
     parser.add_argument('--capacity-wait-seconds', type=int,
-                        help='Optional shorter capacity wait; expires through verified cleanup')
+                        help='Optional shorter wait before allocation is observed; expires through verified cleanup')
+    parser.add_argument('--startup-wait-seconds', type=int,
+                        help='Separate bounded startup wait after PROVISIONING; global lease still applies')
     parser.add_argument('--setup-timeout-seconds', type=int, default=300,
                         help='Bound setup and SSH connection delays separately from training')
     parser.add_argument('--tunnel-through-iap', action='store_true')
@@ -158,6 +231,8 @@ def main(argv=None):
         parser.error('Attempts must be 180–7200 seconds; count must be 1–10')
     if args.capacity_wait_seconds is not None and not 1 <= args.capacity_wait_seconds <= args.attempt_seconds:
         parser.error('Capacity wait must be positive and no longer than the attempt lease')
+    if args.startup_wait_seconds is not None and not 1 <= args.startup_wait_seconds <= args.attempt_seconds:
+        parser.error('Startup wait must be positive and no longer than the attempt lease')
     if not 30 <= args.setup_timeout_seconds <= 900:
         parser.error('Setup timeout must be 30–900 seconds')
     if args.max_attempts > 1 and not args.resume_workload:
@@ -171,44 +246,141 @@ def main(argv=None):
     required_reserve = args.hourly_usd * (args.attempt_seconds + 1800) / 3600 + args.ancillary_reserve_usd
     if required_reserve > args.budget_usd:
         parser.error(f'One attempt requires ${required_reserve:.2f}, including the 1800-second cleanup allowance and ancillary reserve; budget is ${args.budget_usd:.2f}')
+    return campaign(args)
+
+
+def campaign(args):
+    """Persist original failure and cleanup evidence even before hardware readiness."""
     args.output.mkdir(parents=True, exist_ok=True)
+    receipt_path = args.output / 'campaign-receipt.json'
+    if receipt_path.exists():
+        raise ValueError('Campaign receipt already exists; preserve evidence and use fresh output')
+    report = dict(schema_version=1, passed=False, status='running', project=args.project, zone=args.zone,
+        run_id=args.run_id or args.name, stage_id=args.stage_id, phase='admission', started_unix=time.time(),
+        whole_slice_hourly_usd=args.hourly_usd, attempt_seconds=args.attempt_seconds,
+        capacity_wait_seconds=args.capacity_wait_seconds, startup_wait_seconds=args.startup_wait_seconds, max_attempts=args.max_attempts,
+        phases=[], attempts=[], model_execution_state='not_started', posted_usage_usd=None)
+    started = time.monotonic()
+    phase_started = started
+    def persist():
+        temporary = receipt_path.with_suffix('.partial')
+        with temporary.open('w') as handle:
+            json.dump(report, handle, indent=2, allow_nan=False)
+            handle.write('\n')
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.replace(receipt_path)
+    def phase(label):
+        nonlocal phase_started
+        now = time.monotonic()
+        report['phases'].append(dict(phase=report['phase'], elapsed_seconds=now-phase_started))
+        report['phase'] = label
+        phase_started = now
+        persist()
+        print(f'Campaign phase: {label}', flush=True)
+    persist()
+    try:
+        code = _run_campaign(args, report, phase, persist)
+        report.update(returncode=code, passed=code == 0, status='passed' if code == 0 else 'failed')
+        return code
+    except BaseException as error:
+        report.update(status='failed', error=f'{type(error).__name__}: {error}')
+        discovery = getattr(error, 'cleanup_scope_discovery', None)
+        if discovery is not None:
+            report['cleanup_scope_discovery'] = discovery
+        raise
+    finally:
+        report['phases'].append(dict(phase=report['phase'], elapsed_seconds=time.monotonic()-phase_started))
+        report['finished_unix'] = time.time()
+        report['elapsed_seconds'] = time.monotonic()-started
+        remote = any(attempt['remote_stages_started'] for attempt in report['attempts'])
+        report['no_remote_execution'] = not remote
+        report['model_execution_state'] = 'not_inferred' if remote else 'not_started'
+        created = [attempt for attempt in report['attempts'] if attempt.get('create_requested')]
+        report['cleanup_required'] = bool(created)
+        report['cleanup_verified'] = bool(created) and all(attempt['cleanup']['state'] == 'resource_absent' for attempt in created)
+        ledger_path = args.campaign_ledger or args.output / 'ledger.json'
+        report['ledger_path'] = str(ledger_path)
+        if ledger_path.exists():
+            try:
+                ledger = json.loads(ledger_path.read_text())
+                report['reserved_usd'] = sum(item['reservation_usd'] for item in ledger['attempts'].values())
+                report['budget_usd'] = ledger['budget_usd']
+            except (OSError, ValueError, KeyError) as error:
+                report['ledger_snapshot_error'] = f'{type(error).__name__}: {error}'
+        persist()
+
+
+def _run_campaign(args, report, phase, persist):
     if args.local_preflight:
+        phase('local_preflight')
         with (args.output / 'local-preflight.log').open('w') as log:
             subprocess.run(args.local_preflight, stdout=log, stderr=subprocess.STDOUT,
                            timeout=120, check=True)
-    ledger = RunLedger(args.output / 'ledger.json', args.budget_usd)
+    ledger = RunLedger(args.campaign_ledger or args.output / 'ledger.json', args.budget_usd)
+    labels = {'flaxchat-run': billing_label(args.run_id or args.name),
+              'flaxchat-stage': billing_label(args.stage_id)}
     flags = ['--project', args.project, '--zone', args.zone]
     run_nonce = uuid.uuid4().hex[:16]
     for index in range(args.max_attempts):
         name = attempt_resource_name(args.name, index, run_nonce)
+        attempt = dict(index=index, resource_name=name, attempt_id=(run_nonce + ':' + str(index)) if args.campaign_ledger else str(index),
+            cleanup={'state': 'not_required'}, remote_stages_started=[])
+        report['attempts'].append(attempt)
+        phase('identity_admission')
         gcp_cleanup_guard.lease(args.project, args.zone, name, args.attempt_seconds)
+        phase('cleanup_scope_admission')
+        attempt['cleanup_scope'] = gcp_cleanup_guard.preflight_cleanup_scope(
+            project=args.project, zone=args.zone, queue=name)
+        persist()
         if cloud(['compute', 'tpus', 'queued-resources', 'describe', name, *flags]) is not None or cloud(['compute', 'tpus', 'tpu-vm', 'describe', name, *flags]) is not None:
             raise ValueError('Refusing an existing queue or node')
         output = args.output / f'attempt-{index}'
         output.mkdir(exist_ok=False)
         (output / 'resource-identity.json').write_text(json.dumps(dict(
             project=args.project, zone=args.zone, name=name, attempt=index,
-            requested_prefix=args.name, run_nonce=run_nonce), indent=2) + '\n')
+            requested_prefix=args.name, run_nonce=run_nonce, run_id=args.run_id or args.name,
+            stage_id=args.stage_id, requested_labels=labels), indent=2) + '\n')
+        attempt['guard_receipt_path'] = str(output / 'guard.json')
         deadline = time.monotonic() + args.attempt_seconds
         wall_deadline = time.time() + args.attempt_seconds
         resource = f'projects/{args.project}/locations/{args.zone}/queuedResources/{name}'
         def remaining(deadline=deadline, wall_deadline=wall_deadline):
             return remaining_seconds(deadline, wall_deadline)
         def arm(resource, seconds, output=output, name=name):
+            phase('guard_verification')
             receipt = output / 'guard.json'
             gcp_cleanup_guard.main(['--project', args.project, '--zone', args.zone, '--queue', name,
                                    '--seconds', str(args.attempt_seconds), '--receipt', str(receipt)])
             return json.loads(receipt.read_text())
-        def provision(resource, name=name, output=output):
+        def provision(resource, name=name, output=output, attempt=attempt):
+            phase('provisioning')
+            attempt['create_requested'] = True
             mode = ['--spot'] if args.provisioning_model == 'spot' else [
                 '--provisioning-model=flex-start', '--max-run-duration', f'{remaining()}s']
             receipt = cloud(['compute', 'tpus', 'queued-resources', 'create', name, *flags,
                    '--node-id', name, '--accelerator-type', args.accelerator_type,
-                   '--runtime-version', args.runtime_version, *mode, '--async',
+                   '--runtime-version', args.runtime_version, '--labels',
+                   ','.join(key + '=' + value for key, value in labels.items()), *mode, '--async',
                    '--valid-until-duration', f'{args.attempt_seconds}s'], timeout=min(60, remaining()))
             (output / 'create-response.json').write_text(json.dumps(receipt, indent=2) + '\n')
-            wait_for_ready(name, flags, remaining, args.capacity_wait_seconds)
-        def execute(argv, label, setup=False, single_worker=False, name=name, output=output):
+            phase('capacity_wait')
+            attempt['resource_state_observations'] = []
+            def observe_state(observation):
+                attempt['resource_state_observations'].append(observation)
+                persist()
+            wait_for_ready(name, flags, remaining, args.capacity_wait_seconds,
+                           args.startup_wait_seconds, observe=observe_state, phase=phase)
+            phase('label_verification')
+            node = cloud(['compute', 'tpus', 'tpu-vm', 'describe', name, *flags], timeout=min(60, remaining()))
+            observed = verify_node_labels(node, labels)
+            (output / 'billing-labels.json').write_text(json.dumps(dict(
+                run_id=args.run_id or args.name, stage_id=args.stage_id, requested=labels,
+                observed=observed, node_name=node.get('name'), observed_unix=time.time()), indent=2) + '\n')
+        def execute(argv, label, setup=False, single_worker=False, name=name, output=output, attempt=attempt):
+            phase(label)
+            attempt['remote_stages_started'].append(label)
+            persist()
             return gcp_tpu_run.main(['--project', args.project, '--zone', args.zone, '--node', name,
                  '--cancel-peers-on-failure',
                  '--output', str(output / label), '--directory', '/tmp' if setup else args.directory,
@@ -216,12 +388,15 @@ def main(argv=None):
                  *(['--tunnel-through-iap'] if args.tunnel_through_iap else []),
                  *(['--iap-fallback'] if args.iap_fallback else []),
                  *(['--single-worker'] if single_worker else []), '--', *argv])
-        def run(resource, index=index, name=name, output=output):
+        def run(resource, index=index, name=name, output=output, attempt=attempt):
             if execute(args.setup, 'setup', True):
                 raise RuntimeError('Worker setup failed; no automatic retry')
             if args.checks and execute(args.checks, 'checks', single_worker=True):
                 raise RuntimeError('Qualification checks failed; no automatic retry')
             if args.acceptance_prefix:
+                phase('acceptance')
+                attempt['remote_stages_started'].append('acceptance')
+                persist()
                 from scripts.validate_gcp_multihost import main as acceptance
                 if acceptance(['--cleanup-receipt', str(output / 'guard.json'),
                     '--project', args.project, '--zone', args.zone, '--node', name,
@@ -237,14 +412,39 @@ def main(argv=None):
                     return 75
                 raise RuntimeError('Workload failed on live hardware; no automatic retry')
             return 0
-        def cleanup(resource, name=name):
-            return cleanup_resource(name, flags)
-        code = run_spot_attempt(ledger, str(index), resource, hourly_usd=args.hourly_usd,
+        def cleanup(resource, name=name, attempt=attempt):
+            phase('cleanup')
+            attempt['cleanup'] = {'state': 'pending', 'started_unix': time.time()}
+            persist()
+            def observe(state):
+                attempt['cleanup'].update(state)
+                persist()
+            try:
+                absent = cleanup_resource(name, flags, observe=observe)
+                attempt['cleanup'].update(state='resource_absent' if absent else 'unverified', finished_unix=time.time())
+                return absent
+            except BaseException as error:
+                attempt['cleanup'].update(state='unverified', error=f'{type(error).__name__}: {error}', finished_unix=time.time())
+                raise
+            finally:
+                persist()
+        def track(callback, attempt=attempt):
+            def wrapped(*values):
+                try:
+                    return callback(*values)
+                except BaseException as error:
+                    attempt.setdefault('failure', dict(phase=report['phase'], error=f'{type(error).__name__}: {error}', observed_unix=time.time()))
+                    persist()
+                    raise
+            return wrapped
+        code = run_spot_attempt(ledger, (run_nonce + ':' + str(index)) if args.campaign_ledger else str(index), resource, hourly_usd=args.hourly_usd,
                     max_seconds=args.attempt_seconds + 1800, ancillary_reserve_usd=args.ancillary_reserve_usd,
-                    arm_and_verify=arm, provision=provision, run=run, cleanup_and_verify=cleanup)
+                    arm_and_verify=track(arm), provision=track(provision), run=track(run), cleanup_and_verify=cleanup)
+        attempt['returncode'] = code
+        persist()
         if code == 0:
             return 0
-        ledger.event(str(index), 'preempted_retry_eligible')
+        ledger.event((run_nonce + ':' + str(index)) if args.campaign_ledger else str(index), 'preempted_retry_eligible')
     return 75
 
 

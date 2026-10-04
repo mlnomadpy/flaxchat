@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "flaxchat/**"
+      - "torch_port/**"
       - "scripts/**"
       - "tasks/**"
       - "benchmarks/**"
@@ -23,6 +24,7 @@ on:
     branches: [master]
     paths:
       - "flaxchat/**"
+      - "torch_port/**"
       - "scripts/**"
       - "tasks/**"
       - "benchmarks/**"

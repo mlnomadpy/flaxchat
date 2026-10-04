@@ -13,6 +13,7 @@ from safetensors import safe_open
 from safetensors.torch import save_file
 import torch
 
+from scripts.release_contract import artifact_hashes, validate_export
 from torch_port.yat_encoder import YatEncoderConfig, YatTorchEncoder
 
 
@@ -51,12 +52,8 @@ def map_name(name: str) -> tuple[str, bool]:
 def convert(source: Path, output: Path) -> dict:
     source_export = json.loads((source / "export.json").read_text())
     source_weights = source / "model.safetensors"
-    if (source_export["source_checkpoint_step"] != 12000
-            or source_export["source_model_family"] != "modernbert_contrastive_encoder"
-            or sha256(source_weights) != source_export["sha256"]):
-        raise ValueError("Source export identity or weight SHA-256 mismatch")
-    if sha256(source / "tokenizer.json") != source_export["tokenizer_identity"]:
-        raise ValueError("Tokenizer does not match source checkpoint")
+    source_identity = (source_export["source_model_family"], source_export["source_checkpoint_step"])
+    validate_export(source, source_export)
     config = YatEncoderConfig.from_json(source / "config.json")
     with torch.device("meta"):
         expected = YatTorchEncoder(config).state_dict()
@@ -76,13 +73,24 @@ def convert(source: Path, output: Path) -> dict:
         raise ValueError("Conversion does not cover the full model state")
     output.mkdir(parents=True, exist_ok=False)
     save_file(tensors, str(output / "model.safetensors"), metadata={
-        "format": "pt", "source": "flaxchat-yat-encoder-step-12000"})
-    for filename in ("config.json", "tokenizer.json", "tokenizer_config.json"):
+        "format": "pt", "source": f"flaxchat-yat-encoder-step-{source_identity[1]}"})
+    for filename in ("config.json", "tokenizer.json"):
         shutil.copyfile(source / filename, output / filename)
+    if (source / "tokenizer_config.json").is_file():
+        shutil.copyfile(source / "tokenizer_config.json", output / "tokenizer_config.json")
     shutil.copyfile(Path(__file__).with_name("yat_encoder.py"), output / "yat_encoder.py")
+    for filename, target in (("export.json", "source-export.json"),
+                             ("checkpoint-metadata.json", "checkpoint-metadata.json"),
+                             ("checkpoint-manifest.json", "checkpoint-manifest.json")):
+        shutil.copyfile(source / filename, output / target)
     receipt = {
-        "format": "flaxchat-yat-pytorch-v1",
-        "source_checkpoint_step": 12000,
+        "format": "flaxchat-yat-pytorch-v2",
+        "artifacts_sha256": artifact_hashes(output),
+        "conversion_source_sha256": sha256(Path(__file__)),
+        "source_export_sha256": sha256(source / "export.json"),
+        "source_artifacts_sha256": source_export["artifacts_sha256"],
+        "source_model_family": source_identity[0],
+        "source_checkpoint_step": source_identity[1],
         "source_weights_sha256": source_export["sha256"],
         "source_checkpoint_metadata_sha256": source_export["source_checkpoint_metadata_sha256"],
         "torch_weights_sha256": sha256(output / "model.safetensors"),

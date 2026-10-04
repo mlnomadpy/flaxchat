@@ -206,42 +206,15 @@ def test_global_batch_contract_with_accumulation():
     np.testing.assert_array_equal(placed, rows)
 
 
-def test_budget_guard_covers_setup_and_defaults_to_cleanup(monkeypatch):
+def test_legacy_launch_cannot_allocate_without_verified_cloud_lease():
     from scripts import train_tpu
-    events = []
-    class Timer:
-        def __init__(self, duration, callback):
-            assert duration == 1800
-            events.append('guard-created')
-        def start(self): events.append('guard-started')
-        def cancel(self): events.append('guard-cancelled')
     class VM:
         def __getattr__(self, name):
-            def call(*args, **kwargs): events.append(name)
-            return call
-    monkeypatch.setattr(train_tpu.threading, 'Timer', Timer)
+            raise AssertionError(f'Unsafe legacy cloud call: {name}')
     args = train_tpu.build_parser().parse_args(['--name', 'test', '--max-cost', '5', '--hourly-rate', '10'])
     spec = train_tpu.build_launch_spec(args, revision='a' * 40)
-    assert spec.teardown == 'always'
-    assert train_tpu.run_adapter(args, spec, VM(), None) == 0
-    assert events.index('guard-started') < events.index('up') < events.index('setup')
-    assert events[-1] == 'down'
-    assert 'set_budget' not in events
-
-
-def test_delayed_launch_waits_before_allocation(monkeypatch):
-    from scripts import train_tpu
-    events = []
-    class VM:
-        def __getattr__(self, name):
-            def call(*args, **kwargs): events.append(name)
-            return call
-    monkeypatch.setattr(train_tpu.time, 'sleep', lambda _: events.append('wait'))
-    args = train_tpu.build_parser().parse_args(['--name', 'test', '--start-after', '23:59', '--run-once'])
-    spec = train_tpu.build_launch_spec(args, revision='a' * 40)
-    train_tpu.run_adapter(args, spec, VM(), None)
-    assert events.index('wait') < events.index('up')
-    assert events[-1] == 'down'
+    with pytest.raises(RuntimeError, match='Legacy tpuz paid execution is disabled'):
+        train_tpu.run_adapter(args, spec, VM(), None)
 
 
 def test_projection_uses_compute_dtype(tiny_model):

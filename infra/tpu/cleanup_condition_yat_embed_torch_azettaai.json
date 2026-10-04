@@ -1,0 +1,5 @@
+{
+  "title": "flaxchat-yat-embedding-torch-west4-cleanup",
+  "description": "Limit cleanup to temporary YAT embedding PyTorch conversion TPUs in us-west4-a.",
+  "expression": "resource.name.startsWith('projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-') || resource.name.startsWith('projects/azettaai/locations/us-west4-a/nodes/flaxchat-validation-yat-embed-torch-')"
+}

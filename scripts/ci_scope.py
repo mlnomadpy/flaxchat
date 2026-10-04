@@ -15,7 +15,48 @@ FULL_TRIGGERS = {
     ".github/workflows/cpu-tests.yml",
 }
 
+METADATA_ONLY_CORE = {
+    "flaxchat/embedding_telemetry.py",
+    "flaxchat/embedding_uncertainty.py",
+    "flaxchat/full_corpus_retrieval.py",
+}
+
 TEST_GROUPS = {
+    "scripts/evaluate_yat_full_corpus_tpu.py": ("tests/test_yat_full_corpus_tpu_metadata.py", "tests/test_full_corpus_retrieval_metadata.py"),
+    "flaxchat/full_corpus_tpu.py": ("tests/test_yat_full_corpus_tpu_metadata.py", "tests/test_full_corpus_retrieval_metadata.py"),
+    "scripts/diagnose_artifact_transfer.py": ("tests/test_artifact_transfer_metadata.py",),
+    "scripts/report_full_corpus_retrieval.py": ("tests/test_full_corpus_retrieval_metadata.py",),
+    "flaxchat/full_corpus_retrieval.py": ("tests/test_full_corpus_retrieval_metadata.py",),
+    "scripts/bounded_data_job.py": ("tests/test_bounded_data_job_metadata.py",),
+    "flaxchat/embedding_telemetry.py": ("tests/test_embedding_telemetry_metadata.py",),
+    "flaxchat/embedding_uncertainty.py": ("tests/test_embedding_uncertainty_metadata.py",),
+    "scripts/compare_embedding_receipts.py": ("tests/test_embedding_receipt_comparison_metadata.py", "tests/test_evaluation_contract.py"),
+    "scripts/prepare_enriched_parent_export.py": ("tests/test_enriched_parent_export_metadata.py", "tests/test_production_parent_tpu_metadata.py"),
+    "scripts/filter_representation_development.py": ("tests/test_candidate_collision_filter_metadata.py", "tests/test_development_quarantine_metadata.py", "tests/test_independent_retrieval_dev_metadata.py"),
+    "tests/test_embedding_gradient_cache_physical_tpu.py": ("tests/test_cache_diagnostic_metadata.py",),
+    "scripts/evaluate_yat_public_mteb.py": ("tests/test_public_evaluation_identity_metadata.py", "tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "scripts/validate_production_parent_tpu.py": ("tests/test_production_parent_tpu_metadata.py", "tests/test_release_contract.py"),
+    "scripts/parity_evidence.py": ("tests/test_release_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "scripts/scan_gcs_parent_exposure.py": ("tests/test_gcs_parent_exposure_metadata.py", "tests/test_historical_row_metadata.py", "tests/test_parent_exposure_inventory_metadata.py", "tests/test_independent_retrieval_dev_metadata.py"),
+    "scripts/build_parent_exposure_inventory.py": ("tests/test_parent_exposure_inventory_metadata.py", "tests/test_independent_retrieval_dev_metadata.py"),
+    "scripts/prepare_embedding_retrieval_dev.py": ("tests/test_independent_retrieval_dev_metadata.py", "tests/test_development_quarantine_metadata.py", "tests/metadata/test_embedding_stage.py"),
+    "scripts/prepare_representation_development.py": ("tests/test_representation_development_metadata.py", "tests/test_development_quarantine_metadata.py", "tests/test_independent_retrieval_dev_metadata.py"),
+    "scripts/train_yat_embedding_finetune.py": ("tests/metadata/test_embedding_contract.py", "tests/metadata/test_embedding_stage.py", "tests/test_embedding_mixture_metadata.py"),
+    "scripts/preflight_yat_embedding_stage.py": ("tests/metadata/test_embedding_contract.py", "tests/metadata/test_embedding_stage.py"),
+    "scripts/prepare_yat_embedding_finetune.py": ("tests/test_embedding_mixture_metadata.py", "tests/metadata/test_embedding_stage.py", "tests/test_development_quarantine_metadata.py", "tests/test_independent_retrieval_dev_metadata.py", "tests/test_code_provenance_metadata.py"),
+    "scripts/run_yat_parity_case.py": ("tests/test_release_contract.py",),
+    "scripts/run_yat_parity_campaign.py": ("tests/test_release_contract.py", "tests/test_evaluation_integration_metadata.py", "tests/test_parity_resource_admission_metadata.py"),
+    "scripts/validate_mteb_inventory.py": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "scripts/export_public_encoder.py": ("tests/test_release_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "scripts/publish_yat_embedding_from_gcp.py": ("tests/test_release_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "torch_port/": ("tests/test_release_contract.py", "tests/test_evaluation_contract.py", "tests/test_torch_parity_tpu.py"),
+    "scripts/evaluation_contract.py": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "scripts/release_contract.py": ("tests/test_release_contract.py",),
+    "scripts/evaluate_yat": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "scripts/merge_yat": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "scripts/assemble_yat": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "scripts/validate_yat_torch_parity.py": ("tests/test_release_contract.py",),
+    "scripts/publish_yat_torch_from_gcp.py": ("tests/test_release_contract.py",),
     "tests/test_encoder_training.py": ("tests/test_yat_backward_training.py",),
     "tests/yat_attention_oracle.py": ("tests/test_yat_gradient_oracle.py", "tests/test_yat_tiled_oracle.py"),
     "scripts/summarize_jax_trace.py": ("tests/test_jax_trace_summary.py",),
@@ -114,9 +155,18 @@ TEST_GROUPS = {
 }
 
 
+EMBEDDING_PHYSICAL_TESTS = {
+    "tests/test_full_corpus_retrieval_physical_tpu.py",
+    "tests/test_embedding_hard_negative_physical_tpu.py",
+    "tests/test_embedding_gradient_cache_physical_tpu.py",
+    "tests/test_embedding_trainer_physical_tpu.py",
+    "tests/test_torch_parity_tpu.py",
+}
+
+
 def _is_test(path: str) -> bool:
     candidate = PurePosixPath(path)
-    return candidate.parent == PurePosixPath("tests") and candidate.name.startswith("test_") and candidate.suffix == ".py"
+    return candidate.parts[0] == "tests" and candidate.name.startswith("test_") and candidate.suffix == ".py"
 
 
 def select_scope(changed_paths: list[str], *, force_full: bool = False) -> dict[str, object]:
@@ -124,13 +174,13 @@ def select_scope(changed_paths: list[str], *, force_full: bool = False) -> dict[
     paths = sorted({path.strip() for path in changed_paths if path.strip()})
     forced = force_full or not paths
     full = forced or any(
-        path in FULL_TRIGGERS or path.startswith("flaxchat/") or path.startswith("tasks/")
+        path in FULL_TRIGGERS or (path.startswith("flaxchat/") and path not in METADATA_ONLY_CORE) or path.startswith("tasks/")
         for path in paths
     )
     selected: set[str] = set()
     if not full:
         for path in paths:
-            if _is_test(path):
+            if _is_test(path) and path not in EMBEDDING_PHYSICAL_TESTS:
                 selected.add(path)
             for prefix, tests in TEST_GROUPS.items():
                 if path == prefix or path.startswith(prefix):
@@ -156,7 +206,17 @@ def select_scope(changed_paths: list[str], *, force_full: bool = False) -> dict[
         or path in FULL_TRIGGERS
         for path in paths
     )
+    manual_physical_tests = set(paths) & EMBEDDING_PHYSICAL_TESTS
+    if forced or any(path in {"scripts/evaluate_yat_full_corpus_tpu.py", "flaxchat/full_corpus_tpu.py"} for path in paths):
+        manual_physical_tests.add("tests/test_full_corpus_retrieval_physical_tpu.py")
+    if any(path in {"scripts/prepare_embedding_retrieval_dev.py", "scripts/prepare_representation_development.py", "tests/test_embedding_trainer_physical_tpu.py", "infra/tpu/embedding-qualification-nodes.json"} for path in paths):
+        manual_physical_tests.add("tests/test_embedding_trainer_physical_tpu.py")
+    if forced or any(path not in METADATA_ONLY_CORE and path.startswith(("flaxchat/embedding", "flaxchat/contrastive", "scripts/train_yat_embedding", "scripts/preflight_yat_embedding", "scripts/prepare_yat_embedding")) for path in paths):
+        manual_physical_tests.update(("tests/test_embedding_hard_negative_physical_tpu.py", "tests/test_embedding_gradient_cache_physical_tpu.py", "tests/test_embedding_trainer_physical_tpu.py"))
+    if forced or any(path.startswith("torch_port/") or path in {"scripts/validate_yat_torch_parity.py", "scripts/run_yat_parity_case.py", "scripts/run_yat_parity_campaign.py", "scripts/parity_evidence.py", "scripts/release_contract.py", "scripts/publish_yat_torch_from_gcp.py"} for path in paths):
+        manual_physical_tests.add("tests/test_torch_parity_tpu.py")
     return {
+        "manual_physical_tests": sorted(manual_physical_tests),
         "mode": "full" if full else "targeted",
         "tests": sorted(selected),
         "run_audit": forced or (full and any(path in {"pyproject.toml", "pixi.toml", "pixi.lock"} for path in paths)),

@@ -1,0 +1,17 @@
+{
+  "scope": "static and model-free metadata checks; no CPU model forward/backward and no new accelerator allocation",
+  "observed_at": "2026-10-04T22:44:04.682087+00:00",
+  "metadata_tests": {
+    "passed": 397,
+    "skipped": 1,
+    "subtests_passed": 75,
+    "seconds": 7.44,
+    "skip_reason": "Linux /proc detached ownership test cannot run on macOS",
+    "log_sha256": "40c6e32aba0f4c91b9248b184c09c889e4b899513a0abe0cbe22e6962c08d69d"
+  },
+  "ruff_changed_python_files": "passed",
+  "syntax": "passed",
+  "physical_evidence": "historical frozen TPU receipts retained; latest layer tracing failed unchanged bounds",
+  "github_ci": "Linux and Pages workflows observed disabled_manually; no workflow dispatched",
+  "known_gaps_preserved": true
+}

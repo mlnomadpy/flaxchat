@@ -41,9 +41,11 @@ class RunLedger:
 
     def reserve(self, attempt_id, resource, hourly_usd, max_seconds, ancillary_reserve_usd=0.):
         if not resource or not attempt_id or not all(math.isfinite(x) and x >= 0 for x in
-            (hourly_usd, max_seconds, ancillary_reserve_usd)) or min(hourly_usd, max_seconds) <= 0:
+            (hourly_usd, max_seconds, ancillary_reserve_usd)) or max_seconds <= 0:
             raise ValueError('Invalid attempt reservation')
         estimate = hourly_usd * max_seconds / 3600 + ancillary_reserve_usd
+        if estimate <= 0:
+            raise ValueError('A positive reservation is required, including ancillary exposure for free compute')
         with self.lock:
             state = self._read()
             if attempt_id in state['attempts']:

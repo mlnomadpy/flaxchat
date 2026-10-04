@@ -12,11 +12,15 @@ from typing import Any
 from scripts.validate_tpu import junit_inventory, source_digest
 
 
-def validate_inventory(path, returncode):
+def validate_inventory(path, returncode, required_nodes=()):
     tests = junit_inventory(path)
     if not tests or not any(t['status'] == 'passed' for t in tests):
         return tests, False
-    return tests, returncode == 0 and not any(t['status'] in ('failure', 'error') for t in tests)
+    names = [t['test'] for t in tests]
+    coverage = len(names) == len(set(names)) and set(required_nodes) <= set(names)
+    # A skipped required check is not accelerator acceptance, even if another
+    # check in the same module passes. Default policy requires every node.
+    return tests, returncode == 0 and coverage and all(t['status'] == 'passed' for t in tests)
 
 
 def module_environment(environment, file):
@@ -42,15 +46,21 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--prefix', required=True)
     parser.add_argument('--timeout-seconds', type=int, default=1500)
+    parser.add_argument('--module-timeout-seconds', type=int, default=240,
+                        help='Bound each module inside the existing campaign deadline')
     parser.add_argument('--expected-devices', type=int, default=4)
     parser.add_argument('--include-distributed-cpu', action='store_true',
                         help='Enable localhost multiprocess recovery tests; not physical multi-host qualification')
+    parser.add_argument('--required-nodes', type=Path,
+                        help='JSON map of test module paths to required exact JUnit node names')
     parser.add_argument('--test-files', nargs='+', help='Explicit retry subset; reported as partial validation')
     args = parser.parse_args()
     if not args.prefix.startswith('gs://') or not 60 <= args.timeout_seconds <= 2100:
         parser.error('Require a GCS evidence prefix and deadline of 60–2100 seconds')
+    if not 30 <= args.module_timeout_seconds <= args.timeout_seconds - 65:
+        parser.error('Module deadline must be30 seconds through campaign minus65-second evidence margin')
     args.output.mkdir(parents=True, exist_ok=False)
-    environment = os.environ | {'JAX_PLATFORMS': 'tpu', 'FLAXCHAT_DTYPE': 'float32',
+    environment = os.environ | {'JAX_PLATFORMS': 'tpu', 'FLAXCHAT_PHYSICAL_TPU': '1', 'FLAXCHAT_DTYPE': 'float32',
                                  'JAX_DEFAULT_MATMUL_PRECISION': 'highest'}
     if args.include_distributed_cpu:
         environment['FLAXCHAT_RUN_DISTRIBUTED_CPU'] = '1'
@@ -61,10 +71,16 @@ def main():
         if not selected <= set(files):
             parser.error('Retry subset must contain existing tests/test_*.py modules')
         files = [f for f in files if f in selected]
+    required_nodes = json.loads(args.required_nodes.read_text()) if args.required_nodes else {}
+    if (not isinstance(required_nodes, dict) or any(not isinstance(nodes, list) or not nodes
+            or any(not isinstance(node, str) for node in nodes) or len(nodes) != len(set(nodes))
+            for nodes in required_nodes.values()) or not set(required_nodes) <= {str(file) for file in files}):
+        parser.error('Required nodes must uniquely name nodes in selected test modules')
     report: dict[str, Any] = dict(scope='single_host_selected_tests' if args.test_files else 'single_host_test_suite', quality_qualified=False, passed=False,
                   include_distributed_cpu=args.include_distributed_cpu,
                   source_python_sha256=source_digest(Path.cwd()), files=[str(f) for f in files],
                   environment_overrides={k: environment[k] for k in ('JAX_PLATFORMS', 'FLAXCHAT_DTYPE', 'JAX_DEFAULT_MATMUL_PRECISION')},
+                  module_timeout_seconds=args.module_timeout_seconds, required_nodes=required_nodes, skip_policy='all-selected-nodes-must-pass',
                   results=[], not_run=[])
     def persist(paths=()):
         summary = args.output / 'summary.json'
@@ -89,11 +105,11 @@ def main():
         xml, log = args.output/(file.stem+'.xml'), args.output/(file.stem+'.log')
         start = time.monotonic()
         code = bounded([sys.executable,'-m','pytest',str(file),'-q','--tb=short',f'--junitxml={xml}'],
-                       log, min(240,remaining-65), module_environment(environment, file))
+                       log, min(args.module_timeout_seconds,remaining-65), module_environment(environment, file))
         tests, passed = [], False
         error = None
         try:
-            tests, passed = validate_inventory(xml, code)
+            tests, passed = validate_inventory(xml, code, required_nodes.get(str(file), ()))
         except Exception as exc:
             error = f'{type(exc).__name__}: {exc}'
         result = dict(file=str(file),returncode=code,passed=passed,tests=tests,

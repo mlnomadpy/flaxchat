@@ -18,6 +18,7 @@ def test_core_change_keeps_full_validation_and_relevant_expensive_checks():
 def test_benchmark_change_only_selects_benchmark_tests():
     scope = select_scope(["benchmarks/compare.py"])
     assert scope == {
+        "manual_physical_tests": [],
         "mode": "targeted",
         "tests": [
             "tests/test_benchmark_compare.py",
@@ -63,6 +64,7 @@ def test_accelerator_template_change_runs_launcher_contract_only():
 def test_release_workflow_change_runs_policy_tests_without_full_suite():
     scope = select_scope([".github/workflows/release.yml"])
     assert scope == {
+        "manual_physical_tests": [],
         "mode": "targeted",
         "tests": ["tests/test_quality_policy.py"],
         "run_audit": False,
@@ -129,3 +131,83 @@ def test_tied_embedding_diagnostic_selects_multidevice_validation():
     scope = select_scope(['scripts/diagnose_tied_embedding.py'])
     assert scope['run_multidevice']
     assert 'tests/test_tied_embedding_diagnostic.py' in scope['tests']
+
+
+def test_independent_development_routes_admission_and_manual_physical_acceptance():
+    assert 'tests/test_gcs_parent_exposure_metadata.py' in select_scope(
+        ['scripts/scan_gcs_parent_exposure.py'])['tests']
+    assert 'tests/test_parent_exposure_inventory_metadata.py' in select_scope(
+        ['scripts/build_parent_exposure_inventory.py'])['tests']
+    scope = select_scope(['scripts/prepare_embedding_retrieval_dev.py'])
+    assert 'tests/test_independent_retrieval_dev_metadata.py' in scope['tests']
+    assert 'tests/test_development_quarantine_metadata.py' in scope['tests']
+    assert scope['manual_physical_tests'] == ['tests/test_embedding_trainer_physical_tpu.py']
+    assert not scope['run_multidevice'] and not scope['run_e2e']
+    scope = select_scope(['scripts/prepare_yat_embedding_finetune.py'])
+    assert 'tests/test_independent_retrieval_dev_metadata.py' in scope['tests']
+    assert 'tests/test_code_provenance_metadata.py' in scope['tests']
+
+
+def test_raw_publication_evidence_selects_contract_and_manual_parity():
+    scope = select_scope(['scripts/parity_evidence.py'])
+    assert scope['tests'] == ['tests/test_evaluation_integration_metadata.py', 'tests/test_release_contract.py']
+    assert scope['manual_physical_tests'] == ['tests/test_torch_parity_tpu.py']
+    assert not scope['run_multidevice'] and not scope['run_e2e']
+
+
+def test_parity_campaign_routes_resource_admission_checks():
+    scope = select_scope(['scripts/run_yat_parity_campaign.py'])
+    assert 'tests/test_parity_resource_admission_metadata.py' in scope['tests']
+    assert scope['manual_physical_tests'] == ['tests/test_torch_parity_tpu.py']
+
+
+def test_new_data_parent_tools_route_metadata_and_keep_tpu_work_manual():
+    scope = select_scope(['scripts/filter_representation_development.py',
+                          'scripts/prepare_enriched_parent_export.py',
+                          'tests/test_embedding_gradient_cache_physical_tpu.py'])
+    assert scope['mode'] == 'targeted'
+    assert 'tests/test_candidate_collision_filter_metadata.py' in scope['tests']
+    assert 'tests/test_enriched_parent_export_metadata.py' in scope['tests']
+    assert 'tests/test_cache_diagnostic_metadata.py' in scope['tests']
+    assert 'tests/test_embedding_gradient_cache_physical_tpu.py' not in scope['tests']
+    assert scope['manual_physical_tests'] == ['tests/test_embedding_gradient_cache_physical_tpu.py']
+
+
+def test_data_controller_and_reporting_only_helpers_have_no_cpu_model_routes():
+    mapping = {
+        'scripts/bounded_data_job.py': 'tests/test_bounded_data_job_metadata.py',
+        'scripts/diagnose_artifact_transfer.py': 'tests/test_artifact_transfer_metadata.py',
+        'scripts/report_full_corpus_retrieval.py': 'tests/test_full_corpus_retrieval_metadata.py',
+        'flaxchat/full_corpus_retrieval.py': 'tests/test_full_corpus_retrieval_metadata.py',
+        'flaxchat/embedding_telemetry.py': 'tests/test_embedding_telemetry_metadata.py',
+        'flaxchat/embedding_uncertainty.py': 'tests/test_embedding_uncertainty_metadata.py',
+    }
+    for source, test in mapping.items():
+        for change in ([source], [test], [source, test]):
+            scope = select_scope(change)
+            assert scope['mode'] == 'targeted'
+            assert scope['tests'] == [test]
+            assert scope['manual_physical_tests'] == []
+            assert not scope['run_multidevice']
+            assert not scope['run_e2e']
+
+
+def test_metadata_exception_does_not_hide_core_training_changes():
+    scope = select_scope(['flaxchat/embedding_telemetry.py', 'flaxchat/embedding.py'])
+    assert scope['mode'] == 'full'
+    assert 'tests/test_embedding_trainer_physical_tpu.py' in scope['manual_physical_tests']
+    assert select_scope(['flaxchat/embedding_telemetry_extra.py'])['mode'] == 'full'
+
+
+def test_full_corpus_encoder_and_scorer_keep_model_execution_physical():
+    for source in ('scripts/evaluate_yat_full_corpus_tpu.py', 'flaxchat/full_corpus_tpu.py'):
+        scope = select_scope([source])
+        if scope['mode'] == 'targeted':
+            assert 'tests/test_yat_full_corpus_tpu_metadata.py' in scope['tests']
+        else:
+            assert source == 'flaxchat/full_corpus_tpu.py'
+        assert 'tests/test_full_corpus_retrieval_physical_tpu.py' in scope['manual_physical_tests']
+        assert 'tests/test_full_corpus_retrieval_physical_tpu.py' not in scope['tests']
+    scope = select_scope(['tests/test_full_corpus_retrieval_physical_tpu.py'])
+    assert scope['tests'] == []
+    assert scope['manual_physical_tests'] == ['tests/test_full_corpus_retrieval_physical_tpu.py']

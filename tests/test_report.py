@@ -9,8 +9,8 @@ def test_unknown_device_cost_is_not_invented():
 
 
 @patch("flaxchat.report.jax.device_count", return_value=8)
-def test_tpu_cost_scales_by_time_and_device_count(_):
-    assert _estimate_cost(1800, "TPU v4") == 6.0
+def test_device_name_and_logical_device_count_cannot_invent_cost(_):
+    assert _estimate_cost(1800, "TPU v4") is None
 
 
 @patch("flaxchat.report.subprocess.check_output", side_effect=OSError)

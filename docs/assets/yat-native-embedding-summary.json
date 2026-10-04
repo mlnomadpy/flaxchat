@@ -1,0 +1,1448 @@
+{
+  "comparison_limit": "YAT contrastive fine-tune vs mmBERT MLM base; architecture/training recipe not controlled",
+  "fixture_sha256": "a63db9a4496e27bd23355c58234b86967cb0f88b4bf725204cedcc148fd1357d",
+  "format": "flaxchat-verified-activation-summary-v1",
+  "independent_source_map_sha256": "3c5457ff49c7fb692a6ae957a5ecb21c10adddc677afd3c2c64067f7f9ee7259",
+  "interpretation": [
+    "Head statistics are valid-token-weighted; entropy depends on eligible keys.",
+    "RMS ratios are update amplitudes, not causal percentages.",
+    "Nearzero fraction uses absolute1e-4 threshold; not dead-neuron proof.",
+    "Sensitive tiles are candidate tiles; actual dense/sparse repair dispatch not instrumented."
+  ],
+  "models": {
+    "mmbert": {
+      "code_probe": {
+        "candidates": 16,
+        "first_positive_ranks": [
+          1,
+          1,
+          2,
+          1,
+          6,
+          15,
+          1,
+          3
+        ],
+        "mrr": 0.6333333333333333,
+        "queries": 8,
+        "recall_at_1": 0.5,
+        "tie_policy": "stable declared candidate order",
+        "top1_ids": [
+          "python-0",
+          "python-1",
+          "python-1",
+          "python-3",
+          "python-6",
+          "python-2",
+          "python-6",
+          "python-6"
+        ]
+      },
+      "cosine_margin": 0.12638470382607425,
+      "cross_group_cosine_mean": 0.7142284924381459,
+      "geometry": {
+        "centered_rank_limit": 87,
+        "centered_unit_vectors": {
+          "energy_entropy_effective_rank": 26.701557327806153,
+          "leading_energy_fraction": 0.2267902638876568,
+          "participation_rank": 12.855478453242512
+        },
+        "mean_offdiagonal_cosine": 0.7224164251834088,
+        "offdiagonal_cosine_p10_p50_p90": [
+          0.6167631491377963,
+          0.7252192975514589,
+          0.8376302832902935
+        ],
+        "rank_limit": 88,
+        "raw_norm_mean": 29.836148248296933,
+        "rows": 88,
+        "uncentered_unit_vectors": {
+          "energy_entropy_effective_rank": 4.4073526742986635,
+          "leading_energy_fraction": 0.7271191696294407,
+          "participation_rank": 1.8710997749676752
+        }
+      },
+      "geometry_by_domain": {
+        "code": {
+          "centered_rank_limit": 15,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.983711701937963,
+            "leading_energy_fraction": 0.3476596365698136,
+            "participation_rank": 4.689271279420437
+          },
+          "mean_offdiagonal_cosine": 0.8668319746315303,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.7802124935135781,
+            0.8699558852221067,
+            0.948540801038109
+          ],
+          "rank_limit": 16,
+          "raw_norm_mean": 30.09133110032395,
+          "rows": 16,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 1.852487177008023,
+            "leading_energy_fraction": 0.875849805334768,
+            "participation_rank": 1.2980320495282507
+          }
+        },
+        "code_query": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 5.938859017600239,
+            "leading_energy_fraction": 0.2849059179171191,
+            "participation_rank": 5.281675940616522
+          },
+          "mean_offdiagonal_cosine": 0.8376608581334496,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.7700514343791902,
+            0.8438305405686419,
+            0.91017645438519
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 28.224790808134422,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 1.931800758267342,
+            "leading_energy_fraction": 0.8588503027512225,
+            "participation_rank": 1.3488047790905775
+          }
+        },
+        "english": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.74405986345268,
+            "leading_energy_fraction": 0.2236781507258281,
+            "participation_rank": 6.489712859930644
+          },
+          "mean_offdiagonal_cosine": 0.7961144933233391,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.7648452112557254,
+            0.7977079433952479,
+            0.8285866733933657
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 28.861714777431505,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 2.245036665237233,
+            "leading_energy_fraction": 0.8218110477572053,
+            "participation_rank": 1.4700113338078575
+          }
+        },
+        "multilingual": {
+          "centered_rank_limit": 55,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 24.655702365059845,
+            "leading_energy_fraction": 0.12331959265788052,
+            "participation_rank": 17.045039488873943
+          },
+          "mean_offdiagonal_cosine": 0.7774367034898153,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.7083709434712676,
+            0.7745849722088808,
+            0.8567544136690568
+          ],
+          "rank_limit": 56,
+          "raw_norm_mean": 30.13263756357892,
+          "rows": 56,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 3.3942687840419894,
+            "leading_energy_fraction": 0.7822196272551669,
+            "participation_rank": 1.626943435815475
+          }
+        }
+      },
+      "geometry_by_language": {
+        "ar": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.853503314865696,
+            "leading_energy_fraction": 0.18336124177142699,
+            "participation_rank": 6.721258225740181
+          },
+          "mean_offdiagonal_cosine": 0.8875441177693758,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.8732358484060068,
+            0.8857205725076762,
+            0.9042031851073635
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 30.875711829187896,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 1.6666589335996518,
+            "leading_energy_fraction": 0.9016315584767693,
+            "participation_rank": 1.2279293859009641
+          }
+        },
+        "de": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.7625286186516,
+            "leading_energy_fraction": 0.19988742546568583,
+            "participation_rank": 6.556120758460811
+          },
+          "mean_offdiagonal_cosine": 0.8331957917833278,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.8038702556172475,
+            0.8286563453290339,
+            0.8689409268716349
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 30.113167546992788,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 2.0014415839504105,
+            "leading_energy_fraction": 0.8542539532727473,
+            "participation_rank": 1.3642780773007654
+          }
+        },
+        "en": {
+          "centered_rank_limit": 15,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 11.359560536641018,
+            "leading_energy_fraction": 0.26296934653795256,
+            "participation_rank": 8.510679270268238
+          },
+          "mean_offdiagonal_cosine": 0.7732502824277678,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.6930475648008984,
+            0.7738808159062283,
+            0.8481489617207842
+          ],
+          "rank_limit": 16,
+          "raw_norm_mean": 28.54325279278296,
+          "rows": 16,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 2.802860631818682,
+            "leading_energy_fraction": 0.7882118020725947,
+            "participation_rank": 1.5960092086352207
+          }
+        },
+        "es": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.679303720744797,
+            "leading_energy_fraction": 0.22279884349876525,
+            "participation_rank": 6.382552053444374
+          },
+          "mean_offdiagonal_cosine": 0.8299217714515488,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.8000621472067664,
+            0.8271522941838221,
+            0.8622524397571787
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 29.683206235023256,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 2.0194389534527786,
+            "leading_energy_fraction": 0.8513093489650481,
+            "participation_rank": 1.3732668701242927
+          }
+        },
+        "fr": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.706924493591217,
+            "leading_energy_fraction": 0.2176777509011027,
+            "participation_rank": 6.44206658699056
+          },
+          "mean_offdiagonal_cosine": 0.8405905048278065,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.8049787956365912,
+            0.8412707354697564,
+            0.8738222682597993
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 30.401351505415818,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 1.951821922152794,
+            "leading_energy_fraction": 0.8607143047749334,
+            "participation_rank": 1.344375838028636
+          }
+        },
+        "hi": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.673161130090517,
+            "leading_energy_fraction": 0.22074828027287555,
+            "participation_rank": 6.373410708980081
+          },
+          "mean_offdiagonal_cosine": 0.8908099966984848,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.8690946791503551,
+            0.8924159511424351,
+            0.9109214725673339
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 30.297459054566737,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 1.6424164970309894,
+            "leading_energy_fraction": 0.9045421660693914,
+            "participation_rank": 1.2200680907271542
+          }
+        },
+        "ja": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.749889976469594,
+            "leading_energy_fraction": 0.20805448375473345,
+            "participation_rank": 6.523446259717401
+          },
+          "mean_offdiagonal_cosine": 0.8447186737065427,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.8129822546267942,
+            0.8413271921561338,
+            0.8690851969719514
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 30.449642741130905,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 1.9276752682016507,
+            "leading_energy_fraction": 0.8642703996713054,
+            "participation_rank": 1.3337114392980087
+          }
+        },
+        "javascript": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 4.884350117101564,
+            "leading_energy_fraction": 0.4219043160907937,
+            "participation_rank": 3.9098972621080534
+          },
+          "mean_offdiagonal_cosine": 0.9011806226689255,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.8380571133048524,
+            0.9006814487184462,
+            0.9553558550075929
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 29.69862708805179,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 1.5361961172648466,
+            "leading_energy_fraction": 0.9140440310331293,
+            "participation_rank": 1.1942113127450624
+          }
+        },
+        "python": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 3.6845663584591253,
+            "leading_energy_fraction": 0.6134114233599904,
+            "participation_rank": 2.4501456517074116
+          },
+          "mean_offdiagonal_cosine": 0.8939089422681017,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.7856476806214688,
+            0.929583914537854,
+            0.9699304733893142
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 30.484035112596107,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 1.5309580102393463,
+            "leading_energy_fraction": 0.9085697790967023,
+            "participation_rank": 1.206457434569087
+          }
+        },
+        "zh": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.733446831140319,
+            "leading_energy_fraction": 0.20708331847688208,
+            "participation_rank": 6.490784334993527
+          },
+          "mean_offdiagonal_cosine": 0.793299118998234,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.7548007480791682,
+            0.7958093385525823,
+            0.8334396813901677
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 29.107924032735063,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 2.2630095085319764,
+            "leading_energy_fraction": 0.819406245580165,
+            "participation_rank": 1.4783018151771123
+          }
+        }
+      },
+      "layers": [],
+      "native_vectors_complete": true,
+      "original_worker_complete": false,
+      "original_worker_failure": {
+        "message": "Trace/native parity failed; do not interpret traced activations: 0.052036285400390625/0.004104865249246359",
+        "type": "ValueError"
+      },
+      "paired_cosine_mean": 0.8406131962642202,
+      "trace_metrics_interpreted": false,
+      "trace_outcomes_preserved": [
+        {
+          "initial_vs_regrouped_native_max_absolute_drift": 0.0,
+          "initial_vs_regrouped_native_relative_l2_drift": 0.0,
+          "native_batch_context_within_trace_bounds": true,
+          "offset": 0,
+          "reference_max_absolute_drift": 0.052036285400390625,
+          "reference_relative_l2_drift": 0.004104865249246359,
+          "reference_scope": "fresh native model.pool on identical diagnostic row grouping",
+          "row_indices": [
+            0,
+            8,
+            16,
+            24,
+            32,
+            40,
+            48,
+            56
+          ],
+          "rows": 8,
+          "seconds_including_compile": 11.997721232000004,
+          "trace_native_parity_accepted": false,
+          "valid_tokens": 114
+        }
+      ],
+      "translation_by_language": {
+        "ar": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "de": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "es": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "fr": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "hi": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "ja": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "zh": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        }
+      },
+      "translation_probe": {
+        "candidates": 8,
+        "first_positive_ranks": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mrr": 1.0,
+        "queries": 56,
+        "recall_at_1": 1.0,
+        "tie_policy": "stable declared candidate order",
+        "top1_ids": [
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7"
+        ]
+      }
+    },
+    "yat": {
+      "code_probe": {
+        "candidates": 16,
+        "first_positive_ranks": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mrr": 1.0,
+        "queries": 8,
+        "recall_at_1": 1.0,
+        "tie_policy": "stable declared candidate order",
+        "top1_ids": [
+          "python-0",
+          "python-1",
+          "python-2",
+          "python-3",
+          "python-4",
+          "python-5",
+          "python-6",
+          "python-7"
+        ]
+      },
+      "cosine_margin": 0.5024784251247103,
+      "cross_group_cosine_mean": 0.12479429830566549,
+      "geometry": {
+        "centered_rank_limit": 87,
+        "centered_unit_vectors": {
+          "energy_entropy_effective_rank": 32.51872042859275,
+          "leading_energy_fraction": 0.14679093872814183,
+          "participation_rank": 18.6397295833275
+        },
+        "mean_offdiagonal_cosine": 0.1573477594945182,
+        "offdiagonal_cosine_p10_p50_p90": [
+          -0.021037633883063036,
+          0.12147549557536055,
+          0.3951702503095357
+        ],
+        "rank_limit": 88,
+        "raw_norm_mean": 42.612268879190715,
+        "rows": 88,
+        "uncentered_unit_vectors": {
+          "energy_entropy_effective_rank": 28.052797021959766,
+          "leading_energy_fraction": 0.17849644870670747,
+          "participation_rank": 14.770078183600393
+        }
+      },
+      "geometry_by_domain": {
+        "code": {
+          "centered_rank_limit": 15,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 8.671125216644006,
+            "leading_energy_fraction": 0.1940267932778384,
+            "participation_rank": 7.372311277195821
+          },
+          "mean_offdiagonal_cosine": 0.4767227890230208,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.2646272089395566,
+            0.46461637917479753,
+            0.7099076123653871
+          ],
+          "rank_limit": 16,
+          "raw_norm_mean": 43.768160016896815,
+          "rows": 16,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 5.6766440734078225,
+            "leading_energy_fraction": 0.5179851148740118,
+            "participation_rank": 3.338140384924338
+          }
+        },
+        "code_query": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.325077473688018,
+            "leading_energy_fraction": 0.263326738869588,
+            "participation_rank": 5.8251375696675245
+          },
+          "mean_offdiagonal_cosine": 0.33876217172247586,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.17188350117069887,
+            0.3188808576061454,
+            0.5713655999705771
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 42.52102074094921,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 5.6417809933216585,
+            "leading_energy_fraction": 0.4350964324555245,
+            "participation_rank": 4.109163383666305
+          }
+        },
+        "english": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.879989705703185,
+            "leading_energy_fraction": 0.18881378529876688,
+            "participation_rank": 6.763565175942525
+          },
+          "mean_offdiagonal_cosine": 0.12093438305434367,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.024154684471572922,
+            0.1252776985484214,
+            0.2136892076687604
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 42.46532286951575,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 7.540252483638149,
+            "leading_energy_fraction": 0.23468016755464344,
+            "participation_rank": 7.051934880958011
+          }
+        },
+        "multilingual": {
+          "centered_rank_limit": 55,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 25.626730431680034,
+            "leading_energy_fraction": 0.12579447196197327,
+            "participation_rank": 16.581288337644345
+          },
+          "mean_offdiagonal_cosine": 0.22723688072894327,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.06787544038551241,
+            0.18859130344988018,
+            0.48336225427869134
+          ],
+          "rank_limit": 56,
+          "raw_norm_mean": 42.31604200383418,
+          "rows": 56,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 20.083088645777533,
+            "leading_energy_fraction": 0.24866103750661558,
+            "participation_rank": 10.442739822902972
+          }
+        }
+      },
+      "geometry_by_language": {
+        "ar": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.7530328944313585,
+            "leading_energy_fraction": 0.21901037145235897,
+            "participation_rank": 6.508922927861592
+          },
+          "mean_offdiagonal_cosine": 0.2834429044350458,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.2019166568976076,
+            0.27765730785421805,
+            0.39799071155277876
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 41.13723313830806,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.4023979154717345,
+            "leading_energy_fraction": 0.3740150270137335,
+            "participation_rank": 4.997772505696254
+          }
+        },
+        "de": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.799790931702595,
+            "leading_energy_fraction": 0.20704677504167288,
+            "participation_rank": 6.602537594578471
+          },
+          "mean_offdiagonal_cosine": 0.23209801318318155,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.12120137334634407,
+            0.228680263587038,
+            0.3450791005092658
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 42.8548097673127,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.798023667293549,
+            "leading_energy_fraction": 0.3311155833951416,
+            "participation_rank": 5.633604093700134
+          }
+        },
+        "en": {
+          "centered_rank_limit": 15,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 12.944494266466023,
+            "leading_energy_fraction": 0.18259176845913827,
+            "participation_rank": 11.218081379858504
+          },
+          "mean_offdiagonal_cosine": 0.13865305792800145,
+          "offdiagonal_cosine_p10_p50_p90": [
+            -0.009795449560091847,
+            0.11937875849996304,
+            0.33363398353066287
+          ],
+          "rank_limit": 16,
+          "raw_norm_mean": 42.49317180523248,
+          "rows": 16,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 12.626283480892967,
+            "leading_energy_fraction": 0.227746758793809,
+            "participation_rank": 9.849076195917915
+          }
+        },
+        "es": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.77165099111845,
+            "leading_energy_fraction": 0.21305120189185525,
+            "participation_rank": 6.554577940708485
+          },
+          "mean_offdiagonal_cosine": 0.2669170396463512,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.17321777210148775,
+            0.2691598549863746,
+            0.3346444684541342
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 42.71524835893974,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.530930963644359,
+            "leading_energy_fraction": 0.3605142113052978,
+            "participation_rank": 5.196739568280488
+          }
+        },
+        "fr": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.730405379992726,
+            "leading_energy_fraction": 0.20733623327183429,
+            "participation_rank": 6.506835979656787
+          },
+          "mean_offdiagonal_cosine": 0.26406193844069914,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.1747677147175869,
+            0.2598557275551302,
+            0.35564539956708463
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 42.54256778370673,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.5134234390572,
+            "leading_energy_fraction": 0.35986190553253533,
+            "participation_rank": 5.195407617714828
+          }
+        },
+        "hi": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.793002730735635,
+            "leading_energy_fraction": 0.20288922522740607,
+            "participation_rank": 6.607367576171037
+          },
+          "mean_offdiagonal_cosine": 0.23656669921018628,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.1600125065918978,
+            0.23596258371508722,
+            0.3055613731510822
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 41.09502554105515,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.770090050437027,
+            "leading_energy_fraction": 0.33456001788317913,
+            "participation_rank": 5.589982433698971
+          }
+        },
+        "ja": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.829420395931228,
+            "leading_energy_fraction": 0.1910543241206727,
+            "participation_rank": 6.67587575970074
+          },
+          "mean_offdiagonal_cosine": 0.2362213811080474,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.1493599595059208,
+            0.2071380560094829,
+            0.3839096524074801
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 42.5646532614946,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.7626461153112665,
+            "leading_energy_fraction": 0.3382404335725152,
+            "participation_rank": 5.556675356029529
+          }
+        },
+        "javascript": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.240320308037304,
+            "leading_energy_fraction": 0.25620894763917706,
+            "participation_rank": 5.784663495333832
+          },
+          "mean_offdiagonal_cosine": 0.5949662307651281,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.4940078048005615,
+            0.5880386308621388,
+            0.7254380414750397
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 43.85879567628134,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 3.6339140369762806,
+            "leading_energy_fraction": 0.649683180488424,
+            "participation_rank": 2.25652496689728
+          }
+        },
+        "python": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.256052397523287,
+            "leading_energy_fraction": 0.24416429108810647,
+            "participation_rank": 5.8101965043505075
+          },
+          "mean_offdiagonal_cosine": 0.4916682578264773,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.3224178710777254,
+            0.502692910020413,
+            0.6354416668201901
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 43.6775243575123,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 4.424396652201655,
+            "leading_energy_fraction": 0.5637485755495731,
+            "participation_rank": 2.85503962334505
+          }
+        },
+        "zh": {
+          "centered_rank_limit": 7,
+          "centered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.78598621555147,
+            "leading_energy_fraction": 0.19533039189364396,
+            "participation_rank": 6.592449979804098
+          },
+          "mean_offdiagonal_cosine": 0.3062974565603754,
+          "offdiagonal_cosine_p10_p50_p90": [
+            0.21006230306045387,
+            0.3004325228631391,
+            0.3999230777034839
+          ],
+          "rank_limit": 8,
+          "raw_norm_mean": 43.30275617602226,
+          "rows": 8,
+          "uncentered_unit_vectors": {
+            "energy_entropy_effective_rank": 6.230564815800225,
+            "leading_energy_fraction": 0.3952038273587913,
+            "participation_rank": 4.725711448051972
+          }
+        }
+      },
+      "layers": [],
+      "native_vectors_complete": true,
+      "original_worker_complete": false,
+      "original_worker_failure": {
+        "message": "Trace/native parity failed; do not interpret traced activations: 0.08748102188110352/0.00922377873212099",
+        "type": "ValueError"
+      },
+      "paired_cosine_mean": 0.6272727234303758,
+      "trace_metrics_interpreted": false,
+      "trace_outcomes_preserved": [
+        {
+          "initial_vs_regrouped_native_max_absolute_drift": 0.0,
+          "initial_vs_regrouped_native_relative_l2_drift": 0.0,
+          "native_batch_context_within_trace_bounds": true,
+          "offset": 0,
+          "reference_max_absolute_drift": 0.08748102188110352,
+          "reference_relative_l2_drift": 0.00922377873212099,
+          "reference_scope": "fresh native model.pool on identical diagnostic row grouping",
+          "row_indices": [
+            0,
+            8,
+            16,
+            24,
+            32,
+            40,
+            48,
+            56
+          ],
+          "rows": 8,
+          "seconds_including_compile": 29.25943772300002,
+          "trace_native_parity_accepted": false,
+          "valid_tokens": 114
+        }
+      ],
+      "translation_by_language": {
+        "ar": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "de": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "es": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "fr": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "hi": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "ja": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        },
+        "zh": {
+          "candidates": 8,
+          "first_positive_ranks": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mrr": 1.0,
+          "queries": 8,
+          "recall_at_1": 1.0,
+          "tie_policy": "stable declared candidate order",
+          "top1_ids": [
+            "en-0",
+            "en-1",
+            "en-2",
+            "en-3",
+            "en-4",
+            "en-5",
+            "en-6",
+            "en-7"
+          ]
+        }
+      },
+      "translation_probe": {
+        "candidates": 8,
+        "first_positive_ranks": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mrr": 1.0,
+        "queries": 56,
+        "recall_at_1": 1.0,
+        "tie_policy": "stable declared candidate order",
+        "top1_ids": [
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7",
+          "en-0",
+          "en-1",
+          "en-2",
+          "en-3",
+          "en-4",
+          "en-5",
+          "en-6",
+          "en-7"
+        ]
+      }
+    }
+  },
+  "native_only": true,
+  "paired_comparison_complete": true,
+  "receipts_sha256": {
+    "mmbert": "c6ac5be691d17a8d5f6317b31eb1193da8d10a7ca4df2b1f1fc96334253269e0",
+    "yat": "6d49477347e6bea4fd033adb65e3c32d983f9fda8ddb39b5ec02a025e04cabe3"
+  },
+  "reporter_source_sha256": "267908496351f5e403ed68bc5ec3eaba10e508553dc32137d7533aee3a3ae672",
+  "scope": "88 handcrafted texts; 16 traced texts; diagnostic only, not official benchmark"
+}

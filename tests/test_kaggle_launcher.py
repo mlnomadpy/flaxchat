@@ -116,23 +116,12 @@ def _gcp_spec(args):
     )
 
 
-@pytest.mark.parametrize("failure", ["up", "run"])
-def test_gcp_lifecycle_tears_down_after_failure(failure):
-    args = _gcp_args("--teardown")
-    vm = FakeVM(fail_at=failure)
-    with pytest.raises(RuntimeError, match=failure):
-        run_adapter(args, _gcp_spec(args), vm, None)
-    assert vm.calls[-1][0] == "down"
-
-
-def test_gcp_lifecycle_resume_collect_and_teardown():
-    args = _gcp_args("--teardown", "--recover", "--gcs", "gs://bucket", "--collect", "run.json")
+def test_gcp_legacy_lifecycle_refuses_paid_calls():
+    args = _gcp_args("--teardown", "--recover", "--gcs", "gs://bucket")
     vm = FakeVM()
-    assert run_adapter(args, _gcp_spec(args), vm, object()) == 0
-    names = [call[0] for call in vm.calls]
-    assert "run_with_resume" in names
-    assert "collect" in names
-    assert names[-1] == "down"
+    with pytest.raises(RuntimeError, match="Legacy tpuz paid execution is disabled"):
+        run_adapter(args, _gcp_spec(args), vm, object())
+    assert vm.calls == []
 
 
 def test_platform_dry_runs_share_one_manifest_contract():

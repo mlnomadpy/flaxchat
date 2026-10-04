@@ -2,7 +2,21 @@
 
 ## What This Is
 
-flaxchat is a minimal end-to-end LLM training harness for TPU pods and GPUs, built on JAX/Flax NNX. Faithful port of nanochat (Karpathy) with full feature parity plus speculative decoding.
+flaxchat is an end-to-end decoder and bidirectional encoder training harness for TPU pods and GPUs, built on JAX/Flax NNX. It adapts nanochat and includes continued YAT embedding training and a PyTorch export.
+
+## Current representation-training workflow
+
+Use `skills/flaxchat-training/SKILL.md` and `docs/REPRESENTATION_TRAINING_RUNBOOK.md`
+when continuing the trained YAT embedding model. The current audit and tool gaps
+are in `docs/SYSTEM_AUDIT_2026-09-30.md` and `docs/TRAINING_TOOLS.md`.
+
+Continue the existing trained weights. Changing the data, objective, or learning
+rate horizon creates a new stage with explicit optimizer policy; exact resume
+means restoring the same immutable stage and its optimizer/cursor. Do not use
+CPU model runs or simulated devices as TPU qualification. Data preparation,
+static checks, and evidence parsing can run locally or on a preparation VM.
+GitHub checks remain under the user's existing cost preference; do not dispatch
+paid workflows or cloud jobs as a side effect of editing documentation.
 
 ## Key Modules
 
@@ -18,6 +32,9 @@ flaxchat is a minimal end-to-end LLM training harness for TPU pods and GPUs, bui
 | `config.py` | Depth-based auto-config (single dial scales all hyperparams) |
 | `common.py` | Mesh creation, distributed init, dtype detection, logging |
 | `checkpoint.py` | Orbax async checkpointing with save/load/restore |
+| `encoder.py`, `yat.py` | Bidirectional encoder, YAT attention/FFN, trainable alpha |
+| `contrastive.py` | Global paired and mined-negative embedding objectives |
+| `scripts/train_yat_embedding_finetune.py` | TPU-only embedding stage; see audit for missing guards and capabilities |
 | `report.py` | Training reports and cost estimation |
 | `dataset.py` | Parquet file listing for ClimbMix-400B |
 
@@ -47,10 +64,10 @@ for token_column, masks in engine.generate(prompt_ids, num_samples=3, max_tokens
 
 | Mode | Function | Speed | Use Case |
 |------|----------|-------|----------|
-| Padded | `generate()` | ~1-2 tok/s | Testing |
-| KV-cached | `generate_with_cache()` | ~10-50 tok/s | Production |
-| Fully JIT | `generate_fast()` | ~200+ tok/s | TPU inference |
-| Speculative | `generate_speculative()` | ~2-4x cached | Large model + small draft |
+| Padded | `generate()` | Measure per run | Testing |
+| KV-cached | `generate_with_cache()` | Measure per run | Cached inference |
+| Fully JIT | `generate_fast()` | Measure per run | TPU inference |
+| Speculative | `generate_speculative()` | Measure per model pairing | Large model + small draft |
 
 ## Tool Use
 
@@ -68,14 +85,19 @@ result = execute_code("print(2 + 2)", timeout=5.0, trusted=True)
 # ExecutionResult(success=True, stdout="4\n", ...)
 ```
 
-## Parallelism (default, not optional)
+## Parallelism
 
 ```python
-mesh = compute_init()  # auto mesh over ALL devices
+mesh = compute_init()  # configure the intended device mesh
 # Data parallel: P('data') on batch dimension
 # FSDP: shard_model_fsdp() for large models
 # Multi-host: jax.distributed.initialize() automatic
 ```
+
+Capabilities are trainer-specific. The embedding fine-tuner currently uses a
+one-dimensional data mesh and replicated model/optimizer state; shared FSDP
+helpers and MLM accumulation do not imply embedding support. Check the actual
+entry point and physical evidence before making a scaling claim.
 
 ## Config (depth-based)
 
@@ -106,12 +128,10 @@ config = GPTConfig(n_layer=16, n_embd=1024, tie_embeddings=True)
 
 ## Verified Results
 
-| Run | Loss | Throughput | Hardware |
-|-----|------|-----------|----------|
-| Pretrain 12L/768d 2B tok | **2.94** | 379K tok/s | Kaggle TPU v5e-8 |
-| SFT SmolTalk | **1.82** | — | Kaggle TPU v5e-8 |
-| GRPO GSM8K | running | — | Kaggle TPU v5e-8 |
-| Pretrain 16L/1024d 10B tok (tied) | training | — | TRC v6e-8 |
+Use `docs/RESULTS.md`, the machine-readable provenance index, and dated model
+cards. A historical "running" status or unlinked throughput number is not current
+execution evidence. The embedding-v1 card reports completed training and the
+cross-language regression that the continuation must address.
 
 ## Tests
 
