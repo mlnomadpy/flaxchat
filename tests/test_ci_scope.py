@@ -211,3 +211,45 @@ def test_full_corpus_encoder_and_scorer_keep_model_execution_physical():
     scope = select_scope(['tests/test_full_corpus_retrieval_physical_tpu.py'])
     assert scope['tests'] == []
     assert scope['manual_physical_tests'] == ['tests/test_full_corpus_retrieval_physical_tpu.py']
+
+
+def test_yat_objective_and_export_route_physical_checks_separately():
+    objective = 'tests/test_yat_infonce_physical_tpu.py'
+    export = 'tests/test_yat_export_physical_tpu.py'
+    for source in ('flaxchat/embedding_objective.py', 'flaxchat/contrastive.py',
+                   'scripts/train_yat_embedding_finetune.py'):
+        scope = select_scope([source])
+        assert objective in scope['manual_physical_tests']
+        assert 'tests/test_embedding_trainer_physical_tpu.py' in scope['manual_physical_tests']
+        assert objective not in scope['tests']
+    for source in ('flaxchat/embedding_objective.py', 'flaxchat/public_encoder.py',
+                   'scripts/export_public_encoder.py', 'scripts/release_contract.py'):
+        scope = select_scope([source])
+        assert export in scope['manual_physical_tests']
+        assert export not in scope['tests']
+    for physical, metadata in ((objective, 'tests/test_yat_infonce_metadata.py'),
+                               (export, 'tests/test_yat_export_metadata.py')):
+        scope = select_scope([physical])
+        assert scope['mode'] == 'targeted'
+        assert scope['tests'] == [metadata]
+        assert scope['manual_physical_tests'] == [physical]
+        assert not scope['run_multidevice'] and not scope['run_e2e']
+
+
+def test_yat_qualification_inventory_includes_objective_export_and_resume_variants():
+    import json
+    from pathlib import Path
+    inventory = json.loads((Path(__file__).parents[1] /
+                            'infra/tpu/embedding-qualification-nodes.json').read_text())
+    for filename in ('tests/test_yat_infonce_physical_tpu.py', 'tests/test_yat_export_physical_tpu.py'):
+        assert inventory[filename]
+        assert len(inventory[filename]) == len(set(inventory[filename]))
+    trainer = inventory['tests/test_embedding_trainer_physical_tpu.py']
+    for triplets in ('False', 'True'):
+        for cached in ('False', 'True'):
+            assert ('tests.test_embedding_trainer_physical_tpu::'
+                    f'test_real_trainer_resume_pair_triplet_schema_and_best[{triplets}-{cached}-yat]') in trainer
+    cache = inventory['tests/test_embedding_gradient_cache_physical_tpu.py']
+    for case in ('yat-pair', 'yat-triplet'):
+        assert ('tests.test_embedding_gradient_cache_physical_tpu::'
+                f'test_nnx_cache_shape_matched_reference_and_adam_moments[{case}]') in cache

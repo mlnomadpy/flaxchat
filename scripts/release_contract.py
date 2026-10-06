@@ -203,6 +203,38 @@ def checkpoint_identity(metadata):
             "source_python_sha256": metadata.get("source_python_sha256", "unavailable")}
 
 
+def encoder_export_manifest(metadata, manifest):
+    """Derive serving leaves from authenticated lineage; exclude only objective alpha.
+
+    Callers authenticate the complete metadata and checkpoint manifest first.
+    The original manifest is retained unchanged in every released artifact.
+    """
+    records = manifest.get('model_state', {})
+    objective = metadata.get('resolved_config', {}).get('contrastive_objective')
+    alpha_paths = [name for name in records
+                   if re.sub(r"\.([A-Za-z_]\w*)", r"['\1']", name)
+                   == "['contrastive_raw_alpha']"]
+    if objective is None:
+        if alpha_paths:
+            raise ValueError('Undeclared training-only contrastive alpha')
+        return dict(records), []
+    from types import SimpleNamespace
+    from flaxchat.embedding_stage import contrastive_objective_identity
+    if not isinstance(objective, dict) or objective != contrastive_objective_identity(SimpleNamespace(
+            contrastive_similarity='yat', yat_infonce_alpha_init=objective.get('alpha_init'))):
+        raise ValueError('Unknown contrastive objective export contract')
+    if len(alpha_paths) != 1:
+        raise ValueError('YAT objective requires exactly one training-only contrastive alpha')
+    name = alpha_paths[0]
+    record = records[name]
+    if (not isinstance(record, dict) or record.get('shape') != []
+            or record.get('dtype') != 'float32' or not sha256_identity(record.get('sha256'))):
+        raise ValueError('Training-only contrastive alpha must be a committed FP32 scalar')
+    exclusions = [{'path': name, 'record': record,
+                   'reason': 'training-only-contrastive-objective; encoder-serving-does-not-use-alpha'}]
+    return {key: value for key, value in records.items() if key != name}, exclusions
+
+
 def validate_export(root: Path, export: dict) -> None:
     """Verify portable export against its preserved committed checkpoint lineage."""
     if export.get('source_model_family') not in {'modernbert_contrastive_encoder', 'yat_embedding_finetune'}:
@@ -227,5 +259,9 @@ def validate_export(root: Path, export: dict) -> None:
             or export['tokenizer_identity'] != digest(root / 'tokenizer.json')
             or export.get('sha256') != digest(root / 'model.safetensors')
             or export.get('bytes') != (root / 'model.safetensors').stat().st_size
-            or type(export.get('tensors')) is not int or export['tensors'] != len(manifest.get('model_state', {}))):
+            or type(export.get('tensors')) is not int):
         raise ValueError('Export does not match authenticated committed checkpoint metadata')
+    serving_manifest, exclusions = encoder_export_manifest(metadata, manifest)
+    if (export['tensors'] != len(serving_manifest)
+            or export.get('excluded_training_only_tensors', []) != exclusions):
+        raise ValueError('Export training-only exclusions differ from authenticated objective')

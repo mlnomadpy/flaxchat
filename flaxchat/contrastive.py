@@ -11,6 +11,58 @@ import jax
 import jax.numpy as jnp
 
 
+def _similarity_kind(similarity):
+    if similarity not in ("cosine", "yat"):
+        raise ValueError("Contrastive similarity must be 'cosine' or 'yat'")
+
+
+def _yat_unit(vectors):
+    """Normalize safely; reject nonfinite and near-zero rows in the loss.
+
+    Scaling first avoids overflowing the squared norm of finite embeddings.
+    Invalid rows use a harmless internal value, then explicitly invalidate the
+    final loss. This also permits unused hard-negative padding to contain zero.
+    """
+    vectors = vectors.astype(jnp.float32)
+    finite = jnp.all(jnp.isfinite(vectors), axis=-1)
+    safe = jnp.where(jnp.isfinite(vectors), vectors, 0.0)
+    scale = jnp.max(jnp.abs(safe), axis=-1, keepdims=True)
+    scaled = safe / jnp.where(scale > 0, scale, 1.0)
+    squared_norm = jnp.sum(jnp.square(scaled), axis=-1, keepdims=True)
+    norm = jnp.sqrt(jnp.where(squared_norm > 0, squared_norm, 1.0))
+    valid = finite & (scale[..., 0] > 1e-12 / norm[..., 0])
+    return scaled / norm, valid
+
+
+def spherical_yat_logits(similarities, *, yat_alpha=1.0, temperature=0.05):
+    """Spherical YAT logits, never an explicit exponential of those logits.
+
+    Inputs are dot products of unit vectors. Clip only numerical excursions
+    beyond [-1, 1]. Bias=1 and epsilon=0.01 are fixed. A scalar positive alpha
+    may be supplied as a differentiable JAX value. Invalid dynamic alpha yields
+    NaN so the trainer's nonfinite guard fails closed under JIT.
+    """
+    if not math.isfinite(temperature) or temperature <= 0:
+        raise ValueError("Contrastive temperature must be finite and positive")
+    alpha = jnp.asarray(yat_alpha, dtype=jnp.float32)
+    if alpha.ndim != 0:
+        raise ValueError("YAT alpha must be a scalar")
+    alpha = jnp.where(jnp.isfinite(alpha) & (alpha > 0), alpha, jnp.nan)
+    similarities = jnp.asarray(similarities, dtype=jnp.float32)
+    score = jnp.clip(similarities, -1.0, 1.0)
+    logits = (alpha / temperature) * jnp.square(1.0 + score) / (2.0 * (1.0 - score) + 0.01)
+    return jnp.where(jnp.isfinite(similarities), logits, jnp.nan)
+
+
+def _yat_metrics(logits, allowed, alpha):
+    return {
+        "yat_alpha": jnp.asarray(alpha, dtype=jnp.float32),
+        "yat_logit_min": jnp.min(jnp.where(allowed, logits, jnp.inf)),
+        "yat_logit_max": jnp.max(jnp.where(allowed, logits, -jnp.inf)),
+        "yat_logits_finite": jnp.all(~allowed | jnp.isfinite(logits)),
+    }
+
+
 def symmetric_infonce(
     query_embeddings,
     document_embeddings,
@@ -20,6 +72,9 @@ def symmetric_infonce(
     *,
     temperature: float = 0.05,
     expected_global_batch: int | None = None,
+    similarity: str = "cosine",
+    yat_alpha=1.0,
+    return_metrics: bool = False,
 ):
     """Return FP32 bidirectional InfoNCE with known false negatives excluded.
 
@@ -53,11 +108,20 @@ def symmetric_infonce(
         if ids.shape != (batch,) or not jnp.issubdtype(ids.dtype, jnp.integer):
             raise ValueError(f"{name} must contain one integer ID per global pair")
 
-    queries = query_embeddings.astype(jnp.float32)
-    documents = document_embeddings.astype(jnp.float32)
-    queries = queries / jnp.maximum(jnp.linalg.norm(queries, axis=-1, keepdims=True), 1e-12)
-    documents = documents / jnp.maximum(jnp.linalg.norm(documents, axis=-1, keepdims=True), 1e-12)
-    logits = jnp.matmul(queries, documents.T, precision=jax.lax.Precision.HIGHEST) / temperature
+    _similarity_kind(similarity)
+    if similarity == "yat":
+        queries, query_valid = _yat_unit(query_embeddings)
+        documents, document_valid = _yat_unit(document_embeddings)
+        logits = spherical_yat_logits(
+            jnp.matmul(queries, documents.T, precision=jax.lax.Precision.HIGHEST),
+            yat_alpha=yat_alpha, temperature=temperature)
+        embeddings_valid = jnp.all(query_valid & document_valid)
+    else:
+        queries = query_embeddings.astype(jnp.float32)
+        documents = document_embeddings.astype(jnp.float32)
+        queries = queries / jnp.maximum(jnp.linalg.norm(queries, axis=-1, keepdims=True), 1e-12)
+        documents = documents / jnp.maximum(jnp.linalg.norm(documents, axis=-1, keepdims=True), 1e-12)
+        logits = jnp.matmul(queries, documents.T, precision=jax.lax.Precision.HIGHEST) / temperature
 
     same_query = query_text_ids[:, None] == query_text_ids[None, :]
     same_document = document_text_ids[:, None] == document_text_ids[None, :]
@@ -70,7 +134,13 @@ def symmetric_infonce(
     document_to_query = jax.nn.log_softmax(jnp.where(allowed, logits, -jnp.inf), axis=0)
     loss_q = -query_to_document[labels, labels].mean()
     loss_d = -document_to_query[labels, labels].mean()
-    return (loss_q + loss_d) * 0.5
+    loss = (loss_q + loss_d) * 0.5
+    if similarity == "yat":
+        loss = jnp.where(embeddings_valid, loss, jnp.nan)
+    if return_metrics:
+        metrics = _yat_metrics(logits, allowed, yat_alpha) if similarity == "yat" else {}
+        return loss, metrics
+    return loss
 
 
 def hard_negative_infonce(
@@ -85,6 +155,8 @@ def hard_negative_infonce(
     *,
     temperature: float = 0.05,
     expected_global_batch: int | None = None,
+    similarity: str = "cosine",
+    yat_alpha=1.0,
     known_positive_text_ids=None,
     return_metrics: bool = False,
 ):
@@ -117,12 +189,25 @@ def hard_negative_infonce(
         vectors = vectors.astype(jnp.float32)
         return vectors / jnp.maximum(jnp.linalg.norm(vectors, axis=-1, keepdims=True), 1e-12)
 
-    queries, positives, negatives = map(unit,
-        (query_embeddings, positive_embeddings, negative_embeddings))
-    positive_logits = jnp.matmul(queries, positives.T,
-        precision=jax.lax.Precision.HIGHEST) / temperature
-    negative_logits = jnp.matmul(queries, negatives.T,
-        precision=jax.lax.Precision.HIGHEST) / temperature
+    _similarity_kind(similarity)
+    if similarity == "yat":
+        queries, query_valid = _yat_unit(query_embeddings)
+        positives, positive_valid = _yat_unit(positive_embeddings)
+        negatives, negative_finite = _yat_unit(negative_embeddings)
+        embeddings_valid = jnp.all(query_valid & positive_valid & (negative_finite | ~negative_valid))
+        positive_logits = spherical_yat_logits(
+            jnp.matmul(queries, positives.T, precision=jax.lax.Precision.HIGHEST),
+            yat_alpha=yat_alpha, temperature=temperature)
+        negative_logits = spherical_yat_logits(
+            jnp.matmul(queries, negatives.T, precision=jax.lax.Precision.HIGHEST),
+            yat_alpha=yat_alpha, temperature=temperature)
+    else:
+        queries, positives, negatives = map(unit,
+            (query_embeddings, positive_embeddings, negative_embeddings))
+        positive_logits = jnp.matmul(queries, positives.T,
+            precision=jax.lax.Precision.HIGHEST) / temperature
+        negative_logits = jnp.matmul(queries, negatives.T,
+            precision=jax.lax.Precision.HIGHEST) / temperature
     same_query = query_text_ids[:, None] == query_text_ids[None, :]
     same_positive = positive_text_ids[:, None] == positive_text_ids[None, :]
     query_is_positive = query_text_ids[:, None] == positive_text_ids[None, :]
@@ -167,7 +252,13 @@ def hard_negative_infonce(
         jnp.where(allowed_positive, positive_logits, -jnp.inf), axis=0
     )[labels, labels].mean()
     loss = 0.5 * (query_loss + reverse_loss)
+    if similarity == "yat":
+        loss = jnp.where(embeddings_valid, loss, jnp.nan)
     if return_metrics:
-        return loss, {"masked_known_positive_negatives": jnp.sum(known_negative & negative_valid[None, :]),
-                      "valid_explicit_candidates": jnp.sum(allowed_negative)}
+        metrics = {"masked_known_positive_negatives": jnp.sum(known_negative & negative_valid[None, :]),
+                   "valid_explicit_candidates": jnp.sum(allowed_negative)}
+        if similarity == "yat":
+            metrics.update(_yat_metrics(jnp.concatenate((positive_logits, negative_logits), axis=1),
+                jnp.concatenate((allowed_positive, allowed_negative), axis=1), yat_alpha))
+        return loss, metrics
     return loss

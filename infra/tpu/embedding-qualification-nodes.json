@@ -10,7 +10,9 @@
     "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_yat_cache_matches_encoder_gradients_and_optimizer_update[True]",
     "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_yat_cache_matches_encoder_gradients_and_optimizer_update[False]",
     "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_cache_shape_matched_reference_and_adam_moments[True]",
-    "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_cache_shape_matched_reference_and_adam_moments[False]"
+    "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_cache_shape_matched_reference_and_adam_moments[False]",
+    "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_cache_shape_matched_reference_and_adam_moments[yat-pair]",
+    "tests.test_embedding_gradient_cache_physical_tpu::test_nnx_cache_shape_matched_reference_and_adam_moments[yat-triplet]"
   ],
   "tests/test_embedding_trainer_physical_tpu.py": [
     "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-None]",
@@ -22,6 +24,24 @@
     "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[True-True-gate4]",
     "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-gatehorizon]",
     "tests.test_embedding_trainer_physical_tpu::test_physical_rejected_update_preserves_model_and_optimizer",
-    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-independent]"
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-independent]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-yat]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-yat]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[True-False-yat]",
+    "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[True-True-yat]"
+  ],
+  "tests/test_yat_infonce_physical_tpu.py": [
+    "tests.test_yat_infonce_physical_tpu::test_yat_loss_gradients_and_masks[False]",
+    "tests.test_yat_infonce_physical_tpu::test_yat_loss_gradients_and_masks[True]",
+    "tests.test_yat_infonce_physical_tpu::test_yat_endpoints_roundoff_and_alpha",
+    "tests.test_yat_infonce_physical_tpu::test_yat_invalid_embeddings_fail_closed[0.0]",
+    "tests.test_yat_infonce_physical_tpu::test_yat_invalid_embeddings_fail_closed[1e-14]",
+    "tests.test_yat_infonce_physical_tpu::test_yat_invalid_embeddings_fail_closed[nan]",
+    "tests.test_yat_infonce_physical_tpu::test_yat_invalid_embeddings_fail_closed[inf]",
+    "tests.test_yat_infonce_physical_tpu::test_yat_padding_metrics_and_default_compatibility",
+    "tests.test_yat_infonce_physical_tpu::test_yat_normalization_scale_invariance_and_invalid_negative"
+  ],
+  "tests/test_yat_export_physical_tpu.py": [
+    "tests.test_yat_export_physical_tpu::test_yat_checkpoint_export_authenticates_then_excludes_objective_alpha"
   ]
 }

@@ -67,11 +67,13 @@ def preflight(root, *, expected_step=14000, expected_metadata=DEFAULT_METADATA,
     validate_export(root, export)
     manifest = read_json(root / 'checkpoint-manifest.json')
     config = read_json(root / 'config.json')
+    from scripts.release_contract import encoder_export_manifest
+    serving_manifest, exclusions = encoder_export_manifest(read_json(root / 'checkpoint-metadata.json'), manifest)
     if (export['source_model_family'] != 'yat_embedding_finetune'
             or export['source_checkpoint_step'] != expected_step
             or manifest['metadata_sha256'] != expected_metadata
             or canonical_hash(manifest) != expected_manifest
-            or len(manifest.get('model_state', {})) != expected_leaves
+            or len(serving_manifest) != expected_leaves
             or config.get('yat_bias') != 1 or config.get('yat_epsilon') != .01
             or config.get('yat_alpha_trainable') is not True):
         raise ValueError('Actual parent identity or fixed YAT architecture differs')
@@ -88,7 +90,7 @@ def preflight(root, *, expected_step=14000, expected_metadata=DEFAULT_METADATA,
     return dict(artifacts_sha256=before, expected_step=expected_step,
                 expected_metadata_sha256=expected_metadata,
                 expected_manifest_sha256=expected_manifest, expected_leaves=expected_leaves,
-                model_state=manifest['model_state'], model_execution=False)
+                model_state=serving_manifest, excluded_training_only_tensors=exclusions, model_execution=False)
 
 
 def record_leaf(name, observed, expected, receipt, persist):
