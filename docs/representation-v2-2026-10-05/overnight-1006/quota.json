@@ -1,0 +1,547 @@
+[
+  {
+    "name": "projects/525030193900/services/tpu.googleapis.com/consumerQuotaMetrics/tpu.googleapis.com%2Ftpu-v5s-litepod-preemptible",
+    "displayName": "Preemptible TPU-V5 lite pod cores in use by TPU API",
+    "consumerQuotaLimits": [
+      {
+        "name": "projects/525030193900/services/tpu.googleapis.com/consumerQuotaMetrics/tpu.googleapis.com%2Ftpu-v5s-litepod-preemptible/limits/%2Fproject%2Fzone",
+        "unit": "1/{project}/{zone}",
+        "isPrecise": true,
+        "metric": "tpu.googleapis.com/tpu-v5s-litepod-preemptible",
+        "quotaBuckets": [
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536"
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "asia-east1-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "asia-east1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "asia-east1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "asia-northeast1-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "asia-northeast1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "asia-northeast1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "asia-southeast1-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "asia-southeast1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "asia-southeast1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-north1-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-north1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-north1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-west1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-west1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-west1-d"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-west3-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-west3-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-west3-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-west4-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-west4-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "europe-west4-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "northamerica-northeast1-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "northamerica-northeast1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "northamerica-northeast1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "southamerica-west1-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "southamerica-west1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "southamerica-west1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-central1-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-central1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-central1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-central1-f"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-east1-b"
+            }
+          },
+          {
+            "dimensions": {
+              "zone": "us-east1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-east1-d"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-east4-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-east4-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-east4-c"
+            }
+          },
+          {
+            "dimensions": {
+              "zone": "us-east5-a"
+            }
+          },
+          {
+            "dimensions": {
+              "zone": "us-east5-b"
+            }
+          },
+          {
+            "dimensions": {
+              "zone": "us-east5-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-south1-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-south1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-south1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-west1-a"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-west1-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-west1-c"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-west4-a"
+            }
+          },
+          {
+            "dimensions": {
+              "zone": "us-west4-b"
+            }
+          },
+          {
+            "effectiveLimit": "1536",
+            "defaultLimit": "1536",
+            "dimensions": {
+              "zone": "us-west4-c"
+            }
+          }
+        ],
+        "supportedLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "asia-northeast1-a",
+          "asia-northeast1-b",
+          "asia-northeast1-c",
+          "asia-southeast1-a",
+          "asia-southeast1-b",
+          "asia-southeast1-c",
+          "europe-north1-a",
+          "europe-north1-b",
+          "europe-north1-c",
+          "europe-west1-b",
+          "europe-west1-c",
+          "europe-west1-d",
+          "europe-west3-a",
+          "europe-west3-b",
+          "europe-west3-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "northamerica-northeast1-a",
+          "northamerica-northeast1-b",
+          "northamerica-northeast1-c",
+          "southamerica-west1-a",
+          "southamerica-west1-b",
+          "southamerica-west1-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d",
+          "us-east4-a",
+          "us-east4-b",
+          "us-east4-c",
+          "us-east5-a",
+          "us-east5-b",
+          "us-east5-c",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c",
+          "us-west1-a",
+          "us-west1-b",
+          "us-west1-c",
+          "us-west4-a",
+          "us-west4-b",
+          "us-west4-c"
+        ]
+      },
+      {
+        "name": "projects/525030193900/services/tpu.googleapis.com/consumerQuotaMetrics/tpu.googleapis.com%2Ftpu-v5s-litepod-preemptible/limits/%2Fproject%2Fregion",
+        "unit": "1/{project}/{region}",
+        "isPrecise": true,
+        "metric": "tpu.googleapis.com/tpu-v5s-litepod-preemptible",
+        "quotaBuckets": [
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1"
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "asia-east1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "asia-northeast1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "asia-southeast1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "europe-north1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "europe-west1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "europe-west3"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "europe-west4"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "northamerica-northeast1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "southamerica-west1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "us-central1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "us-east1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "us-east4"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "us-east5"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "us-south1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "us-west1"
+            }
+          },
+          {
+            "effectiveLimit": "-1",
+            "defaultLimit": "-1",
+            "dimensions": {
+              "region": "us-west4"
+            }
+          }
+        ],
+        "supportedLocations": [
+          "asia-east1",
+          "asia-northeast1",
+          "asia-southeast1",
+          "europe-north1",
+          "europe-west1",
+          "europe-west3",
+          "europe-west4",
+          "northamerica-northeast1",
+          "southamerica-west1",
+          "us-central1",
+          "us-east1",
+          "us-east4",
+          "us-east5",
+          "us-south1",
+          "us-west1",
+          "us-west4"
+        ]
+      }
+    ],
+    "metric": "tpu.googleapis.com/tpu-v5s-litepod-preemptible"
+  }
+]

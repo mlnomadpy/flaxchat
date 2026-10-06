@@ -1,5 +1,26 @@
 # Continuing YAT embedding representation training
 
+Current October 6 continuation: [overnight run and receipts](representation-v2-2026-10-05/overnight-1006/README.md).
+The prior physical run trained through step500. This continuation preserves its
+optimizer, sampler and20,000-step schedule while extending the execution horizon
+to60,000 under a12-hour TPU lease. The explicit pinned
+`--resume-quality-migration` changes finite quality regressions to report-only;
+all data/model/optimizer identity remains checked. This is contrastive
+representation training, not additional MLM. See the dated status receipt for
+current physical acceptance and progress.
+
+Checkpoint managers must not enable generic Orbax temporary-directory cleanup
+in a GCS root containing nested best checkpoints. Metadata/restore readers are
+read-only; protected starting checkpoints remain outside rotation.
+
+
+Current October 5 continuation: [representation-v2 campaign](YAT_REPRESENTATION_V2_CAMPAIGN.md).
+This supersedes the dated parent-materialization status below: all 181 public
+parent tensor leaves are authenticated, while restoration on TPU and current
+QAT execution remain unqualified. The first corrected physical request exhausted
+its Spot capacity window; queue/node absence is verified. Separate public releases
+are authorized for each completed and validated stage.
+
 Latest reconciled audit: [all open issues, current evidence and tool priorities](SYSTEM_AUDIT_CURRENT_2026-10-01.md). Earlier dated findings below remain historical where superseded.
 
 
@@ -155,3 +176,23 @@ probe or an unqualified top-k receipt as an official full-corpus benchmark. Phys
 encoder integration, scorer parity and complete corpus traversal are still needed.
 Inserting host RAM/scratch preflight remains the reviewed workload owner's duty;
 the generic supervisor does not insert it automatically.
+
+## Complete heldout inputs for representation-v2 replay
+
+The portable development archive contains historical training rows and manifests,
+not every historical development file. Use the generation-pinned six-source
+heldout supplement from [the repaired preparation plan](representation-v2-2026-10-05/training-data-plan.md),
+passing its exact `--heldout-sha256`. The old three-pair supplement alone fails.
+The preparer verifies all six original dev files before scanning training rows.
+Persist completed prepared data before stage preflight; a later failure must not
+force another full preparation. Retain full worker/controller diagnostics before
+cleanup and distinguish a running controller from executed model steps.
+
+The corrected complete production preparation and shared stage preflight passed
+on 2026-10-06 UTC: 2,165,175 rows, eleven sources, zero declared exact heldout
+overlaps, and 48 Linux metadata/lifecycle checks. The data VM and auto-delete
+boot disk were removed after retaining verified artifacts.
+[The launch receipt](representation-v2-2026-10-05/repair-training-launch.json)
+records the single replacement training controller, immutable source/data and
+provider deadline. Its physical TPU qualification and training state must be
+read from the live campaign; the data pass alone does not establish model execution.

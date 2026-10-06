@@ -1,0 +1,1196 @@
+{
+  "budget_usd": 335.0,
+  "attempts": {
+    "c85b65b126d64c46:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-1001-0-c85b65b126d64c46",
+      "reservation_usd": 16.4,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 5400,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1790854761.733202,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-1001-0-c85b65b126d64c46",
+              "deadline": 1790858356.5033689
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/ad611dcd-e179-4d28-b83f-ac789a2061ff",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1790854761.734133
+        },
+        {
+          "event": "running",
+          "time_unix": 1790854900.4083278
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1790854945.695124,
+          "error": "RuntimeError: Worker setup failed; no automatic retry"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1790855330.045933
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "85ffc9db38fe4162:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-1001-0-85ffc9db38fe4162",
+      "reservation_usd": 16.4,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 5400,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1790855529.928997,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-1001-0-85ffc9db38fe4162",
+              "deadline": 1790859124.694547
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/0889c085-5042-4b99-ac72-b4ca8246570d",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1790855529.930024
+        },
+        {
+          "event": "running",
+          "time_unix": 1790855680.609004
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1790856010.71638,
+          "error": "RuntimeError: Workload failed on live hardware; no automatic retry"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1790856131.0636532
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "e6dfc5d492294845:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-1001-0-e6dfc5d492294845",
+      "reservation_usd": 10.0,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 3000,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1790858443.4549708,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-1001-0-e6dfc5d492294845",
+              "deadline": 1790859638.1948512
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/9bb62a39-7b40-4fba-9623-d1681cc6bd9d",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1790858443.455847
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1790858648.4018738,
+          "error": "TimeoutError: Spot capacity wait budget exhausted"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1790859021.292503
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "cloud-parent-scan-01": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/cloud-parent-scan-01",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 1020,
+      "ancillary_reserve_usd": 1,
+      "status": "owned_job_absent",
+      "events": [
+        {
+          "event": "free_compute_data_job_admitted",
+          "time_unix": 1790860997.946387,
+          "pricing_source": "https://cloud.google.com/shell/pricing",
+          "model_execution": false,
+          "ancillary_reservation_usd": 1
+        },
+        {
+          "event": "owned_job_observed_running",
+          "time_unix": 1790861980.422459,
+          "local_exec_session": 85026,
+          "cloud_scratch": "/tmp/flaxchat-parent-scan-01-bgfel3b_",
+          "read_chars_observed": 705621942,
+          "model_execution": false
+        },
+        {
+          "event": "work_finished",
+          "time_unix": 1790862439.7785752,
+          "scanner_returncode": 0,
+          "coverage_complete": true,
+          "candidate_exposure_checked": false,
+          "controller_receipt": "docs/audit-2026-09-30/cloud-parent-scan-01/controller.json",
+          "scratch_removed_by_runner": true
+        },
+        {
+          "event": "owned_job_absent",
+          "time_unix": 1790862462.6106439,
+          "scratch_exists": false,
+          "owned_processes": [],
+          "verification": "independent Cloud Shell SSH inspection after terminal receipt"
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "ab068651061d46de:0": {
+      "resource": "projects/azettaai/locations/us-west1-c/queuedResources/flaxchat-validation-yat-cache-west1-1001-0-ab068651061d46de",
+      "reservation_usd": 10.0,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 3000,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent_after_failed_guard",
+      "events": [
+        {
+          "event": "guard_failed_before_provisioning",
+          "time_unix": 1790864619.9787421,
+          "error": "ValueError: Cloud cleanup execution is not active: FAILED; allocation blocked before provisioning; Permission 'tpu.nodes.get' denied on 'projects/azettaai/locations/us-west1-c/queuedResources/flaxchat-validation-yat-cache-west1-1001-0-ab068651061d46de'"
+        },
+        {
+          "event": "resource_absent_after_failed_guard",
+          "time_unix": 1790864808.409612,
+          "queue_describe": "NOT_FOUND",
+          "node_describe": "NOT_FOUND",
+          "model_tests_executed": false
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "0520bf07ad164d8e:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-diag-100-0-0520bf07ad164d8e",
+      "reservation_usd": 10.0,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 3000,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1790866831.396066,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-diag-100-0-0520bf07ad164d8e",
+              "deadline": 1790868026.698624
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/955b4722-8f85-4853-b895-3973652a8a14",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1790866831.3970351
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1790867836.2495549,
+          "error": "TimeoutError: Spot capacity wait budget exhausted"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1790868781.468004
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "native-miracl-data-01": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/native-miracl-data-01",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 2600,
+      "ancillary_reserve_usd": 1,
+      "status": "work_finished_current_owned_job_absent",
+      "events": [
+        {
+          "event": "free_compute_data_job_admitted",
+          "time_unix": 1790870838.2361841,
+          "pricing_source": "https://cloud.google.com/shell/pricing",
+          "model_execution": false,
+          "ancillary_reservation_usd": 1
+        },
+        {
+          "event": "data_job_launch_dispatched",
+          "time_unix": 1790871041.442563,
+          "launcher_sha256": "1f1cc1243587b3fafbe68a7b771a961e2261ca67874267a26f76c4a1bf33b862",
+          "bundle_sha256": "7cc18ee291b25c5479fa0eae917cdda2aedcb41a3f66c4c7e357475e976a1aa8",
+          "owned_scratch": "/tmp/flaxchat-native-miracl-launch-1001a/work",
+          "outer_runner_timeout_seconds": 2400,
+          "model_execution": false
+        },
+        {
+          "event": "durable_results_recovered",
+          "time_unix": 1790873699.815666,
+          "scanner_returncode": 0,
+          "coverage_complete": true,
+          "exact_aligned_overlap_rows": 3,
+          "admission_ready": false,
+          "scratch_removed_by_runner": true,
+          "original_environment_identity_reverified": false
+        },
+        {
+          "event": "current_owned_job_absent",
+          "observation": {
+            "observed_unix": 1790873664.6925144,
+            "scope": "current-cloud-shell-owned-job-only",
+            "owned_pids": [],
+            "scratch_exists": false,
+            "launcher_exists": false,
+            "original_environment_identity_reverified": false
+          },
+          "original_environment_identity_reverified": false
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "parent-materialize-01": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/parent-materialize-01",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 2100,
+      "ancillary_reserve_usd": 1,
+      "status": "owned_job_absent",
+      "events": [
+        {
+          "event": "data_only_admission",
+          "time_unix": 1790877715.668433,
+          "pricing_source": "https://cloud.google.com/shell/pricing",
+          "model_execution": false,
+          "ancestor_job_terminal": true,
+          "cloud_scratch_free_bytes": 34654339072,
+          "credit_observed_usd": 882.06
+        },
+        {
+          "event": "launch_dispatched",
+          "time_unix": 1790878649.946342,
+          "local_attachment_pid": 72687,
+          "owned_scratch": "/tmp/flaxchat-parent-materialize-1001a/work",
+          "model_execution": false
+        },
+        {
+          "event": "attachment_failed_before_remote_root",
+          "time_unix": 1790878809.7888582,
+          "returncode": 255,
+          "root_observed_absent": true,
+          "scratch_observed_absent": true,
+          "model_execution": false
+        },
+        {
+          "event": "serialized_dispatch",
+          "time_unix": 1790878845.274394,
+          "local_attachment_pid": 73195,
+          "attempt": 1,
+          "prior_remote_root_absent": true
+        },
+        {
+          "event": "actual_worker_failed",
+          "time_unix": 1790879265.5978398,
+          "worker_returncode": 1,
+          "ssh_attachment_returncode": 0,
+          "weights_sha256_verified": "6ee56349adbf10a3c3d5805d94539f987250aea2c98611b4d89c6fd9b7142aff",
+          "weights_bytes": 1231164480,
+          "enrichment_completed": false,
+          "scratch_removed_reported": true,
+          "failure": "file stability check includes atime; fix pending",
+          "posted_usage_usd": null
+        },
+        {
+          "event": "owned_job_absent",
+          "time_unix": 1790888748.3826618,
+          "observation": {
+            "scratch_exists": false,
+            "timeout_pid_exists": false,
+            "owned_job_pids": []
+          },
+          "observation_unix": 1790880820.2429237,
+          "verified_scope": "exact original owned data-job environment tags, timeout PIDs and scratch paths; not global cloud inventory"
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "native-miracl-filter-01": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/native-miracl-filter-01",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 3600,
+      "ancillary_reserve_usd": 1,
+      "status": "owned_job_absent",
+      "events": [
+        {
+          "event": "data_only_admission",
+          "time_unix": 1790877715.669923,
+          "pricing_source": "https://cloud.google.com/shell/pricing",
+          "model_execution": false,
+          "ancestor_job_terminal": true,
+          "cloud_scratch_free_bytes": 34654339072,
+          "credit_observed_usd": 882.06
+        },
+        {
+          "event": "launch_dispatched",
+          "time_unix": 1790878680.340649,
+          "local_attachment_pid": 72783,
+          "owned_scratch": "/tmp/flaxchat-native-miracl-filter-1001a/work",
+          "model_execution": false
+        },
+        {
+          "event": "attachment_failed_before_remote_root",
+          "time_unix": 1790878809.7914839,
+          "returncode": 255,
+          "root_observed_absent": true,
+          "scratch_observed_absent": true,
+          "model_execution": false
+        },
+        {
+          "event": "serialized_dispatch",
+          "time_unix": 1790878885.6534631,
+          "local_attachment_pid": 73302,
+          "attempt": 1,
+          "prior_remote_root_absent": true
+        },
+        {
+          "event": "owned_job_absent",
+          "time_unix": 1790888748.383491,
+          "observation": {
+            "scratch_exists": false,
+            "timeout_pid_exists": false,
+            "owned_job_pids": []
+          },
+          "observation_unix": 1790880820.2429237,
+          "verified_scope": "exact original owned data-job environment tags, timeout PIDs and scratch paths; not global cloud inventory"
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "parent-materialize-02": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/parent-materialize-02",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 2100,
+      "ancillary_reserve_usd": 1,
+      "status": "launcher_failed_before_worker",
+      "events": [
+        {
+          "event": "changed_source_data_job_admitted",
+          "time_unix": 1790888748.385061,
+          "model_execution": false,
+          "pricing_source": "https://cloud.google.com/shell/pricing",
+          "original_cleanup_receipt": "docs/audit-2026-09-30/current-owned-data-cleanup-2026-10-01.json"
+        },
+        {
+          "event": "detached_dispatch_attachment_terminal",
+          "time_unix": 1790888909.127222,
+          "attachment_returncode": 0,
+          "remote_launcher_pid_reported": 777,
+          "application_state": "not established by attachment; observation pending",
+          "source_manifest": "/private/tmp/flaxchat-fixes-20260930/parent-materialize-02/sealed-admission.json"
+        },
+        {
+          "event": "launcher_failed_before_worker",
+          "time_unix": 1790889017.800243,
+          "error": "Cloud Shell credential refresh missing email; source runner fetch failed; worker never started",
+          "scratch_removed_reported": true,
+          "attachment_returncode": 0,
+          "model_execution": false
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "parent-materialize-03": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/parent-materialize-03",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 2100,
+      "ancillary_reserve_usd": 1,
+      "status": "actual_worker_failed",
+      "events": [
+        {
+          "event": "owned_timeout_started",
+          "time_unix": 1790889134.028508,
+          "timeout_pid": 894,
+          "owned_scratch": "/tmp/flaxchat-parent-materialize-1001c/work",
+          "attachment_session": 5122,
+          "model_execution": false,
+          "authorization": "explicit Cloud Shell authorize-session; actual pinned source read passed"
+        },
+        {
+          "event": "actual_worker_failed",
+          "time_unix": 1790889206.2744682,
+          "worker_returncode": 1,
+          "error": "Renamed runner file hash not updated in complete files.json; no public downloads or tensor preparation occurred",
+          "scratch_removed_reported": true
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "parent-materialize-04": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/parent-materialize-04",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 2100,
+      "ancillary_reserve_usd": 1,
+      "status": "actual_worker_failed",
+      "events": [
+        {
+          "event": "actual_worker_failed",
+          "time_unix": 1790889489.618846,
+          "error_phase": "preflight JSON byte budget",
+          "worker_returncode": 1,
+          "ssh_attachment_returncode": 0,
+          "actual_public_weights_sha256": "6ee56349adbf10a3c3d5805d94539f987250aea2c98611b4d89c6fd9b7142aff",
+          "actual_weights_bytes": 1231164480,
+          "enriched_parent_committed": false,
+          "physical_import": false,
+          "scratch_removed_reported": true
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "parent-materialize-05": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/parent-materialize-05",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 2100,
+      "ancillary_reserve_usd": 1,
+      "status": "owned_job_absent",
+      "events": [
+        {
+          "event": "actual_worker_failed",
+          "time_unix": 1790889946.476036,
+          "error": "bounded external tokenizer read timed out; preparation neverstarted",
+          "worker_returncode": 1,
+          "small_public_downloads_authenticated": 3,
+          "scratch_removed_reported": true,
+          "physical_import": false
+        },
+        {
+          "event": "owned_job_absent",
+          "time_unix": 1790890244.4456792,
+          "observation_unix": 1790890094.7014315,
+          "owned_job_pids": [],
+          "scratch_absent": true,
+          "timeout_absent": true
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "parent-materialize-06": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/parent-materialize-06",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 2100,
+      "ancillary_reserve_usd": 1,
+      "status": "actual_worker_failed",
+      "events": [
+        {
+          "event": "owned_timeout_started",
+          "time_unix": 1790890421.2036679,
+          "timeout_pid": 1734,
+          "owned_scratch": "/tmp/flaxchat-parent-materialize-1001f/work",
+          "local_exec_session": 43489,
+          "model_execution": false,
+          "external_hf_downloads": false
+        },
+        {
+          "event": "actual_worker_failed",
+          "time_unix": 1790890719.5690298,
+          "worker_returncode": 1,
+          "error_phase": "generation-pinned 1.23GB GCS download exceeded180s",
+          "model_execution": false,
+          "enriched_parent_committed": false,
+          "scratch_removed_reported": true,
+          "timeout_pid_absent_observed": true,
+          "scratch_absent_observed": true,
+          "observation_unix": 1790890504.0535839
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "transfer-diagnostic-01": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/transfer-diagnostic-01",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 660,
+      "ancillary_reserve_usd": 1,
+      "status": "actual_range_failed_owned_processes_and_scratch_absent",
+      "events": [
+        {
+          "event": "data-only measurement admission",
+          "time_unix": 1790891587.604841,
+          "parent06_exact_processes_and_scratch_absent": true,
+          "actual_pinned_gcs_read_passed": true,
+          "executor_sdk": "585.0.0",
+          "pricing_source": "https://cloud.google.com/shell/pricing",
+          "model_execution": false
+        },
+        {
+          "event": "owned_timeout_started",
+          "time_unix": 1790891913.551308,
+          "timeout_pid": 2250,
+          "original_attachment_session": 2831,
+          "owned_root": "/tmp/flaxchat-transfer-range-1001a",
+          "model_execution": false
+        },
+        {
+          "event": "actual_range_terminal_failed",
+          "time_unix": 1790892231.569257,
+          "bytes_received": 4980736,
+          "elapsed_seconds": 180.01023337199968,
+          "bytes_per_second": 27669.1825053472,
+          "error": "stream phase deadline exceeded",
+          "checksum_client": "gcloud-storage-cat does not compute checksum",
+          "whole_artifact_authenticated": false,
+          "owned_pids": [],
+          "scratch_absent": true,
+          "timeout2250_absent": true,
+          "receipt": "docs/audit-2026-09-30/transfer-diagnostic-01/range-receipt.json",
+          "model_execution": false
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "bounded-data-job-linux-selftest-02": {
+      "resource": "cloud-shell/tahabhs14/owned-data-job/bounded-data-job-linux-selftest-02",
+      "reservation_usd": 0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 110,
+      "ancillary_reserve_usd": 0,
+      "status": "actual_linux_passed_owned_processes_and_scratch_absent",
+      "events": [
+        {
+          "event": "model-free changed-source Linux admission",
+          "time_unix": 1790891684.828444,
+          "source_delivery": "7150B inline archive; no GCS/VM/TPU",
+          "pricing_source": "https://cloud.google.com/shell/pricing",
+          "model_execution": false
+        },
+        {
+          "event": "actual_changed-source_Linux_selftest_passed",
+          "time_unix": 1790891913.551307,
+          "controller_sha256": "14c42ccb9433df61dfc81bff459d5f979cf809b7328d433ea32bade3592cdb49",
+          "scenario_count": 6,
+          "independent_terminal_observations": 4,
+          "wrapper_elapsed_seconds": 2.8233981780003887,
+          "receipt": "docs/audit-2026-09-30/bounded-data-job-linux-selftest-02/selftest.json",
+          "model_execution": false
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "8572ea5e21b34ab4:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-speed-10-0-8572ea5e21b34ab4",
+      "reservation_usd": 10.0,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 3000,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1791058836.416769,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-speed-10-0-8572ea5e21b34ab4",
+              "deadline": 1791060026.353556
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/9427862f-9d53-4b72-bffd-f311caf2eacf",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1791058836.418098
+        },
+        {
+          "event": "running",
+          "time_unix": 1791058977.6671848
+        },
+        {
+          "event": "work_finished",
+          "time_unix": 1791059350.7448409,
+          "returncode": 0
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1791059889.8171048
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "eb7e6b32f5bb4e07:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-activati-0-eb7e6b32f5bb4e07",
+      "reservation_usd": 11.6,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 3600,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1791140536.854361,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-activati-0-eb7e6b32f5bb4e07",
+              "deadline": 1791142330.983038
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/0318be50-2509-4296-a7a5-f4678f3314b5",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1791140536.8559659
+        },
+        {
+          "event": "running",
+          "time_unix": 1791140698.379041
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1791140933.8889432,
+          "error": "RuntimeError: Workload failed on live hardware; no automatic retry"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1791141198.101013
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "1d18a3784b4c4c01:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-activati-0-1d18a3784b4c4c01",
+      "reservation_usd": 11.6,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 3600,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1791141283.445069,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-activati-0-1d18a3784b4c4c01",
+              "deadline": 1791143075.781016
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/f0ae6418-6f0e-4553-bb2c-0c8702addb5e",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1791141283.446343
+        },
+        {
+          "event": "running",
+          "time_unix": 1791141403.1639009
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1791142218.7325912,
+          "error": "RuntimeError: Workload failed on live hardware; no automatic retry"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1791142299.672309
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "02ab068fc80248c8:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-quant-qu-0-02ab068fc80248c8",
+      "reservation_usd": 11.6,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 3600,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1791209687.241246,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-quant-qu-0-02ab068fc80248c8",
+              "deadline": 1791211480.13687
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/051e534e-77e3-4958-8542-85da7a6f82c6",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1791209687.2427158
+        },
+        {
+          "event": "running",
+          "time_unix": 1791209825.286485
+        },
+        {
+          "event": "work_finished",
+          "time_unix": 1791210303.158449,
+          "returncode": 0
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1791210391.36286
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "parent-v2-1005": {
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 3300,
+      "ancillary_reserve_usd": 1,
+      "status": "data_only_no_paid_compute",
+      "events": [],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "dev-v2-1005": {
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 3300,
+      "ancillary_reserve_usd": 1,
+      "status": "data_only_no_paid_compute",
+      "events": [],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "scan-v2-1005": {
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0,
+      "max_seconds": 3300,
+      "ancillary_reserve_usd": 1,
+      "status": "data_only_no_paid_compute",
+      "events": [],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "a250ee23b33b4851:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-v2-direc-0-a250ee23b33b4851",
+      "reservation_usd": 11.6,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 3600,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1791214209.362441,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-v2-direc-0-a250ee23b33b4851",
+              "deadline": 1791216003.9712799
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/9975820b-987f-4dcb-8dc9-fce7f3bd6690",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1791214209.363883
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1791214395.172268,
+          "error": "TimeoutError: Spot capacity wait budget exhausted; allocation has not been observed; queue=WAITING_FOR_RESOURCES; node=unknown"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1791214399.44766
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "repair-scan-v2-1005": {
+      "resource": "bounded Cloud Shell repair/history scan",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0.0,
+      "max_seconds": 3000,
+      "ancillary_reserve_usd": 1.0,
+      "status": "reserved",
+      "events": [
+        {
+          "event": "reserved",
+          "time_unix": 1791214625.5781472
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "4b242bcbb4e94157:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-v2-direc-0-4b242bcbb4e94157",
+      "reservation_usd": 13.2,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 4200,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1791214841.672897,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-v2-direc-0-4b242bcbb4e94157",
+              "deadline": 1791217236.537921
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/04b8f149-6274-4f88-b5b7-fecfecd015b3",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1791214841.675356
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1791215446.7519,
+          "error": "TimeoutError: Spot capacity wait budget exhausted; allocation has not been observed; queue=WAITING_FOR_RESOURCES; node=unknown"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1791215451.142276
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "gce-data-v2-1005": {
+      "resource": "azettaai/us-west4-a/yat-v2-data-1005",
+      "reservation_usd": 1.0,
+      "whole_slice_hourly_usd": 0.3,
+      "max_seconds": 3600,
+      "ancillary_reserve_usd": 0.7,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "reserved",
+          "time_unix": 1791215461.218221
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1791218746.8619971,
+          "instance_and_disk_absent": true
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null,
+      "rate_basis": "conservative_e2_standard4_ceiling_not_posted_usage",
+      "pricing_reference": "https://cloud.google.com/products/compute/pricing/general-purpose",
+      "purpose": "public training data preparation only; no CPU model math"
+    },
+    "overnight-2200-controller": {
+      "resource": "projects/azettaai/zones/us-west4-a/instances/yat-v2-night-1005",
+      "reservation_usd": 8.0,
+      "whole_slice_hourly_usd": 0.5,
+      "max_seconds": 43200,
+      "ancillary_reserve_usd": 2.0,
+      "status": "reserved",
+      "events": [],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "repair-1005-data-vm": {
+      "resource": "projects/azettaai/zones/us-west4-a/instances/yat-v2-repair-1005",
+      "reservation_usd": 4.0,
+      "whole_slice_hourly_usd": 0.5,
+      "max_seconds": 21600,
+      "ancillary_reserve_usd": 1.0,
+      "status": "reserved",
+      "events": [],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "repair-training-1005-controller": {
+      "resource": "projects/azettaai/zones/us-west4-a/instances/yat-v2-train-1005",
+      "reservation_usd": 4.0,
+      "whole_slice_hourly_usd": 0.25,
+      "max_seconds": 43200,
+      "ancillary_reserve_usd": 1.0,
+      "status": "reserved",
+      "events": [
+        {
+          "event": "local_launch_artifacts_prepared",
+          "time_unix": 1791247498
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "cd3ac33bee07463e:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-v2-night-0-cd3ac33bee07463e",
+      "reservation_usd": 83.6,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 30600,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1791248713.1254785,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-v2-night-0-cd3ac33bee07463e",
+              "deadline": 1791277505.814525,
+              "allow_long_lease": true
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/a4617434-2da5-4801-a82b-eee65f5a5e2a",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1791248713.1314073
+        },
+        {
+          "event": "running",
+          "time_unix": 1791248867.312163
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1791249177.951196,
+          "error": "RuntimeError: Worker setup failed; no automatic retry"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1791249302.5250247
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "repair-training02-1005-controller": {
+      "resource": "projects/azettaai/zones/us-west4-a/instances/yat-v2-train02-1005",
+      "reservation_usd": 4.0,
+      "whole_slice_hourly_usd": 0.25,
+      "max_seconds": 43200,
+      "ancillary_reserve_usd": 1.0,
+      "status": "draft_not_authorized",
+      "events": [],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    },
+    "aa18e723965f4836:0": {
+      "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-v2-repai-0-aa18e723965f4836",
+      "reservation_usd": 83.6,
+      "whole_slice_hourly_usd": 9.6,
+      "max_seconds": 30600,
+      "ancillary_reserve_usd": 2.0,
+      "status": "resource_absent",
+      "events": [
+        {
+          "event": "guard_verified",
+          "time_unix": 1791271510.1374924,
+          "receipt": {
+            "lease": {
+              "project": "azettaai",
+              "zone": "us-west4-a",
+              "queue": "flaxchat-validation-yat-embed-torch-v2-repai-0-aa18e723965f4836",
+              "deadline": 1791300304.6892493,
+              "allow_long_lease": true
+            },
+            "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/7ace8085-5993-4de1-b835-acc981cb820f",
+            "location": "us-central1"
+          }
+        },
+        {
+          "event": "provisioning",
+          "time_unix": 1791271510.2480273
+        },
+        {
+          "event": "running",
+          "time_unix": 1791271675.8564131
+        },
+        {
+          "event": "attempt_failed",
+          "time_unix": 1791273447.7913768,
+          "error": "RuntimeError: Workload failed on live hardware; no automatic retry"
+        },
+        {
+          "event": "resource_absent",
+          "time_unix": 1791273529.853773
+        }
+      ],
+      "posted_usage_usd": null,
+      "promotional_credits_usd": null
+    }
+  },
+  "budget_amendment": {
+    "prior_cap_usd": 55,
+    "new_cap_usd": 65,
+    "reason": "One frozen v2 named-leaf cache diagnostic under existing training authorization; corrected cleanup admission; fresh credit, empty owned-zone resources and matching current price/quota; all prior reservations retained",
+    "observed_at": "2026-10-01T14:47:36.222871+00:00"
+  },
+  "budget_amendments": [
+    {
+      "prior_cap_usd": 20,
+      "new_cap_usd": 40,
+      "reason": "One corrected interpreter-artifact attempt; all first-attempt reservations retained; existing bounded training authorization",
+      "observed_at": "2026-10-01T11:50:44.100267+00:00"
+    },
+    {
+      "prior_cap_usd": 45,
+      "new_cap_usd": 55,
+      "reason": "One bounded changed-region named-leaf cache diagnostic under existing training authorization; all prior reservations retained; verified current available credit and us-west1 price/quota",
+      "observed_at": "2026-10-01T14:23:17.250023+00:00"
+    },
+    {
+      "prior_cap_usd": 55,
+      "new_cap_usd": 65,
+      "reason": "One frozen v2 named-leaf cache diagnostic under existing training authorization; corrected cleanup admission; fresh credit, empty owned-zone resources and matching current price/quota; all prior reservations retained",
+      "observed_at": "2026-10-01T14:47:36.222871+00:00"
+    },
+    {
+      "prior_cap_usd": 65,
+      "new_cap_usd": 67,
+      "reason": "Two bounded data-only jobs applying newly verified collision-filter and parent-enrichment tools; no TPU/GCE allocation, ancillary reservation1 each, prior reservations retained, fresh available credit882.06",
+      "time_unix": 1790877715.667149
+    },
+    {
+      "prior_cap_usd": 67,
+      "new_cap_usd": 68,
+      "time_unix": 1790888748.381614,
+      "reason": "One changed-source bounded corrected parent data-only materialization under existing training authorization; prior reservations retained; no TPU/GCE allocation; ancillary reserve1"
+    },
+    {
+      "prior_cap_usd": 68,
+      "new_cap_usd": 69,
+      "time_unix": 1790889017.801308,
+      "reason": "Changed executor-auth admission after terminal source-fetch failure; one bounded data-only parent preparation, existing training authorization, preserve prior reservations"
+    },
+    {
+      "prior_cap_usd": 69,
+      "new_cap_usd": 70,
+      "time_unix": 1790889233.676673,
+      "reason": "One corrected complete-inventory data-only parent preparation after terminal package-integrity failure; all prior reservations retained, existing training authorization"
+    },
+    {
+      "prior_cap_usd": 70,
+      "new_cap_usd": 71,
+      "time_unix": 1790889670.0687208,
+      "reason": "Actual17.5MBtokenizer generic8MiB preflight defect fixed withartifact-specific32MiB limit;33metadata tests;one bounded source-changed data-only parent preparation; priorreservations retained underexistingtrainingauthorization"
+    },
+    {
+      "prior_cap_usd": 71,
+      "new_cap_usd": 72,
+      "time_unix": 1790890244.447097,
+      "reason": "Changed near-cloud generation-pinned original public artifacts after terminal HFreadtimeout;same independentlypinnedbyteSHA;one bounded data-only parentmaterialization;priorreservationsretained"
+    },
+    {
+      "prior_cap_usd": 72,
+      "new_cap_usd": 73,
+      "time_unix": 1790891587.60484,
+      "reason": "One bounded 64MiB read-only transfer diagnostic on existing free Cloud Shell; changed measurement action after terminal parent06, prior reservations retained, no TPU/GCE allocation, ancillary reserve1 under existing training authorization"
+    },
+    {
+      "observed_at": "2026-10-05T14:11:01.117427+00:00",
+      "prior_budget_usd": 107,
+      "budget_usd": 119,
+      "reason": "User requested original-versus-INT8 quality for YAT and mmBERT; one bounded physical TPU attempt, prior reservations carried forward; fresh available credits878.16."
+    },
+    {
+      "prior_budget_usd": 119,
+      "budget_usd": 134,
+      "time_unix": 1791213837.893662,
+      "reason": "User authorized representation/QAT training and separate releases; one combined bounded TPU parent/direct/QAT qualification plus three bounded data preparations. Fresh available credit878.16; carry all prior reservations."
+    },
+    {
+      "prior_budget_usd": 134,
+      "budget_usd": 148,
+      "time_unix": 1791214754.490262,
+      "reason": "One final same-source same-zone bounded8chipSpot qualification after no-capacity receipt; capacity600s within2400s global lease,13.2 reservation includingcleanup; userauthorizedtraining, fresh878.16availablecredit, preserveallpriorreservations."
+    }
+  ],
+  "cap_amendments": [
+    {
+      "prior_cap_usd": 73,
+      "new_cap_usd": 83,
+      "time_unix": 1791056850.330697,
+      "reason": "User requested one lightweight trained YAT versus mmBERT TPU inference benchmark; reserve at most10USD including independent cleanup and ancillary exposure; preserve every prior reservation; live880.34USD credit observation"
+    },
+    {
+      "prior_cap_usd": 83,
+      "new_cap_usd": 95,
+      "time_unix": 1791140481.1831412,
+      "reason": "User requested remaining matched real-text TPU activation analysis; one1800-second Spot attempt11.60USD reserve including cleanup/ancillary; fresh879.75credit; preserve priorreservations"
+    },
+    {
+      "prior_cap_usd": 95,
+      "new_cap_usd": 107,
+      "time_unix": 1791141253.868793,
+      "reason": "Changed full-forward tracedimplementation after preservedphysicaltracefailure; one bounded1800secSpotattempt11.6reserve; originaltolerances unchanged; baselinefirst; priorresourcesindependentlyabsent, allpreviousreservationsretained"
+    }
+  ],
+  "authorization": {
+    "user_message": "train",
+    "authorized_cap_usd": 335.0,
+    "recorded_unix": 1791271283.833961
+  }
+}

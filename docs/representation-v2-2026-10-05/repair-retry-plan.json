@@ -1,0 +1,80 @@
+{
+  "status": "quality_gate_stopped_after_real_training",
+  "cloud_actions_performed": true,
+  "prior_reserved_usd": 247.0,
+  "new_controller_reservation_usd": 4.0,
+  "new_tpu_reservation_usd": 83.6,
+  "proposed_total_reserved_usd": 334.6,
+  "current_authorized_cap_usd": 247.4,
+  "requested_cap_usd": 335.0,
+  "posted_charges_usd": null,
+  "vm": {
+    "name": "yat-v2-train02-1005",
+    "project": "azettaai",
+    "zone": "us-west4-a",
+    "machine_type": "e2-highmem-4",
+    "max_run_duration_seconds": 43200,
+    "instance_termination_action": "DELETE",
+    "automatic_restart": false,
+    "boot_disk_gb": 200,
+    "boot_disk_auto_delete": true
+  },
+  "supervisor": {
+    "max_attempts": 1,
+    "attempt_seconds": 28800,
+    "capacity_wait_seconds": 1800,
+    "setup_timeout_seconds": 1800
+  },
+  "source_sha256": "07e473fc03cbc03a988e366770e9e51efca2762b1b2d5d3712b623a1bcc4f58b",
+  "manifest_sha256": "c0bdd5dca95e01d2c972bff3c9e07be79501744fa080d7cca33cf77694890afc",
+  "ledger_sha256": "e11910b2449a47ab522ae5969e10807ae62c4f1154669382770b9fd38086eff8",
+  "reuses_identical_prepared_data": true,
+  "reuses_identical_parent": true,
+  "reuses_identical_training_arguments": true,
+  "only_code_changes": [
+    {
+      "path": "scripts/evaluation_contract.py",
+      "before_sha256": "c5c796c878bcefdcef69d3a2b8d77a17904fd2e65313f81ac5006006d46fa5f3",
+      "after_sha256": "c541f591e3c84c1a0410a8eb1a470a430d0b147405ac4cd5976aeec2f1e17b77"
+    },
+    {
+      "path": "scripts/representation_run.py",
+      "before_sha256": "34b99ac3a75b1fc4290c43dea87072801d69370bd88121103bc4bc3e39173e39",
+      "after_sha256": "d6b32be543af7321a1872a8c6f6fb46879b75f7d69701314b94e8fb6283ca476"
+    },
+    {
+      "path": "tests/test_runtime_setup_order_metadata.py",
+      "before_sha256": null,
+      "after_sha256": "5facce76dd1a16cea96bea7b37b0e183581a674cddc431bcf932ead8eec76f23"
+    }
+  ],
+  "before_launch": [
+    "Obtain explicit new reservation-cap approval",
+    "Refresh official pricing observation if needed and reseal manifest/startup hashes",
+    "Upload artifacts create-only and verify full readback",
+    "Create one provider-expiring VM and verify DELETE/maxRunDuration/bootDiskAutoDelete"
+  ],
+  "controller_runtime": "Same authenticated CPython/offline wheelhouse and exact TPU qualification lock; pip --no-index --no-deps; pip check plus inventory and supervisor import verification; system Python only for stdlib bootstrap",
+  "diagnostics": "Upload entire tpu-controller tree in controller-diagnostics.tar.gz, including setup/worker logs, before controller self-deletion",
+  "draft_artifact_hashes": {
+    "source.tar.gz": "07e473fc03cbc03a988e366770e9e51efca2762b1b2d5d3712b623a1bcc4f58b",
+    "run.json": "3665b3b296ec21f1cc8c98f5ec4daa1c9cf163c34e22e667aa917626e4dab554",
+    "campaign-ledger.json": "735026c20d47c17fbdd5e1a683f907f3603495f12f71fc15bc7a8096f48746f1",
+    "bootstrap_runtime.py": "44388fe7f574f560a9c2abc8420b99d4392b54d19cfb881251617ddb20c0a486",
+    "launch.py": "8a8ed61b77615f6e96e56649a7cf957fa91525183989b95f058b992137a6ceb2",
+    "startup.sh": "f00071c4572f2a4a26c27cf9f3917d17fb0c53aa3874e5bf941f3ca35db072d7"
+  },
+  "authorization": "User: train",
+  "authorized_cap_usd": 335.0,
+  "training_started": true,
+  "controller_id": "2006855151761563460",
+  "controller_delete_utc": "2026-10-06T19:22:21.207388Z",
+  "tpu_name": "flaxchat-validation-yat-embed-torch-v2-repai-0-aa18e723965f4836",
+  "tpu_cleanup_deadline_unix": 1791300304.6892493,
+  "cleanup_execution": "7ace8085-5993-4de1-b835-acc981cb820f",
+  "steps_completed": 500,
+  "physical_qualification_passed": true,
+  "latest_checkpoint": "gs://azettaai-yat-eval-0929/representation-v2-1005/repair-training02-1005/yat-embed-torch-v2-repair02-1005/representation-continuation/checkpoints/500",
+  "quality_gate_passed": false,
+  "tpu_cleanup_verified": true
+}

@@ -56,7 +56,14 @@ class EncoderConfig:
     yat_softmax_backward: str = 'factored'
     yat_attention_implementation: str = 'standard'
 
+    weight_quantization: str = 'none'
+
     def __post_init__(self):
+        if self.weight_quantization not in ('none', 'int8_per_channel_ste'):
+            raise ValueError('Unknown weight_quantization')
+        if self.weight_quantization != 'none' and (
+                self.ffn_type != 'yat_glu' or self.attention_score != 'yat_softmax'):
+            raise ValueError('QAT currently requires the YAT embedding architecture')
         if self.yat_ffn_compute_mode is not None:
             if self.yat_ffn_compute_mode not in ('mixed', 'bf16', 'bf16_adaptive'):
                 raise ValueError('Unknown yat_ffn_compute_mode')
@@ -382,7 +389,8 @@ class EncoderBlock(nnx.Module):
     def __call__(self, x, segments, positions, *, packed=True):
         c = self.config
         h = self.attn_norm(x) if self.attn_norm is not None else x
-        qkv = self.qkv(h).reshape(*x.shape[:2], 3, c.num_attention_heads, -1)
+        from flaxchat.weight_qat import qat_linear, fake_quantize_int8
+        qkv = qat_linear(self.qkv, h, c).reshape(*x.shape[:2], 3, c.num_attention_heads, -1)
         q, k, v = (qkv[:, :, i] for i in range(3))
         local = self.index % c.global_attn_every_n_layers != 0
         base = c.local_rope_theta if local else c.global_rope_theta
@@ -396,17 +404,21 @@ class EncoderBlock(nnx.Module):
                                     yat_attention_implementation=c.yat_attention_implementation,
                                     yat_attention_block_size=c.yat_attention_block_size if local else c.yat_global_attention_block_size,
                                     alpha=self.yat_attention_alpha[...] if c.attention_score == 'yat_softmax' else 1.)
-        x = x + self.attn_out(h.reshape(x.shape))
+        x = x + qat_linear(self.attn_out, h.reshape(x.shape), c)
         h = self.mlp_norm(x)
         if c.ffn_type == 'yat_glu':
-            h = yat_glu(h.astype(getattr(jnp, c.compute_dtype)), self.wi.kernel[...],
+            wi = self.wi.kernel[...]
+            if c.weight_quantization != 'none':
+                wi = fake_quantize_int8(wi, 0)
+            # The same reconstructed kernel supplies both projection and distance.
+            h = yat_glu(h.astype(getattr(jnp, c.compute_dtype)), wi,
                         alpha=self.yat_alpha[...], compute_mode=c.yat_ffn_compute_mode or c.yat_compute_mode,
                         local_shards=c.yat_local_shards,
                         distance_backward_block=c.yat_ffn_backward_block)
         else:
             a, gate = jnp.split(self.wi(h), 2, axis=-1)
             h = jax.nn.gelu(a, approximate=False) * gate
-        return x + self.wo(h)
+        return x + qat_linear(self.wo, h, c)
 
 
 class ModernBert(nnx.Module):
@@ -440,7 +452,12 @@ class ModernBert(nnx.Module):
         positions = jnp.broadcast_to(jnp.arange(ids.shape[1]), ids.shape) if position_ids is None else position_ids
         if positions.shape != ids.shape:
             raise ValueError('position_ids must match input shape')
-        x = self.embedding_norm(self.embedding(ids).astype(getattr(jnp, self.config.residual_dtype)))
+        embedded = self.embedding(ids)
+        if self.config.weight_quantization != 'none':
+            from flaxchat.weight_qat import fake_quantize_int8
+            # Gather before quantizing: never materialize a quantized vocabulary.
+            embedded = fake_quantize_int8(embedded, -1)
+        x = self.embedding_norm(embedded.astype(getattr(jnp, self.config.residual_dtype)))
         for layer in self.layers:
             if self.config.use_remat:
                 x = nnx.remat(lambda block, h, s, p: block(h, s, p, packed=segment_ids is not None))(
@@ -457,9 +474,13 @@ class ModernBert(nnx.Module):
 
     def prediction_features(self, hidden):
         """Share the BF16 head transform across loss backends and chunk sizes."""
+        if self.config.weight_quantization != 'none':
+            raise ValueError('Weight-only QAT currently supports embedding encode/pool, not MLM')
         return self.head_norm(jax.nn.gelu(self.head_dense(hidden), approximate=False))
 
     def decode(self, features):
+        if self.config.weight_quantization != 'none':
+            raise ValueError('Weight-only QAT does not support MLM decoding')
         dtype = getattr(jnp, self.config.compute_dtype)
         return jnp.matmul(features.astype(dtype), self.embedding.embedding[...].astype(dtype).T,
                           preferred_element_type=jnp.float32, precision=jax.lax.Precision.HIGHEST) + self.decoder_bias[...]

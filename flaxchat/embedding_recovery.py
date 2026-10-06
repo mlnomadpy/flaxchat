@@ -1,6 +1,72 @@
 """Model-free stage-global selection and dual-checkpoint reconciliation."""
 import math
+import copy
+import json
+import re
+from pathlib import Path
 from flaxchat.embedding_contract import canonical_hash
+
+
+def checkpoint_stage_identity(metadata):
+    return {'resolved_config': metadata.get('resolved_config'),
+            'tokenizer': metadata.get('tokenizer_identity'),
+            'source_python_sha256': metadata.get('source_python_sha256'),
+            'data_manifest': metadata.get('data_manifest_identity')}
+
+
+def admit_quality_migration(path, expected, output):
+    """Only a pinned report-only policy/source migration with preserved schedule."""
+    path = Path(path)
+    if path.stat().st_size > 2 * 1024 * 1024:
+        raise ValueError('Migration specification exceeds bounded size')
+    spec = json.loads(path.read_text())
+    if (spec.get('format') != 'flaxchat-quality-policy-migration-v1'
+            or spec.get('checkpoint_prefix') != output
+            or spec.get('target_source_python_sha256') != expected['source_python_sha256']):
+        raise ValueError('Migration target/source identity mismatch')
+    old = spec.get('previous_identity')
+    if not isinstance(old, dict) or set(old) != set(expected):
+        raise ValueError('Migration requires complete previous stage identity')
+    for key in ('checkpoint', 'best'):
+        pin = spec.get(key, {})
+        if (type(pin.get('step')) is not int or pin['step'] < (1 if key == 'checkpoint' else 0)
+                or not re.fullmatch('[0-9a-f]{64}', str(pin.get('manifest_sha256', '')))):
+            raise ValueError('Migration requires committed checkpoint and best pins')
+    before, after = copy.deepcopy(old), copy.deepcopy(expected)
+    for identity in (before, after):
+        identity.pop('source_python_sha256')
+        identity['resolved_config'].pop('source_receipt', None)
+    previous_recipe, next_recipe = before['resolved_config'], after['resolved_config']
+    old_policy = previous_recipe['development_policy'].get('regression_action', 'stop')
+    new_policy = next_recipe['development_policy'].pop('regression_action', 'stop')
+    previous_recipe['development_policy'].pop('regression_action', None)
+    if old_policy != 'stop' or new_policy != 'report-only':
+        raise ValueError('Migration only changes stop to report-only')
+    old_steps = previous_recipe['steps']
+    schedule = next_recipe.pop('schedule_steps', next_recipe['steps'])
+    old_schedule = previous_recipe.pop('schedule_steps', old_steps)
+    if schedule != old_schedule or next_recipe['steps'] < old_steps:
+        raise ValueError('Migration must preserve the exact learning-rate schedule')
+    next_recipe['steps'] = old_steps
+    if before != after:
+        raise ValueError('Migration changes data, optimizer, model or other immutable recipe fields')
+    return spec, {'format': spec['format'], 'specification_sha256': canonical_hash(spec),
+                  'previous_identity_sha256': canonical_hash(old),
+                  'source_checkpoint': spec['checkpoint'], 'source_best': spec['best'],
+                  'preserved_schedule_steps': schedule}
+
+
+def migration_restore_identity(metadata, expected, migration, *, best=False):
+    actual = checkpoint_stage_identity(metadata)
+    if actual == expected:
+        return expected
+    if migration is None or actual != migration['previous_identity']:
+        raise ValueError('Checkpoint immutable stage differs from admitted migration')
+    pin = migration['best' if best else 'checkpoint']
+    receipt = metadata.get('committed_receipt', {})
+    if metadata.get('step') != pin['step'] or receipt.get('manifest_sha256') != pin['manifest_sha256']:
+        raise ValueError('Checkpoint differs from independently pinned migration artifact')
+    return migration['previous_identity']
 
 
 def evaluation_due(step, every, horizon):
@@ -61,7 +127,7 @@ def require_save_success(saved, step):
         raise RuntimeError(f'Checkpoint save request was rejected at step {step}')
 
 
-def validate_resume_evaluation(quality, *, cursor, horizon, every, max_regression):
+def validate_resume_evaluation(quality, *, cursor, horizon, every, max_regression, regression_action='stop'):
     """A committed failed quality decision is terminal for this exact stage."""
     from flaxchat.embedding_quality import quality_gate
     record = quality.get('last_evaluation')
@@ -73,6 +139,8 @@ def validate_resume_evaluation(quality, *, cursor, horizon, every, max_regressio
     actual = quality_gate(record.get('metrics'), quality.get('baseline'), max_regression=max_regression)
     if record.get('gate') != actual:
         raise ValueError('Resume development gate disagrees with authenticated metrics')
-    if not actual['passed']:
+    if regression_action not in ('stop', 'report-only'):
+        raise ValueError('Unknown development regression action')
+    if not actual['passed'] and regression_action == 'stop':
         raise ValueError('Resume blocked by failed development gate; use an explicit reviewed new stage')
     return record

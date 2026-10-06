@@ -1,0 +1,12 @@
+{
+  "scope": "owned GCE data VM and its boot disk",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "name": "yat-v2-data-1005",
+  "original_instance_id": "7175463575097341671",
+  "instances": [],
+  "disks": [],
+  "cleanup_verified": true,
+  "observed_unix": 1791218746.8619971,
+  "retained_data_policy": "Authenticated development artifacts preserved in GCS; bucket not emptied"
+}

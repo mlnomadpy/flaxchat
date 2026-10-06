@@ -72,6 +72,8 @@ def _batch_counts(weights: dict[str, float], batch_size: int):
     return floors
 
 def add_stage_arguments(parser):
+    parser.add_argument("--weight-quantization", choices=("none", "int8_per_channel_ste"),
+                        default=None, help="New-stage weight-only QAT policy; omitted inherits parent")
     parser.add_argument("--parent-public", required=True)
     parser.add_argument("--parent-manifest", required=True)
     parser.add_argument("--parent-checkpoint")
@@ -80,6 +82,8 @@ def add_stage_arguments(parser):
     parser.add_argument("--source-weights", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--steps", required=True, type=int)
+    parser.add_argument('--schedule-steps', type=int,
+                        help='Fixed cosine schedule horizon; defaults to steps, then holds its final learning rate')
     parser.add_argument("--stop-after", type=int)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=3e-5)
@@ -92,6 +96,10 @@ def add_stage_arguments(parser):
     parser.add_argument("--keep-checkpoints", type=int, default=3)
     parser.add_argument("--distributed", action="store_true")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument('--quality-regression-action', choices=('stop', 'report-only'), default='stop',
+                        help='Report-only retains measured regressions without stopping optimization')
+    parser.add_argument('--resume-quality-migration', type=Path,
+                        help='Authenticated old checkpoint/recipe pins for an explicit report-only policy migration')
     parser.add_argument("--batch-policy", choices=("mixed", "homogeneous"), default="mixed")
     parser.add_argument("--language-exponent", type=float, default=1.0)
     parser.add_argument("--dev-max-rows", type=int, default=1024)
@@ -111,6 +119,15 @@ def add_stage_arguments(parser):
 
 
 def validate_stage_configuration(args, *, device_count, process_count):
+    schedule_steps = getattr(args, 'schedule_steps', None)
+    schedule_steps = args.steps if schedule_steps is None else schedule_steps
+    if type(schedule_steps) is not int or not args.warmup < schedule_steps <= args.steps:
+        raise ValueError('Schedule horizon must exceed warmup and not exceed training horizon')
+    if getattr(args, 'quality_regression_action', 'stop') not in ('stop', 'report-only'):
+        raise ValueError('Unknown development regression action')
+    if getattr(args, 'resume_quality_migration', None) is not None and (
+            not args.resume or getattr(args, 'quality_regression_action', 'stop') != 'report-only'):
+        raise ValueError('Quality policy migration requires resume and report-only quality action')
     """Reject deterministic configuration errors without querying a backend."""
     for value in (device_count, process_count):
         if type(value) is not int or value < 1:
@@ -166,6 +183,19 @@ def prepare_stage(args, *, device_count, process_count):
     encoder = json.loads((parent / 'config.json').read_text())
     if encoder.get('yat_bias') != 1 or encoder.get('yat_epsilon') != .01 or encoder.get('yat_alpha_trainable') is not True:
         raise ValueError('YAT architecture identity mismatch')
+    parent_encoder = dict(encoder)
+    quantization = getattr(args, 'weight_quantization', None)
+    if quantization is None:
+        quantization = encoder.get('weight_quantization', 'none')
+    if quantization not in ('none', 'int8_per_channel_ste'):
+        raise ValueError('Unsupported QAT policy')
+    if quantization != 'none':
+        if args.encoder_chunk_size:
+            raise ValueError('QAT gradient-cache execution requires separate physical qualification')
+        if encoder.get('ffn_type') != 'yat_glu' or encoder.get('attention_score') != 'yat_softmax':
+            raise ValueError('QAT requires YAT embedding architecture')
+    if quantization != 'none' or 'weight_quantization' in encoder:
+        encoder['weight_quantization'] = quantization
     items = [_load_data(spec, parent_hashes['tokenizer.json'], encoder) for spec in args.data]
     if len({name for name, _, _, _ in items}) != len(items):
         raise ValueError('Duplicate source data')
@@ -234,11 +264,14 @@ def prepare_stage(args, *, device_count, process_count):
     quality_plan = production_quality_plan(args, sts_data, retrieval_data, retrieval_receipts)
     receipt = {'scope': 'resolved-embedding-configuration-and-data-v1',
         'production_quality_plan': quality_plan,
+        'weight_quantization': quantization,
         'expected_device_count': device_count, 'expected_process_count': process_count,
         'source_weights': weights, 'batch_counts': counts, 'batch_policy': args.batch_policy,
         'batch_size': args.batch_size, 'encoder_chunk_size': args.encoder_chunk_size,
         'language_exponent': args.language_exponent, 'seed': args.seed,
         'dev_max_rows': args.dev_max_rows, 'max_dev_regression': args.max_dev_regression,
+        'quality_regression_action': getattr(args, 'quality_regression_action', 'stop'),
+        'schedule_steps': args.steps if getattr(args, 'schedule_steps', None) is None else args.schedule_steps,
         'sts_development': sts_receipts,
         'independent_retrieval_development': retrieval_receipts,
         'selected_dev_indices_sha256': {name: hashlib.sha256(indices.tobytes()).hexdigest()
@@ -249,6 +282,7 @@ def prepare_stage(args, *, device_count, process_count):
         'keep_checkpoints': args.keep_checkpoints, 'output': args.output,
         'physical_tpu_qualified': False}
     return {'parent_hashes': parent_hashes, 'encoder_config': encoder,
+        'parent_encoder_config': parent_encoder,
         'data_items': items, 'data': data, 'weights': weights, 'counts': counts,
         'query_lengths': query_lengths, 'document_lengths': document_lengths,
         'mixture_receipt': mixture, 'dev_indices': dev_indices,

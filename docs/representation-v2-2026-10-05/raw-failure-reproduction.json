@@ -1,0 +1,6 @@
+{
+  "status": "reproduced_failure",
+  "phases": [],
+  "returncode": 1,
+  "error_tail": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/opt/flaxchat-repair/source/scripts/prepare_representation_v2_training.py\", line 261, in <module>\n    main()\n  File \"/opt/flaxchat-repair/source/scripts/prepare_representation_v2_training.py\", line 204, in main\n    (raw if args.worker == 'raw' else audit)(args)\n  File \"/opt/flaxchat-repair/source/scripts/prepare_representation_v2_training.py\", line 87, in raw\n    if sha(path) != expected:\n       ^^^^^^^^^\n  File \"/opt/flaxchat-repair/source/scripts/prepare_representation_v2_training.py\", line 32, in sha\n    with Path(path).open('rb') as stream:\n         ^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/flaxchat-repair/cpython/python/lib/python3.12/pathlib.py\", line 1013, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/opt/flaxchat-repair/original-raw/development/historical/code/dev.jsonl'\n"
+}

@@ -152,11 +152,23 @@ def provenance(source_paths: list[Path], *, devices: list[dict], batch_size: int
     deployment = {}
     run_root = os.environ.get("FLAXCHAT_RUN_ROOT")
     if run_root:
-        for name in ("manifest-identity.txt", "runtime-receipt.json", "hardware-receipt.json"):
+        during_setup = os.environ.get("FLAXCHAT_SETUP_QUALIFICATION") == "1"
+        runtime_name = "runtime-setup-receipt.json" if during_setup else "runtime-receipt.json"
+        for name in ("manifest-identity.txt", runtime_name, "hardware-receipt.json"):
             path = Path(run_root) / name
             if not path.is_file():
                 raise ValueError(f"Missing deployment runtime evidence: {path}")
             deployment[name] = digest(path)
+        if during_setup:
+            runtime = json.loads((Path(run_root) / runtime_name).read_text())
+            if (runtime.get("schema_version") != 2 or runtime.get("runtime_verified") is not True
+                    or runtime.get("setup_checks_executed") is not False
+                    or runtime.get("physical_acceptance") is not False
+                    or runtime.get("qualification") is not None
+                    or runtime.get("manifest_sha256") != (Path(run_root) / "manifest-identity.txt").read_text().strip()
+                    or runtime.get("manifest_sha256") != os.environ.get("FLAXCHAT_RUN_MANIFEST_SHA256")
+                    or runtime.get("runtime_lock_sha256") != os.environ.get("FLAXCHAT_RUNTIME_LOCK_SHA256")):
+                raise ValueError("Invalid provisional deployment runtime evidence")
     return {"source_sha256": sources,
             "interpreter": {"version": platform.python_version(), "implementation": platform.python_implementation(),
                             "build": list(platform.python_build()), "executable_sha256": digest(Path(sys.executable))},

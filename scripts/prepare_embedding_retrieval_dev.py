@@ -7,6 +7,7 @@ from actual committed stage metadata and complete historical training raw files.
 from __future__ import annotations
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -16,6 +17,24 @@ from flaxchat.encoder_data import file_hash
 from flaxchat.embedding_quality import paired_dev_ids
 from flaxchat.embedding_dev_exposure import parent_exposure
 from flaxchat.embedding_development_quarantine import load_candidate_exclusions
+
+
+def portable_exposure_path(path, root, output):
+    """Bind a relocation-stable reference without permitting external links."""
+    root, path, output = Path(root).absolute(), Path(path).absolute(), Path(output).absolute()
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError('Portable root must be an existing regular directory')
+    for target in (path, output):
+        if not target.resolve().is_relative_to(root.resolve()):
+            raise ValueError('Portable exposure path must remain inside portable root')
+        for component in (target, *target.parents):
+            if component == root:
+                break
+            if component.is_symlink():
+                raise ValueError('Portable exposure paths must not traverse symlinks')
+    if not path.exists():
+        raise ValueError('Portable historical input must exist')
+    return os.path.relpath(path.resolve(), output.resolve())
 
 
 def prepare(
@@ -30,6 +49,7 @@ def prepare(
     query_length=128,
     document_length=256,
     timeout_seconds=600,
+    portable_root=None,
 ):
     from tokenizers import Tokenizer
 
@@ -59,17 +79,20 @@ def prepare(
         raise ValueError(
             "Parent tokenizer/config differs from immutable parent inventory"
         )
-    # Seal paths against the original inventory base before copying it into a
-    # new prepared directory. Admission reopens these same authenticated files.
+    # Seal paths against the original inventory base before copying. A portable
+    # bundle uses relative references into its authenticated shared history.
     exposure_spec = json.loads(Path(exposure_input).read_text())
     for stage in exposure_spec.get("stages", []):
-        stage["checkpoint_metadata"] = str(
-            (Path(exposure_input).parent / stage["checkpoint_metadata"]).resolve()
-        )
+        original = Path(exposure_input).parent / stage["checkpoint_metadata"]
+        stage["checkpoint_metadata"] = (portable_exposure_path(original, portable_root, output)
+            if portable_root is not None else str(original.resolve()))
         for entry in stage.get("sources", []):
-            entry["directory"] = str(
-                (Path(exposure_input).parent / entry["directory"]).resolve()
-            )
+            original = Path(exposure_input).parent / entry["directory"]
+            entry["directory"] = (portable_exposure_path(original, portable_root, output)
+                if portable_root is not None else str(original.resolve()))
+            if portable_root is not None:
+                for name in ('manifest.json', 'train.jsonl'):
+                    portable_exposure_path(original / name, portable_root, output)
     exposure_spec_sha = file_hash(exposure_input)
     rows = []
     for name in names:
@@ -211,6 +234,8 @@ def main():
     parser.add_argument("--query-length", type=int, default=128)
     parser.add_argument("--document-length", type=int, default=256)
     parser.add_argument("--timeout-seconds", type=int, default=600)
+    parser.add_argument('--portable-root', type=Path,
+                        help='Package root containing output and complete authenticated historical inputs; seal relative references')
     args = parser.parse_args()
     print(
         json.dumps(
@@ -225,6 +250,7 @@ def main():
                 query_length=args.query_length,
                 document_length=args.document_length,
                 timeout_seconds=args.timeout_seconds,
+                portable_root=args.portable_root,
             ),
             sort_keys=True,
         )

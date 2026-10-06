@@ -111,9 +111,11 @@ def test_authenticated_hash_and_required_coverage_are_not_optional(tmp_path):
     with pytest.raises(ValueError, match='SHA mismatch'):
         filter_candidate(candidate, scan, details, tmp_path / 'filtered',
             scan_sha256='a'*64, overlap_details_sha256=digest(details), min_rows_per_config=2)
-    with pytest.raises(ValueError, match='required rows'):
+    with pytest.raises(ValueError, match='required rows') as error:
         filter_candidate(candidate, scan, details, tmp_path / 'filtered',
             scan_sha256=digest(scan), overlap_details_sha256=digest(details), min_rows_per_config=4)
+    deficits = json.loads(str(error.value).split(': ', 1)[1])
+    assert deficits and all(item['retained'] < item['minimum'] == 4 for item in deficits.values())
     assert not (tmp_path / 'filtered').exists()
 
 

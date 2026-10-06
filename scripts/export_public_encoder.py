@@ -1,7 +1,6 @@
 """Export a final Orbax model item to a portable weight-only Hub directory."""
 
 import argparse
-from dataclasses import asdict
 import json
 from pathlib import Path
 import shutil
@@ -43,12 +42,17 @@ def main():
         expected_manifest=manifest["model_state"],
     )
     config = EncoderConfig(**metadata["resolved_config"]["encoder"])
-    (args.output / "config.json").write_text(json.dumps(asdict(config), indent=2) + "\n")
+    (args.output / "config.json").write_text(json.dumps(metadata["resolved_config"]["encoder"], indent=2) + "\n")
     shutil.copyfile(args.tokenizer, args.output / "tokenizer.json")
     (args.output / "checkpoint-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
     (args.output / "checkpoint-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     (args.output / "export.json").write_text(json.dumps({
         "format": "flaxchat-authenticated-encoder-export-v2",
+        "weight_storage": "fp32-masters",
+        "weight_quantization": config.weight_quantization,
+        "inference_weight_policy": ("native-int8-fake-quantization-from-fp32-masters"
+                                    if config.weight_quantization != "none" else "unquantized"),
+        "compressed_artifact": False,
         "artifacts_sha256": artifact_hashes(args.output, ("model.safetensors", "config.json", "tokenizer.json",
                                                          "checkpoint-metadata.json", "checkpoint-manifest.json")),
         "source_checkpoint_step": args.step,

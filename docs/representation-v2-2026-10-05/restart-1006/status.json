@@ -1,0 +1,26 @@
+{
+  "status": "training_running",
+  "observed_at": "2026-10-06T11:12:25.369393+00:00",
+  "checkpoint_start": 500,
+  "source_unchanged": true,
+  "credit_usd": 876.63,
+  "capacity_wait_seconds": 7200,
+  "lease_seconds": 43200,
+  "incremental_reservation_usd": 127,
+  "controller": "yat-v2-restart-1006",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "physical_acceptance": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0
+  },
+  "actual_training_steps": 138,
+  "tpu": "flaxchat-validation-yat-embed-torch-v2-overn-0-03484310d47842df",
+  "guard_deadline_unix": 1791326231.5674434,
+  "guard_execution": "2e138e5b-c789-4c97-bed8-699731df9269",
+  "last_observed_step": 638,
+  "last_durable_checkpoint": 600,
+  "median_warm_step_seconds": 0.7721523230000003,
+  "guard_deadline_utc": "2026-10-06T22:37:11.567443+00:00"
+}

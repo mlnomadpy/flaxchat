@@ -1,5 +1,7 @@
 # Open issue and training readiness checklist
 
+**October6 update:** [fresh25-open-issue reconciliation](issue-review-2026-10-06/README.md). The29-issue counts below are historical. Issues#39,#43,#45,#46 are already closed; current single-host TPU acceptance is11passes with real checkpoint continuation.
+
 Latest reconciled audit: [all open issues, current evidence and tool priorities](SYSTEM_AUDIT_CURRENT_2026-10-01.md). Earlier dated findings below remain historical where superseded.
 
 

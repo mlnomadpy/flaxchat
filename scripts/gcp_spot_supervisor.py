@@ -207,6 +207,8 @@ def main(argv=None):
     parser.add_argument('--hourly-usd', type=float, required=True, help='Conservative whole-slice rate')
     parser.add_argument('--budget-usd', type=float, required=True)
     parser.add_argument('--attempt-seconds', type=int, default=1800)
+    parser.add_argument('--allow-long-lease', action='store_true',
+                        help='Explicitly allow one attempt up to 12 hours; default maximum is 2 hours')
     parser.add_argument('--capacity-wait-seconds', type=int,
                         help='Optional shorter wait before allocation is observed; expires through verified cleanup')
     parser.add_argument('--startup-wait-seconds', type=int,
@@ -227,14 +229,15 @@ def main(argv=None):
     parser.add_argument('--directory', default='/tmp/flaxchat-validation')
     parser.add_argument('--ancillary-reserve-usd', type=float, default=2.)
     args = parser.parse_args(argv)
-    if not 180 <= args.attempt_seconds <= 7200 or not 1 <= args.max_attempts <= 10:
-        parser.error('Attempts must be 180–7200 seconds; count must be 1–10')
+    maximum = 43200 if args.allow_long_lease else 7200
+    if not 180 <= args.attempt_seconds <= maximum or not 1 <= args.max_attempts <= 10:
+        parser.error(f'Attempts must be 180–{maximum} seconds; count must be 1–10; longer leases require --allow-long-lease')
     if args.capacity_wait_seconds is not None and not 1 <= args.capacity_wait_seconds <= args.attempt_seconds:
         parser.error('Capacity wait must be positive and no longer than the attempt lease')
     if args.startup_wait_seconds is not None and not 1 <= args.startup_wait_seconds <= args.attempt_seconds:
         parser.error('Startup wait must be positive and no longer than the attempt lease')
-    if not 30 <= args.setup_timeout_seconds <= 900:
-        parser.error('Setup timeout must be 30–900 seconds')
+    if not 30 <= args.setup_timeout_seconds <= 1800:
+        parser.error('Setup timeout must be 30–1800 seconds')
     if args.max_attempts > 1 and not args.resume_workload:
         parser.error('Retries require explicit durable-checkpoint resume argv')
     if args.acceptance_prefix and not args.acceptance_prefix.startswith('gs://'):
@@ -259,6 +262,7 @@ def campaign(args):
         run_id=args.run_id or args.name, stage_id=args.stage_id, phase='admission', started_unix=time.time(),
         whole_slice_hourly_usd=args.hourly_usd, attempt_seconds=args.attempt_seconds,
         capacity_wait_seconds=args.capacity_wait_seconds, startup_wait_seconds=args.startup_wait_seconds, max_attempts=args.max_attempts,
+        allow_long_lease=getattr(args, 'allow_long_lease', False),
         phases=[], attempts=[], model_execution_state='not_started', posted_usage_usd=None)
     started = time.monotonic()
     phase_started = started
@@ -328,7 +332,8 @@ def _run_campaign(args, report, phase, persist):
             cleanup={'state': 'not_required'}, remote_stages_started=[])
         report['attempts'].append(attempt)
         phase('identity_admission')
-        gcp_cleanup_guard.lease(args.project, args.zone, name, args.attempt_seconds)
+        gcp_cleanup_guard.lease(args.project, args.zone, name, args.attempt_seconds,
+                                allow_long_lease=getattr(args, 'allow_long_lease', False))
         phase('cleanup_scope_admission')
         attempt['cleanup_scope'] = gcp_cleanup_guard.preflight_cleanup_scope(
             project=args.project, zone=args.zone, queue=name)
@@ -351,7 +356,8 @@ def _run_campaign(args, report, phase, persist):
             phase('guard_verification')
             receipt = output / 'guard.json'
             gcp_cleanup_guard.main(['--project', args.project, '--zone', args.zone, '--queue', name,
-                                   '--seconds', str(args.attempt_seconds), '--receipt', str(receipt)])
+                                   '--seconds', str(args.attempt_seconds), '--receipt', str(receipt),
+                                   *(['--allow-long-lease'] if getattr(args, 'allow_long_lease', False) else [])])
             return json.loads(receipt.read_text())
         def provision(resource, name=name, output=output, attempt=attempt):
             phase('provisioning')
@@ -384,7 +390,8 @@ def _run_campaign(args, report, phase, persist):
             return gcp_tpu_run.main(['--project', args.project, '--zone', args.zone, '--node', name,
                  '--cancel-peers-on-failure',
                  '--output', str(output / label), '--directory', '/tmp' if setup else args.directory,
-                 '--timeout', str(min(args.setup_timeout_seconds if setup else 7200, remaining() - 15)), *(['--setup'] if setup else []),
+                 '--timeout', str(min(args.setup_timeout_seconds if setup else (43200 if getattr(args, 'allow_long_lease', False) else 7200), remaining() - 15)),
+                 *(['--allow-long-lease'] if getattr(args, 'allow_long_lease', False) else []), *(['--setup'] if setup else []),
                  *(['--tunnel-through-iap'] if args.tunnel_through_iap else []),
                  *(['--iap-fallback'] if args.iap_fallback else []),
                  *(['--single-worker'] if single_worker else []), '--', *argv])

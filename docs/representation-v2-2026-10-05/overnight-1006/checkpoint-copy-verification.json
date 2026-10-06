@@ -1,0 +1,12 @@
+{
+  "500/": {
+    "identical_crc32c_size_names": true,
+    "objects": 43,
+    "bytes": 2949323722
+  },
+  "best/0/": {
+    "identical_crc32c_size_names": true,
+    "objects": 40,
+    "bytes": 1139940369
+  }
+}

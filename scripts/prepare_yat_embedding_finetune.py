@@ -103,7 +103,7 @@ def _registry_rows(spec, seed):
                "upstream_group": str(original[fields["group"]]) if fields.get("group") else None,
                "language": str(original[fields["language"]]) if fields.get("language") else spec.get("language", "und"),
                "programming_language": str(original[fields["programming_language"]]) if fields.get("programming_language") else spec.get("programming_language", "unknown"),
-               "programming_language_provenance": f"column:{fields['programming_language']}" if fields.get("programming_language") else ("registry-constant" if spec.get("programming_language") else "unavailable"),
+               "programming_language_provenance": str(original[fields["programming_language_provenance"]]) if fields.get("programming_language_provenance") else (f"column:{fields['programming_language']}" if fields.get("programming_language") else ("registry-constant" if spec.get("programming_language") else "unavailable")),
                "modalities": spec.get("modalities", {}), "coordinate": str(position)}
 
 

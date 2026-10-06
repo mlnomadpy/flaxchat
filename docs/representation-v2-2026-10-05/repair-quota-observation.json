@@ -1,0 +1,229 @@
+{
+  "observed_at": "2026-10-06T00:05:06.257951+00:00",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "accelerator_type": "v5litepod-8",
+  "provisioning_model": "spot",
+  "quota_is_not_capacity": true,
+  "metrics": [
+    {
+      "consumerQuotaLimits": [
+        {
+          "isPrecise": true,
+          "metric": "tpu.googleapis.com/tpu-v5s-litepod-preemptible",
+          "quotaBuckets": [
+            {
+              "defaultLimit": "1536",
+              "effectiveLimit": "1536"
+            },
+            {
+              "dimensions": {
+                "zone": "us-east1-c"
+              }
+            },
+            {
+              "dimensions": {
+                "zone": "us-east5-a"
+              }
+            },
+            {
+              "dimensions": {
+                "zone": "us-east5-b"
+              }
+            },
+            {
+              "dimensions": {
+                "zone": "us-east5-c"
+              }
+            },
+            {
+              "dimensions": {
+                "zone": "us-west4-b"
+              }
+            }
+          ],
+          "supportedLocations": [
+            "asia-east1-a",
+            "asia-east1-b",
+            "asia-east1-c",
+            "asia-northeast1-a",
+            "asia-northeast1-b",
+            "asia-northeast1-c",
+            "asia-southeast1-a",
+            "asia-southeast1-b",
+            "asia-southeast1-c",
+            "europe-north1-a",
+            "europe-north1-b",
+            "europe-north1-c",
+            "europe-west1-b",
+            "europe-west1-c",
+            "europe-west1-d",
+            "europe-west3-a",
+            "europe-west3-b",
+            "europe-west3-c",
+            "europe-west4-a",
+            "europe-west4-b",
+            "europe-west4-c",
+            "northamerica-northeast1-a",
+            "northamerica-northeast1-b",
+            "northamerica-northeast1-c",
+            "southamerica-west1-a",
+            "southamerica-west1-b",
+            "southamerica-west1-c",
+            "us-central1-a",
+            "us-central1-b",
+            "us-central1-c",
+            "us-central1-f",
+            "us-east1-b",
+            "us-east1-c",
+            "us-east1-d",
+            "us-east4-a",
+            "us-east4-b",
+            "us-east4-c",
+            "us-east5-a",
+            "us-east5-b",
+            "us-east5-c",
+            "us-south1-a",
+            "us-south1-b",
+            "us-south1-c",
+            "us-west1-a",
+            "us-west1-b",
+            "us-west1-c",
+            "us-west4-a",
+            "us-west4-b",
+            "us-west4-c"
+          ],
+          "unit": "1/{project}/{zone}"
+        },
+        {
+          "isPrecise": true,
+          "metric": "tpu.googleapis.com/tpu-v5s-litepod-preemptible",
+          "quotaBuckets": [
+            {
+              "defaultLimit": "-1",
+              "effectiveLimit": "-1"
+            }
+          ],
+          "supportedLocations": [
+            "asia-east1",
+            "asia-northeast1",
+            "asia-southeast1",
+            "europe-north1",
+            "europe-west1",
+            "europe-west3",
+            "europe-west4",
+            "northamerica-northeast1",
+            "southamerica-west1",
+            "us-central1",
+            "us-east1",
+            "us-east4",
+            "us-east5",
+            "us-south1",
+            "us-west1",
+            "us-west4"
+          ],
+          "unit": "1/{project}/{region}"
+        }
+      ],
+      "displayName": "Preemptible TPU-V5 lite pod cores in use by TPU API",
+      "metric": "tpu.googleapis.com/tpu-v5s-litepod-preemptible"
+    },
+    {
+      "consumerQuotaLimits": [
+        {
+          "isPrecise": true,
+          "metric": "tpu.googleapis.com/tpu-v5s-litepod-serving-preemptible",
+          "quotaBuckets": [
+            {
+              "defaultLimit": "32",
+              "effectiveLimit": "32"
+            }
+          ],
+          "supportedLocations": [
+            "asia-east1-a",
+            "asia-east1-b",
+            "asia-east1-c",
+            "asia-northeast1-a",
+            "asia-northeast1-b",
+            "asia-northeast1-c",
+            "asia-southeast1-a",
+            "asia-southeast1-b",
+            "asia-southeast1-c",
+            "europe-north1-a",
+            "europe-north1-b",
+            "europe-north1-c",
+            "europe-west1-b",
+            "europe-west1-c",
+            "europe-west1-d",
+            "europe-west3-a",
+            "europe-west3-b",
+            "europe-west3-c",
+            "europe-west4-a",
+            "europe-west4-b",
+            "europe-west4-c",
+            "northamerica-northeast1-a",
+            "northamerica-northeast1-b",
+            "northamerica-northeast1-c",
+            "southamerica-west1-a",
+            "southamerica-west1-b",
+            "southamerica-west1-c",
+            "us-central1-a",
+            "us-central1-b",
+            "us-central1-c",
+            "us-central1-f",
+            "us-east1-b",
+            "us-east1-c",
+            "us-east1-d",
+            "us-east4-a",
+            "us-east4-b",
+            "us-east4-c",
+            "us-east5-a",
+            "us-east5-b",
+            "us-east5-c",
+            "us-south1-a",
+            "us-south1-b",
+            "us-south1-c",
+            "us-west1-a",
+            "us-west1-b",
+            "us-west1-c",
+            "us-west4-a",
+            "us-west4-b",
+            "us-west4-c"
+          ],
+          "unit": "1/{project}/{zone}"
+        },
+        {
+          "isPrecise": true,
+          "metric": "tpu.googleapis.com/tpu-v5s-litepod-serving-preemptible",
+          "quotaBuckets": [
+            {
+              "defaultLimit": "-1",
+              "effectiveLimit": "-1"
+            }
+          ],
+          "supportedLocations": [
+            "asia-east1",
+            "asia-northeast1",
+            "asia-southeast1",
+            "europe-north1",
+            "europe-west1",
+            "europe-west3",
+            "europe-west4",
+            "northamerica-northeast1",
+            "southamerica-west1",
+            "us-central1",
+            "us-east1",
+            "us-east4",
+            "us-east5",
+            "us-south1",
+            "us-west1",
+            "us-west4"
+          ],
+          "unit": "1/{project}/{region}"
+        }
+      ],
+      "displayName": "Preemptible TPU-V5 lite pod cores for serving workload in use by TPU API",
+      "metric": "tpu.googleapis.com/tpu-v5s-litepod-serving-preemptible"
+    }
+  ]
+}

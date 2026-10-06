@@ -1,0 +1,79 @@
+{
+  "diagnostic_only": true,
+  "scan_sha256": "e47cd6cc482baf4e5ec10fcae45bd5081e13f6fe255f694a1a6aa951f46b1927",
+  "collision_sha256": "6fc34f7acfe74baa7eea6203639f5166c2339d090a8a37b6744ffbd2439b7b7b",
+  "counts": {
+    "codesearchnet_train__pair": {
+      "original": 512,
+      "retained": 366
+    },
+    "globalvoices_train__en-ar": {
+      "original": 512,
+      "retained": 54
+    },
+    "globalvoices_train__en-de": {
+      "original": 512,
+      "retained": 93
+    },
+    "globalvoices_train__en-es": {
+      "original": 512,
+      "retained": 300
+    },
+    "globalvoices_train__en-fr": {
+      "original": 512,
+      "retained": 215
+    },
+    "globalvoices_train__en-it": {
+      "original": 512,
+      "retained": 121
+    },
+    "globalvoices_train__en-nl": {
+      "original": 512,
+      "retained": 45
+    },
+    "globalvoices_train__en-pt": {
+      "original": 512,
+      "retained": 153
+    },
+    "globalvoices_train__en-ru": {
+      "original": 512,
+      "retained": 155
+    },
+    "native_miracl_train__ar-triplet": {
+      "original": 512,
+      "retained": 511
+    },
+    "native_miracl_train__bn-triplet": {
+      "original": 314,
+      "retained": 314
+    },
+    "native_miracl_train__fr-triplet": {
+      "original": 247,
+      "retained": 247
+    },
+    "native_miracl_train__hi-triplet": {
+      "original": 243,
+      "retained": 243
+    },
+    "native_miracl_train__ja-triplet": {
+      "original": 512,
+      "retained": 512
+    },
+    "native_miracl_train__ru-triplet": {
+      "original": 512,
+      "retained": 512
+    },
+    "native_miracl_train__sw-triplet": {
+      "original": 374,
+      "retained": 374
+    },
+    "native_miracl_train__zh-triplet": {
+      "original": 246,
+      "retained": 245
+    },
+    "stsb_validation__default": {
+      "original": 512,
+      "retained": 512
+    }
+  }
+}

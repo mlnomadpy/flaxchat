@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import re
 import time
-from flaxchat.embedding_historical_rows import historical_row_view
+from flaxchat.embedding_historical_rows import historical_row_view, historical_stage_sources, historical_manifest_view
 
 
 def parent_exposure(path, index, parent_hashes, *, timeout_seconds=600):
@@ -69,7 +69,7 @@ def parent_exposure(path, index, parent_hashes, *, timeout_seconds=600):
         if bounded_hash(metadata_path) != stage["stage_identity_sha256"]:
             raise ValueError("Historical stage metadata identity mismatch")
         metadata = bounded_json(metadata_path)
-        declared = metadata.get("resolved_config", {}).get("data_manifests")
+        declared = historical_stage_sources(metadata)
         sources = stage.get("sources", [])
         if (
             not declared
@@ -89,7 +89,7 @@ def parent_exposure(path, index, parent_hashes, *, timeout_seconds=600):
                 raise ValueError(
                     "Historical prepared source differs from committed stage"
                 )
-            manifest = bounded_json(manifest_path)
+            manifest = historical_manifest_view(bounded_json(manifest_path), declared[entry["name"]])
             if manifest.get("source") != entry["name"]:
                 raise ValueError("Historical prepared source name mismatch")
             identity = manifest.get("source_identity", {})

@@ -1,0 +1,88 @@
+[
+  {
+    "event": "embedding_resume_policy_migration",
+    "step": 500,
+    "lineage": {
+      "format": "flaxchat-quality-policy-migration-v1",
+      "specification_sha256": "e8e87ef650e93c033b80d1bc82dfc365d6bcf1861ae8d537d192c9b1a8d0a04a",
+      "previous_identity_sha256": "1bcbad9802f57f36b1cdc792b5c2fdd81e2cad5763525dc5b647aba0d3c7ed44",
+      "source_checkpoint": {
+        "step": 500,
+        "manifest_sha256": "c45bbd0de129d8b891f1e8737c3edcc74a01f989186ece5e587c2e33ffcefea7"
+      },
+      "source_best": {
+        "step": 0,
+        "manifest_sha256": "df2691338b336c166cfe39754750546c0c6dd884cd33ffbb10e56a95b627bf83"
+      },
+      "preserved_schedule_steps": 20000
+    },
+    "restored_previous_identity": true
+  },
+  {
+    "event": "embedding_selection_reconciled",
+    "cursor": 500,
+    "best_step": 0,
+    "best_score": 0.9511961584338974,
+    "best_ahead_of_cursor": false,
+    "bootstrap_resume": false
+  },
+  {
+    "event": "embedding_checkpoint",
+    "step": 600,
+    "seconds": 25.278437878999966
+  },
+  {
+    "event": "embedding_step",
+    "step": 637,
+    "loss": 0.08366242051124573,
+    "seconds": 0.7731338210001013,
+    "global_pairs": 128,
+    "input_seconds": 0.0030381890001081047,
+    "telemetry": {
+      "pairs_global": 128,
+      "processed_tokens_global": 26878,
+      "useful_tokens_global": 23213,
+      "input_seconds_slowest_host": 0.00303818890824914,
+      "update_seconds_slowest_host": 0.7669856548309326,
+      "step_seconds_slowest_host": 0.7730314135551453,
+      "useful_tokens_per_second_global": 30028.533890031973,
+      "first_variant_call": false,
+      "timing_scope": "accepted-update-including-input-and-first-call-compilation-before-telemetry-gather",
+      "useful_exposure_definition": "query-positive-and-valid-negative-nonpadding-tokens; repeated-exposures-included"
+    },
+    "gradient_norm": 2.0953781604766846,
+    "pair_only": false,
+    "candidate_masking": {
+      "masked_known_positive_negatives": 0,
+      "valid_explicit_candidates": 10624
+    },
+    "nonpadding_tokens_local": 26878
+  },
+  {
+    "event": "embedding_step",
+    "step": 638,
+    "loss": 0.06535547226667404,
+    "seconds": 0.7729776129999664,
+    "global_pairs": 128,
+    "input_seconds": 0.00294251099990106,
+    "telemetry": {
+      "pairs_global": 128,
+      "processed_tokens_global": 26256,
+      "useful_tokens_global": 22750,
+      "input_seconds_slowest_host": 0.002942511113360524,
+      "update_seconds_slowest_host": 0.7660918235778809,
+      "step_seconds_slowest_host": 0.7728230953216553,
+      "useful_tokens_per_second_global": 29437.526049258744,
+      "first_variant_call": false,
+      "timing_scope": "accepted-update-including-input-and-first-call-compilation-before-telemetry-gather",
+      "useful_exposure_definition": "query-positive-and-valid-negative-nonpadding-tokens; repeated-exposures-included"
+    },
+    "gradient_norm": 2.758366823196411,
+    "pair_only": false,
+    "candidate_masking": {
+      "masked_known_positive_negatives": 0,
+      "valid_explicit_candidates": 10624
+    },
+    "nonpadding_tokens_local": 26256
+  }
+]

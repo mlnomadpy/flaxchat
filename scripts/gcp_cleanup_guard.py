@@ -156,17 +156,23 @@ def preflight_cleanup_scope(*, project, zone, queue, location='us-central1',
     return receipt
 
 
-def lease(project, zone, queue, seconds, *, now=None):
+def lease(project, zone, queue, seconds, *, now=None, allow_long_lease=False):
     if not re.fullmatch(r'[a-z][a-z0-9-]{4,61}[a-z0-9]', project):
         raise ValueError('Invalid project')
     if not re.fullmatch(r'[a-z]+-[a-z0-9]+-[a-z]', zone):
         raise ValueError('Invalid zone')
     if not re.fullmatch(r'flaxchat-validation-[a-z0-9-]+', queue):
         raise ValueError('Only dedicated validation queues are permitted')
-    if not 60 <= seconds <= 7200:
-        raise ValueError('Guard duration must be 60–7200 seconds')
-    return dict(project=project, zone=zone, queue=queue,
-                deadline=(time.time() if now is None else now) + seconds)
+    if type(allow_long_lease) is not bool:
+        raise ValueError('Long lease opt-in must be boolean')
+    maximum = 43200 if allow_long_lease else 7200
+    if type(seconds) is not int or not 60 <= seconds <= maximum:
+        raise ValueError(f'Guard duration must be 60–{maximum} seconds; longer leases require explicit opt-in')
+    payload = dict(project=project, zone=zone, queue=queue,
+                   deadline=(time.time() if now is None else now) + seconds)
+    if allow_long_lease:
+        payload['allow_long_lease'] = True
+    return payload
 
 
 def verify_cleanup_permissions(execution, *, project, location, zone, queue, deadline):
@@ -207,7 +213,10 @@ def verify(receipt, *, project, zone, queue, now=None):
            dict(project=project, zone=zone, queue=queue).items()):
         raise ValueError('Guard resource identity mismatch')
     remaining = expected['deadline'] - (time.time() if now is None else now)
-    if not 60 <= remaining <= 7200:
+    opt_in = expected.get('allow_long_lease', False)
+    if type(opt_in) is not bool:
+        raise ValueError('Long lease opt-in must be boolean')
+    if not 60 <= remaining <= (43200 if opt_in else 7200):
         raise ValueError('Guard is expired or too close to expiry')
     polling_deadline = time.monotonic() + 45
     while True:
@@ -251,11 +260,13 @@ def main(argv=None):
     parser.add_argument('--seconds', type=int, default=3600)
     parser.add_argument('--receipt', type=Path, required=True)
     parser.add_argument('--verify', action='store_true')
+    parser.add_argument('--allow-long-lease', action='store_true',
+                        help='Explicitly allow a guard up to 12 hours; default maximum is 2 hours')
     args = parser.parse_args(argv)
     if args.verify:
         receipt = json.loads(args.receipt.read_text())
     else:
-        payload = lease(args.project, args.zone, args.queue, args.seconds)
+        payload = lease(args.project, args.zone, args.queue, args.seconds, allow_long_lease=args.allow_long_lease)
         execution = json.loads(subprocess.check_output(
             ['gcloud', 'workflows', 'execute', args.workflow, '--project', args.project,
              '--location', args.location, '--data', json.dumps(payload), '--format=json'],

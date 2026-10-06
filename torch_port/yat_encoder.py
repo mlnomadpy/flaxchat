@@ -45,8 +45,14 @@ class YatEncoderConfig:
     yat_global_attention_block_size: int
 
     @classmethod
-    def from_json(cls, path: str | Path) -> "YatEncoderConfig":
+    def from_json(cls, path: str | Path, *, compressed_int8: bool = False) -> "YatEncoderConfig":
         data = json.loads(Path(path).read_text())
+        quantization = data.get("weight_quantization", "none")
+        if quantization not in ("none", "int8_per_channel_ste"):
+            raise ValueError("Unsupported source weight quantization policy")
+        if quantization != "none" and not compressed_int8:
+            raise ValueError("QAT FP32 masters require native fake quantization or an authenticated INT8 export; "
+                             "the ordinary PyTorch loader cannot execute them faithfully")
         config = cls(**{name: data[name] for name in cls.__dataclass_fields__})
         if (config.yat_epsilon != .01 or config.yat_bias != 1.
                 or config.attention_score != "yat_softmax" or config.ffn_type != "yat_glu"
@@ -58,8 +64,9 @@ class YatEncoderConfig:
         return config
 
 
-def _linear(module: nn.Linear, x: torch.Tensor) -> torch.Tensor:
-    return F.linear(x.to(torch.bfloat16), module.weight.to(torch.bfloat16))
+def _linear(module: nn.Linear, x: torch.Tensor, *, weight: torch.Tensor | None = None) -> torch.Tensor:
+    weight = module.weight if weight is None else weight
+    return F.linear(x.to(torch.bfloat16), weight.to(torch.bfloat16))
 
 
 def _norm(module: nn.LayerNorm, x: torch.Tensor) -> torch.Tensor:
@@ -165,9 +172,10 @@ class YatBlock(nn.Module):
         radius = c.local_attention // 2 if local else None
         x = x + _linear(self.attn_out, self._attention(q, k, v, segments, radius)).float()
         h = _norm(self.mlp_norm, x).to(torch.bfloat16)
-        dots, gate = _linear(self.wi, h).chunk(2, dim=-1)
+        wi_weight = self.wi.weight.to(torch.bfloat16)
+        dots, gate = _linear(self.wi, h, weight=wi_weight).chunk(2, dim=-1)
         flat = h.reshape(-1, h.shape[-1])
-        prototypes = self.wi.weight[:c.intermediate_size].to(torch.bfloat16)
+        prototypes = wi_weight[:c.intermediate_size]
         distance = _adaptive_ffn_distance(flat, prototypes, dots.reshape(-1, dots.shape[-1]))
         activated = self.yat_alpha.to(torch.bfloat16) * (dots + 1).square() / (
             distance.reshape(dots.shape) + c.yat_epsilon) * gate
