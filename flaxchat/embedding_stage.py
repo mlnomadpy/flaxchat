@@ -88,6 +88,10 @@ def add_stage_arguments(parser):
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--learning-rate", type=float, default=3e-5)
     parser.add_argument("--temperature", type=float, default=0.05)
+    parser.add_argument('--contrastive-similarity', choices=('cosine', 'yat'), default='cosine',
+                        help='Opt-in contrastive objective; cosine preserves existing checkpoint identities')
+    parser.add_argument('--yat-infonce-alpha-init', type=float, default=None,
+                        help='YAT positive trainable scale initialization, defaults to 0.01; not calibrated')
     parser.add_argument("--warmup", type=int, default=200)
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--seed", type=int, default=29)
@@ -118,7 +122,46 @@ def add_stage_arguments(parser):
     return parser
 
 
+def contrastive_objective_identity(args):
+    """Return the opt-in objective contract without importing a numerical backend.
+
+    Cosine intentionally has no new identity payload, preserving old recipes.
+    YAT changes the optimizer parameter tree and must start as a new stage before
+    any exact resume; quality-policy migration cannot change the objective.
+    """
+    similarity = getattr(args, 'contrastive_similarity', 'cosine')
+    alpha = getattr(args, 'yat_infonce_alpha_init', None)
+    if similarity not in ('cosine', 'yat'):
+        raise ValueError('Unknown contrastive similarity')
+    if similarity == 'cosine':
+        if alpha is not None:
+            raise ValueError('YAT alpha initialization requires --contrastive-similarity yat')
+        return None
+    if getattr(args, 'resume_quality_migration', None) is not None:
+        raise ValueError('Quality policy migration cannot select the YAT contrastive objective')
+    alpha = 0.01 if alpha is None else alpha
+    if isinstance(alpha, bool) or not isinstance(alpha, (int, float)) or not math.isfinite(alpha) or alpha <= 1e-6:
+        raise ValueError('YAT alpha initialization must be finite and greater than 1e-6')
+    return {
+        'format': 'flaxchat-yat-infonce-v1',
+        'similarity': 'yat',
+        'kernel': 'alpha * (s + 1)^2 / (2 - 2*s + 0.01)',
+        'bias': 1.0, 'epsilon': 0.01,
+        'alpha_parameterization': 'softplus(raw_alpha) + 1e-6',
+        'alpha_floor': 1e-6, 'alpha_init': float(alpha), 'alpha_trainable': True,
+        'alpha_initialization_calibrated': False,
+        'temperature_trainable': False,
+        'logits': 'kernel / temperature',
+        'loss': 'stable_log_softmax_no_exp_pretransform',
+        'normalization': 'fp32_max_abs_rescaled_l2', 'similarity_clip': [-1.0, 1.0],
+        'minimum_embedding_norm': 1e-12,
+        'invalid_embedding_policy': 'nonfinite_loss',
+        'masked_negative_policy': 'negative_valid_false_exempt_from_norm_check_and_loss',
+    }
+
+
 def validate_stage_configuration(args, *, device_count, process_count):
+    contrastive_objective_identity(args)
     schedule_steps = getattr(args, 'schedule_steps', None)
     schedule_steps = args.steps if schedule_steps is None else schedule_steps
     if type(schedule_steps) is not int or not args.warmup < schedule_steps <= args.steps:
@@ -281,6 +324,9 @@ def prepare_stage(args, *, device_count, process_count):
         'eval_every': args.eval_every, 'save_every': args.save_every,
         'keep_checkpoints': args.keep_checkpoints, 'output': args.output,
         'physical_tpu_qualified': False}
+    objective = contrastive_objective_identity(args)
+    if objective is not None:
+        receipt['contrastive_objective'] = objective
     return {'parent_hashes': parent_hashes, 'encoder_config': encoder,
         'parent_encoder_config': parent_encoder,
         'data_items': items, 'data': data, 'weights': weights, 'counts': counts,

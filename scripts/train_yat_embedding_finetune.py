@@ -27,6 +27,7 @@ from flaxchat.checkpoint import (create_checkpoint_manager,
                                  restore_model_from_checkpoint, save_checkpoint, load_checkpoint_metadata)
 from flaxchat.common import replicate_on_mesh
 from flaxchat.contrastive import hard_negative_infonce
+from flaxchat.embedding_objective import configure_objective_state, objective_loss_arguments
 from flaxchat.embedding_contract import (source_identity, validate_parent_metadata, validate_cursor,
                                         validate_optimizer_cursor, emit_completion_status)
 from flaxchat.runtime import runtime_identity
@@ -77,6 +78,7 @@ def run(args):
     if jax.default_backend() != "tpu":
         raise RuntimeError("Model training requires a physical TPU")
     admitted = prepare_stage(args, device_count=jax.device_count(), process_count=jax.process_count())
+    objective_identity = admitted["admission_receipt"].get("contrastive_objective")
     parent = Path(args.parent_public)
     parent_hashes, encoder_config = admitted['parent_hashes'], admitted['encoder_config']
     data_items, data = admitted['data_items'], admitted['data']
@@ -129,6 +131,8 @@ def run(args):
               "shuffle": "cursor-derived language-temperature draws with replacement; source-local homogeneous cursors",
               "query_length": next(iter(query_lengths)),
               "document_length": next(iter(document_lengths))}
+    if objective_identity is not None:
+        recipe["contrastive_objective"] = objective_identity
     if encoder_config.get("weight_quantization", "none") != "none":
         recipe["quantization_aware_training"] = {
             "format": "symmetric-int8-output-channel-v1", "range": [-127, 127],
@@ -168,8 +172,11 @@ def run(args):
             or not model.config.yat_alpha_trainable):
         raise ValueError("YAT architecture identity mismatch")
     if args.parent_checkpoint and not args.resume:
+        configure_objective_state(model, parent_metadata["resolved_config"].get("contrastive_objective"))
         restore_model_from_checkpoint(model, args.parent_checkpoint, step=args.parent_step,
                                       expected_identity=parent_expected)
+    # A new stage resets training-only alpha; exact resume restores it below.
+    configure_objective_state(model, objective_identity)
     # Restore with the original parent config, then enter the new stage policy.
     # FP32 parameter leaves and trainable alpha retain their original identity.
     config = replace(model.config, weight_quantization=encoder_config.get("weight_quantization", "none"))
@@ -229,7 +236,8 @@ def run(args):
             nvectors = jnp.zeros_like(pvectors) if pair_only else pool(n)
             return hard_negative_infonce(qvectors, pvectors, nvectors,
                 qid, pid, nid, gid, valid, temperature=args.temperature,
-                expected_global_batch=args.batch_size, known_positive_text_ids=known, return_metrics=True)
+                expected_global_batch=args.batch_size, known_positive_text_ids=known, return_metrics=True,
+                **objective_loss_arguments(inner, objective_identity))
         (loss, masking_metrics), grads = nnx.value_and_grad(objective, has_aux=True)(m)
         accepted = apply_gradients_if_finite(m, o, grads, loss)
         return loss, accepted, optax.global_norm(grads), masking_metrics
@@ -238,7 +246,8 @@ def run(args):
     def dev_loss(m, q, p, n, qid, pid, nid, gid, valid, known):
         return hard_negative_infonce(m.pool(q), m.pool(p), m.pool(n),
             qid, pid, nid, gid, valid, temperature=args.temperature,
-            expected_global_batch=args.batch_size, known_positive_text_ids=known)
+            expected_global_batch=args.batch_size, known_positive_text_ids=known,
+            **objective_loss_arguments(m, objective_identity))
 
     samplers = {name: ReplayRows(data[name]["train"]["language_ids"],
                                 args.seed + int(hashlib.sha256(name.encode()).hexdigest()[:8], 16),
@@ -477,7 +486,9 @@ def run(args):
                     "global_pairs": args.batch_size, "input_seconds": input_seconds,
                     "telemetry": step_telemetry,
                     "gradient_norm": float(grad_norm), "pair_only": pair_only,
-                    "candidate_masking": {key: int(value) for key, value in masking_metrics.items()},
+                    "candidate_masking": {key: int(value) for key, value in masking_metrics.items() if not key.startswith("yat_")},
+                    **({"contrastive_metrics": {key: float(value) for key, value in masking_metrics.items()
+                        if key.startswith("yat_")}} if objective_identity is not None else {}),
                     "nonpadding_tokens_local": int(processed_tokens)}), flush=True)
             if evaluation_due(step + 1, args.eval_every, args.steps):
                 improved, gate = evaluate_dev(step + 1)

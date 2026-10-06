@@ -114,13 +114,14 @@ def test_nnx_yat_cache_matches_encoder_gradients_and_optimizer_update(pair_only,
     _nnx_cache_case(pair_only, tmp_path, record_property, shape_matched=False)
 
 
-@pytest.mark.parametrize('pair_only', [True, False])
-def test_nnx_cache_shape_matched_reference_and_adam_moments(pair_only, tmp_path, record_property):
+@pytest.mark.parametrize('pair_only,yat', [(True, False), (False, False), (True, True), (False, True)],
+                         ids=['True', 'False', 'yat-pair', 'yat-triplet'])
+def test_nnx_cache_shape_matched_reference_and_adam_moments(pair_only, yat, tmp_path, record_property):
     """Additional diagnosis; original full-batch acceptance stays mandatory."""
-    _nnx_cache_case(pair_only, tmp_path, record_property, shape_matched=True)
+    _nnx_cache_case(pair_only, tmp_path, record_property, shape_matched=True, yat=yat)
 
 
-def _nnx_cache_case(pair_only, tmp_path, record_property, *, shape_matched):
+def _nnx_cache_case(pair_only, tmp_path, record_property, *, shape_matched, yat=False):
     """Qualify the actual NNX adapter independently of the pure-JAX cache oracle."""
     import jax
     import jax.numpy as jnp
@@ -148,8 +149,19 @@ def _nnx_cache_case(pair_only, tmp_path, record_property, *, shape_matched):
     models = [direct_model, cached_model]
     if shape_matched:
         models.append(ModernBert(config, rngs=nnx.Rngs(29)))
+    objective_identity = None
+    if yat:
+        from argparse import Namespace
+        from flaxchat.embedding_stage import contrastive_objective_identity
+        from flaxchat.embedding_objective import configure_objective_state, objective_loss_arguments
+        objective_identity = contrastive_objective_identity(Namespace(
+            contrastive_similarity='yat', yat_infonce_alpha_init=.01))
+        for model in models:
+            configure_objective_state(model, objective_identity)
     for model in models:
         nnx.update(model, replicate_on_mesh(nnx.state(model), mesh))
+    initial_loss_arguments = objective_loss_arguments(direct_model, objective_identity) if yat else {}
+    initial_raw_alpha = np.asarray(direct_model.contrastive_raw_alpha[...]).copy() if yat else None
     optimizer_config = {'learning_rate': 1e-5, 'b1': .9, 'b2': .999,
                         'eps': 1e-8, 'eps_root': 0., 'weight_decay': 1e-4}
     optimizers = [nnx.Optimizer(model, optax.adamw(**optimizer_config), wrt=nnx.Param)
@@ -173,14 +185,16 @@ def _nnx_cache_case(pair_only, tmp_path, record_property, *, shape_matched):
             pool = (lambda rows: nnx_cached_pool(model, rows, width)) if cached else model.pool
         q, p = pool(inputs[0]), pool(inputs[1])
         n = jnp.zeros_like(p) if pair_only else pool(inputs[2])
-        loss = embedding_objective(q, p, n)
+        arguments = objective_loss_arguments(model, objective_identity) if yat else {}
+        loss = embedding_objective(q, p, n, arguments)
         # Preserve pre-update TPU outputs as aux; no extra encoder execution.
         return loss, {'query': q, 'positive': p, 'negative': n}
 
-    def embedding_objective(q, p, n):
+    def embedding_objective(q, p, n, arguments=None):
+        arguments = initial_loss_arguments if arguments is None else arguments
         return hard_negative_infonce(q, p, n, ids, ids + 10001, ids + 20001, ids,
             jnp.full(batch, not pair_only), expected_global_batch=batch,
-            known_positive_text_ids=(ids + 10001)[:, None])
+            known_positive_text_ids=(ids + 10001)[:, None], **arguments)
 
     @nnx.jit
     def direct_step(model, optimizer):
@@ -225,6 +239,7 @@ def _nnx_cache_case(pair_only, tmp_path, record_property, *, shape_matched):
         'input_shape': list(tokens[0].shape), 'input_dtype': str(tokens[0].dtype),
         'loss': {'actual': _loss_diagnostic(cached_loss), 'expected': _loss_diagnostic(direct_loss)},
         'shape_matched_reference': shape_matched,
+        'contrastive_objective': objective_identity,
         'embedding_boundary_diagnostics': {
             'scope': 'pre-update TPU aux embeddings and independently differentiated global loss cotangents',
             'encoder_reexecuted_for_diagnostics': False,
@@ -332,3 +347,9 @@ def _nnx_cache_case(pair_only, tmp_path, record_property, *, shape_matched):
         assert np.isfinite(actual).all() and np.isfinite(expected).all()
         np.testing.assert_allclose(actual, expected, rtol=2e-2, atol=2e-6)
     assert int(optimizers[0].step[...]) == int(optimizers[1].step[...]) == 1
+
+    if yat:
+        for gradient, model in zip((direct_grad, cached_grad, chunked_grad), models, strict=True):
+            alpha_gradient = np.asarray(nnx.as_pure(gradient)['contrastive_raw_alpha'])
+            assert np.isfinite(alpha_gradient).all() and np.any(alpha_gradient != 0)
+            assert not np.array_equal(np.asarray(model.contrastive_raw_alpha[...]), initial_raw_alpha)

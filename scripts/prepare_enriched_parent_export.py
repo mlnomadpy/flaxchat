@@ -195,7 +195,7 @@ def prepare(public, metadata, manifest, identity, *, identity_sha256, output,
                              expected_manifest=checkpoint['retained_committed_manifest_canonical_sha256'],
                              expected_leaves=checkpoint['model_leaves'])
         inventory = authenticate_safetensors(staging / 'model.safetensors',
-                                            read_json(staging / 'checkpoint-manifest.json'), check_deadline)
+                                            {'model_state': admitted['model_state']}, check_deadline)
         (staging / 'files.sha256.json').write_text(json.dumps(admitted['artifacts_sha256'], indent=2) + '\n')
         check_deadline()
         if any(path.is_symlink() or stable_file_identity(path.stat()) != stable_file_identity(snapshots[name])

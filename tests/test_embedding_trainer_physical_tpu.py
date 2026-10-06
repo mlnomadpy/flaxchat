@@ -16,6 +16,7 @@ pytestmark = pytest.mark.skipif(os.environ.get('FLAXCHAT_PHYSICAL_TPU') != '1',
 
 
 @pytest.mark.parametrize('triplets,cached,fault', [
+    (False, False, 'yat'), (False, True, 'yat'), (True, False, 'yat'), (True, True, 'yat'),
     (False, False, None), (False, True, None), (True, False, None), (True, True, None),
     (True, True, 'best4'), (False, True, 'baseline0'),
     (True, True, 'gate4'), (False, True, 'gatehorizon'),
@@ -35,6 +36,9 @@ def test_real_trainer_resume_pair_triplet_schema_and_best(tmp_path, monkeypatch,
     import tokenizers
     assert jax.default_backend() == 'tpu'
     assert jax.process_count() == 1, 'This admission is single-host; multi-host suite is separate'
+    yat = fault == 'yat'
+    if yat:
+        fault = None
     qat = fault == 'qat'
     if qat:
         fault = None
@@ -113,6 +117,8 @@ def test_real_trainer_resume_pair_triplet_schema_and_best(tmp_path, monkeypatch,
         '--batch-size', str(max(16, 2 * jax.device_count())), '--save-every', '1', '--eval-every', '4',
         '--keep-checkpoints', '1', '--dev-max-rows', '8', '--max-dev-regression', '1',
         '--training-scope', 'qualification']
+    if yat:
+        common += ['--contrastive-similarity', 'yat', '--yat-infonce-alpha-init', '.01']
     if qat:
         common += ['--weight-quantization', 'int8_per_channel_ste']
     if cached:
@@ -258,6 +264,14 @@ def test_real_trainer_resume_pair_triplet_schema_and_best(tmp_path, monkeypatch,
     # rather than using matching weights as a proxy for exact continuation.
     import optax
     from flaxchat.checkpoint import create_checkpoint_manager, load_checkpoint
+    if yat:
+        from flaxchat.embedding_objective import configure_objective_state
+        configure_objective_state(model, right['resolved_config']['contrastive_objective'])
+        metrics = [event['contrastive_metrics'] for event in complete_events if event.get('event') == 'embedding_step']
+        assert len(metrics) == 4
+        assert all(np.isfinite(list(item.values())).all() for item in metrics)
+        assert all(item['yat_alpha'] > 0 and item['yat_logits_finite'] for item in metrics)
+        initial_raw = np.asarray(model.contrastive_raw_alpha[...]).copy()
     schedule = optax.warmup_cosine_decay_schedule(0., 3e-5, 1, 4, end_value=3e-6)
     optimizer = nnx.Optimizer(model, optax.chain(optax.clip_by_global_norm(1.),
         optax.adamw(schedule, weight_decay=.01,
@@ -272,6 +286,45 @@ def test_real_trainer_resume_pair_triplet_schema_and_best(tmp_path, monkeypatch,
     for element in (0, 1, 3):
         for expected, actual in zip(jax.tree.leaves(restored[0][element]), jax.tree.leaves(restored[1][element]), strict=True):
             np.testing.assert_array_equal(np.asarray(expected), np.asarray(actual))
+    if yat:
+        alpha = np.asarray(restored[0][0]['contrastive_raw_alpha'])
+        assert np.isfinite(alpha).all()
+        assert not np.array_equal(alpha, initial_raw)
+        with pytest.raises(ValueError):
+            run(resumed, ['--resume', '--yat-infonce-alpha-init', '.02'])
+        assert load_checkpoint_metadata(str(resumed), 4, include_receipt=True) == right
+        if not triplets and not cached:
+            # New stages restore authenticated encoder weights but reset alpha
+            # and optimizer. Also prove a YAT parent can enter a cosine stage.
+            for similarity, extra in [('yat', ['--yat-infonce-alpha-init', '.02']),
+                                       ('cosine', [])]:
+                destination = tmp_path / ('next-' + similarity)
+                saved_common = list(common)
+                del common[-4:]
+                common += ['--contrastive-similarity', similarity] + extra
+                run(destination, ['--parent-checkpoint', str(complete), '--parent-step', '4',
+                                  '--stop-after', '2'])
+                baseline = load_checkpoint_metadata(str(destination / 'best'), 0, include_receipt=True)
+                assert baseline['step'] == 0
+                objective = baseline['resolved_config'].get('contrastive_objective')
+                parent_leaves = {key: value for key, value in left['committed_receipt']['model_state'].items()
+                                 if 'contrastive_raw_alpha' not in key}
+                new_leaves = baseline['committed_receipt']['model_state']
+                assert parent_leaves == {key: value for key, value in new_leaves.items()
+                                         if 'contrastive_raw_alpha' not in key}
+                if similarity == 'yat':
+                    assert objective['alpha_init'] == .02
+                    baseline_manager = create_checkpoint_manager(str(destination / 'best'), async_checkpointing=False)
+                    try:
+                        baseline_state, _ = load_checkpoint(baseline_manager, 0)
+                    finally:
+                        baseline_manager.close()
+                    effective_alpha = np.logaddexp(0., np.asarray(baseline_state['contrastive_raw_alpha'])) + 1e-6
+                    np.testing.assert_allclose(effective_alpha, .02, rtol=1e-6)
+                else:
+                    assert objective is None
+                    assert not any('contrastive_raw_alpha' in key for key in baseline['committed_receipt']['model_state'])
+                common[:] = saved_common
     # A separate best manager must retain its quality-selected checkpoint even
     # after the recent manager removes earlier recovery checkpoints.
     best = load_checkpoint_metadata(str(resumed / 'best'))

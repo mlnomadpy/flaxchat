@@ -22,6 +22,9 @@ METADATA_ONLY_CORE = {
 }
 
 TEST_GROUPS = {
+    "flaxchat/embedding_objective.py": ("tests/test_yat_infonce_metadata.py", "tests/test_yat_export_metadata.py"),
+    "tests/test_yat_infonce_physical_tpu.py": ("tests/test_yat_infonce_metadata.py",),
+    "tests/test_yat_export_physical_tpu.py": ("tests/test_yat_export_metadata.py",),
     "scripts/evaluate_yat_full_corpus_tpu.py": ("tests/test_yat_full_corpus_tpu_metadata.py", "tests/test_full_corpus_retrieval_metadata.py"),
     "flaxchat/full_corpus_tpu.py": ("tests/test_yat_full_corpus_tpu_metadata.py", "tests/test_full_corpus_retrieval_metadata.py"),
     "scripts/diagnose_artifact_transfer.py": ("tests/test_artifact_transfer_metadata.py",),
@@ -41,17 +44,17 @@ TEST_GROUPS = {
     "scripts/build_parent_exposure_inventory.py": ("tests/test_parent_exposure_inventory_metadata.py", "tests/test_independent_retrieval_dev_metadata.py"),
     "scripts/prepare_embedding_retrieval_dev.py": ("tests/test_independent_retrieval_dev_metadata.py", "tests/test_development_quarantine_metadata.py", "tests/metadata/test_embedding_stage.py"),
     "scripts/prepare_representation_development.py": ("tests/test_representation_development_metadata.py", "tests/test_development_quarantine_metadata.py", "tests/test_independent_retrieval_dev_metadata.py"),
-    "scripts/train_yat_embedding_finetune.py": ("tests/metadata/test_embedding_contract.py", "tests/metadata/test_embedding_stage.py", "tests/test_embedding_mixture_metadata.py"),
-    "scripts/preflight_yat_embedding_stage.py": ("tests/metadata/test_embedding_contract.py", "tests/metadata/test_embedding_stage.py"),
+    "scripts/train_yat_embedding_finetune.py": ("tests/metadata/test_embedding_contract.py", "tests/metadata/test_embedding_stage.py", "tests/test_embedding_mixture_metadata.py", "tests/test_yat_infonce_metadata.py"),
+    "scripts/preflight_yat_embedding_stage.py": ("tests/metadata/test_embedding_contract.py", "tests/metadata/test_embedding_stage.py", "tests/test_yat_infonce_metadata.py"),
     "scripts/prepare_yat_embedding_finetune.py": ("tests/test_embedding_mixture_metadata.py", "tests/metadata/test_embedding_stage.py", "tests/test_development_quarantine_metadata.py", "tests/test_independent_retrieval_dev_metadata.py", "tests/test_code_provenance_metadata.py"),
     "scripts/run_yat_parity_case.py": ("tests/test_release_contract.py",),
     "scripts/run_yat_parity_campaign.py": ("tests/test_release_contract.py", "tests/test_evaluation_integration_metadata.py", "tests/test_parity_resource_admission_metadata.py"),
     "scripts/validate_mteb_inventory.py": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
-    "scripts/export_public_encoder.py": ("tests/test_release_contract.py", "tests/test_evaluation_integration_metadata.py"),
+    "scripts/export_public_encoder.py": ("tests/test_release_contract.py", "tests/test_evaluation_integration_metadata.py", "tests/test_yat_export_metadata.py"),
     "scripts/publish_yat_embedding_from_gcp.py": ("tests/test_release_contract.py", "tests/test_evaluation_integration_metadata.py"),
     "torch_port/": ("tests/test_release_contract.py", "tests/test_evaluation_contract.py", "tests/test_torch_parity_tpu.py"),
     "scripts/evaluation_contract.py": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
-    "scripts/release_contract.py": ("tests/test_release_contract.py",),
+    "scripts/release_contract.py": ("tests/test_release_contract.py", "tests/test_yat_export_metadata.py"),
     "scripts/evaluate_yat": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
     "scripts/merge_yat": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
     "scripts/assemble_yat": ("tests/test_evaluation_contract.py", "tests/test_evaluation_integration_metadata.py"),
@@ -156,6 +159,8 @@ TEST_GROUPS = {
 
 
 EMBEDDING_PHYSICAL_TESTS = {
+    "tests/test_yat_infonce_physical_tpu.py",
+    "tests/test_yat_export_physical_tpu.py",
     "tests/test_full_corpus_retrieval_physical_tpu.py",
     "tests/test_embedding_hard_negative_physical_tpu.py",
     "tests/test_embedding_gradient_cache_physical_tpu.py",
@@ -207,6 +212,19 @@ def select_scope(changed_paths: list[str], *, force_full: bool = False) -> dict[
         for path in paths
     )
     manual_physical_tests = set(paths) & EMBEDDING_PHYSICAL_TESTS
+    if forced or any(path in {
+            'flaxchat/contrastive.py', 'flaxchat/embedding_objective.py',
+            'flaxchat/embedding_stage.py', 'scripts/train_yat_embedding_finetune.py',
+            'scripts/preflight_yat_embedding_stage.py', 'tests/test_yat_infonce_metadata.py',
+            'infra/tpu/embedding-qualification-nodes.json'} for path in paths):
+        manual_physical_tests.update(('tests/test_yat_infonce_physical_tpu.py',
+                                      'tests/test_embedding_trainer_physical_tpu.py'))
+    if forced or any(path in {
+            'flaxchat/embedding_objective.py', 'flaxchat/public_encoder.py',
+            'scripts/export_public_encoder.py', 'scripts/release_contract.py',
+            'tests/test_yat_export_metadata.py',
+            'infra/tpu/embedding-qualification-nodes.json'} for path in paths):
+        manual_physical_tests.add('tests/test_yat_export_physical_tpu.py')
     if forced or any(path in {"scripts/evaluate_yat_full_corpus_tpu.py", "flaxchat/full_corpus_tpu.py"} for path in paths):
         manual_physical_tests.add("tests/test_full_corpus_retrieval_physical_tpu.py")
     if any(path in {"scripts/prepare_embedding_retrieval_dev.py", "scripts/prepare_representation_development.py", "tests/test_embedding_trainer_physical_tpu.py", "infra/tpu/embedding-qualification-nodes.json"} for path in paths):
