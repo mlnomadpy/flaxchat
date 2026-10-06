@@ -118,6 +118,31 @@ class AccountingTests(unittest.TestCase):
             workload = json.loads(argv[argv.index('--workload') + 1])
             self.assertIn('run', workload)
             self.assertIn('scripts.representation_run', workload)
+            # A long manifest is explicit, bounded, and carried to the supervisor.
+            for checks_timeout in (29, 1801, True, 1200.0):
+                value['setup_checks_timeout_seconds'] = checks_timeout
+                path.write_text(json.dumps(value))
+                with self.assertRaisesRegex(ValueError, 'Setup checks timeout'):
+                    load_manifest(path)
+            for checks_timeout in (30, 1200, 1800):
+                value['setup_checks_timeout_seconds'] = checks_timeout
+                path.write_text(json.dumps(value))
+                self.assertEqual(load_manifest(path)['setup_checks_timeout_seconds'], checks_timeout)
+            value['deployment']['attempt_seconds'] = 43200
+            path.write_text(json.dumps(value))
+            with self.assertRaisesRegex(ValueError, 'Attempt lease'):
+                load_manifest(path)
+            value['deployment']['allow_long_lease'] = True
+            path.write_text(json.dumps(value))
+            loaded = load_manifest(path)
+            self.assertIn('--allow-long-lease', runner.supervisor_argv(
+                loaded, 'gs://bucket/run.json', runner.digest(path), root / 'long-receipts'))
+            for duration, opt_in in ((43201, True), (43200, 'true'), (True, True)):
+                value['deployment'].update(attempt_seconds=duration, allow_long_lease=opt_in)
+                path.write_text(json.dumps(value))
+                with self.assertRaises(ValueError):
+                    load_manifest(path)
+            value['deployment'].update(attempt_seconds=1800, allow_long_lease=False)
             value['deployment']['capacity_wait_seconds'] = 1801
             path.write_text(json.dumps(value))
             with self.assertRaisesRegex(ValueError, 'Capacity wait'):
@@ -153,8 +178,11 @@ class AccountingTests(unittest.TestCase):
             path = root / 'run.json'
             path.write_text(json.dumps(manifest))
             calls = []
+            qualification_timeouts = []
             def run(argv, **kwargs):
                 calls.append(argv)
+                if argv == ['qualify']:
+                    qualification_timeouts.append(kwargs['timeout'])
                 if '-m' in argv and 'venv' in argv:
                     binary = Path(argv[-1]) / 'bin/python'
                     binary.parent.mkdir(parents=True, exist_ok=True)
@@ -176,6 +204,14 @@ class AccountingTests(unittest.TestCase):
             self.assertIn('--no-deps', install)
             self.assertIn('--find-links', install)
             self.assertTrue(json.loads((destination / 'runtime-receipt.json').read_text())['setup_checks_executed'])
+            self.assertEqual(qualification_timeouts, [300])
+            manifest['setup_checks_timeout_seconds'] = 1200
+            path.write_text(json.dumps(manifest))
+            with patch.object(runner.subprocess, 'run', side_effect=run), patch.object(runner.subprocess, 'check_output', side_effect=output), patch.object(runner.platform, 'platform', return_value='Linux'):
+                self.assertEqual(runner.setup(path, root / 'extended-stage-root'), 0)
+            self.assertEqual(qualification_timeouts, [300, 1200])
+            del manifest['setup_checks_timeout_seconds']
+            path.write_text(json.dumps(manifest))
             # A new setup which fails qualification must not leave a passing receipt.
             def reject(argv, **kwargs):
                 if argv == ['qualify']:

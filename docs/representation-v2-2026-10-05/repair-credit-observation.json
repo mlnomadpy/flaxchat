@@ -1,0 +1,13 @@
+{
+  "observed_at": "2026-10-05T23:52:18.572672+00:00",
+  "source": "Google Cloud Console, Credits table in Chrome",
+  "account": "tahabhs14@gmail.com",
+  "project": "azettaai",
+  "billing_account": "012CAE-712976-475489",
+  "billing_enabled": true,
+  "available_credit_usd": 877.42,
+  "available_credit_expiry": "2027-07-22",
+  "expired_credit_excluded_usd": 695.06,
+  "not_actual_per_run_cost": true,
+  "scope": "Certain usage; promotion terms apply"
+}

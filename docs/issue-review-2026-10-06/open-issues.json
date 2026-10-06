@@ -1,0 +1,337 @@
+{
+  "observed_at": "2026-10-06T13:28:10.842154+00:00",
+  "count": 25,
+  "issues": [
+    {
+      "body": "## Goal\n\nContinue the trained YAT embedding-v1 checkpoint (step 14,000) to improve multilingual, semantic and code representations while preserving earlier capabilities and model lineage. This audit created 22 evidence-backed work items. No P0 corruption or defect in the existing public weights was established. Static review and metadata reproductions do not qualify changed training on TPUs.\n\n## Before substantial continuation\n\n1. Correct known-positive negative masking, authenticate parent and resume identities, and validate prepared data (#39\u2013#46).\n2. Integrate held-out representation/regression gates and replayable multilingual data selection (#47\u2013#48).\n3. Freeze runtime/source setup and qualify the hard-negative path and recovery on physical TPU (#50, #52).\n4. Strengthen complete evaluation receipts (#57\u2013#59). Profile and scale only after the quality candidate passes (#49).\n5. Validate the exact exported release and expanded parity before new publication (#53, #60).\n\nThe legacy cleanup issue #51 applies when that old launcher is used; prefer the existing guarded supervisor. Operational refactoring, actual billing and storage accounting are #54\u2013#56. Expensive GitHub checks remain paused under the user's existing preference.\n\n## Audit work items\n\n- [ ] #39 \u2014 Exclude all known relevant documents from the mined-negative denominator (TRAIN-01)\n- [ ] #40 \u2014 Authenticate parent checkpoint semantics before a fresh embedding stage (TRAIN-02)\n- [ ] #41 \u2014 Include sampler, imported kernels, and numerical runtime in exact-resume identity (TRAIN-03)\n- [ ] #42 \u2014 Validate prepared embedding token schemas and padding against the encoder (TRAIN-04)\n- [ ] #43 \u2014 Reject resume cursors beyond stop-after and emit explicit completion status (TRAIN-05)\n- [ ] #44 \u2014 Unify cross-source duplicate identity and train/dev quarantine (TRAIN-06)\n- [ ] #45 \u2014 Use code-aware text identity instead of casefolding code (TRAIN-07)\n- [ ] #46 \u2014 Make tokenizer truncation policy explicit in embedding preparation (TRAIN-08)\n- [ ] #47 \u2014 Gate embedding continuation on representation quality and preserve best checkpoints (TRAIN-09)\n- [ ] #48 \u2014 Generalize replayable dataset/language sampling for representation continuation (TRAIN-10)\n- [ ] #49 \u2014 Qualify embedding scaling and remove avoidable encoding and input overhead (TRAIN-11)\n- [ ] #50 \u2014 Add direct physical-TPU coverage for hard-negative embedding training and recovery (TRAIN-12)\n- [ ] #51 \u2014 Unify GCP launch paths behind an independently verified cloud lease (INFRA-01)\n- [ ] #52 \u2014 Lock embedding training/evaluation environments and source overlays (INFRA-02)\n- [ ] #53 \u2014 Bind PyTorch parity to published artifacts and reject nonfinite gate values (INFRA-03)\n- [ ] #54 \u2014 Replace device-based cost guesses with verified slice rates and billing reconciliation (INFRA-04)\n- [ ] #55 \u2014 Use manifest-driven launches and bounded telemetry uploads (INFRA-05)\n- [ ] #56 \u2014 Track retained storage and cleanup plans across training stages (INFRA-06)\n- [ ] #57 \u2014 Require finite scores and exact split/subset coverage for complete evaluations (EVAL-001)\n- [ ] #58 \u2014 Bind evaluation receipts to source, runtime and aggregation protocol (EVAL-002)\n- [ ] #59 \u2014 Route embedding evaluator and PyTorch changes to appropriate validation (EVAL-003)\n- [ ] #60 \u2014 Expand physical-TPU conversion parity beyond eight 128-token inputs (EVAL-004)\n\n## Existing open work retained\n\n- #1 \u2014 repository-wide quality umbrella.\n- #12 \u2014 generic physical multi-host acceptance; new embedding-specific coverage is #50.\n- #11 \u2014 patch release readiness.\n- #19 \u2014 public checkpoint/demo release contract.\n- #23 \u2014 decoder cross-harness baseline protocol; not an EmbeddingGemma comparison.\n- #31 \u2014 Kaggle-specific prepared input path; outside this GCP continuation's priority.\n\n## Documentation and tools\n\nLocal versioned audit dossier: docs/SYSTEM_AUDIT_2026-09-30.md and docs/audit-2026-09-30/. Canonical runbook: docs/REPRESENTATION_TRAINING_RUNBOOK.md. Tool inventory: docs/TRAINING_TOOLS.md. Reusable skill: skills/flaxchat-training/SKILL.md. These documentation edits are local working-tree changes until separately committed/published.\n\nUse existing JAX/NNX/Optax, Orbax, prepared data, GCP cleanup guards and MTEB infrastructure. Add the missing integrations rather than a new framework. XProf and available Billing export support measurement; no paid tool platform is required.\n\n## Completion gate\n\n- [ ] Relevant correctness, data and identity issues resolved with reproducible evidence.\n- [ ] Physical TPU loss/gradient/recovery qualification on the chosen topology passes.\n- [ ] Declared held-out representation gates improve while preserving required language/code capabilities.\n- [ ] Cost cap, last-good checkpoint and independent cleanup owner are recorded.\n- [ ] Final benchmark and publication claims remain bound to immutable model/protocol artifacts.\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding code. No cloud allocation, model execution, workflow activation or bucket deletion was performed by this audit.",
+      "comments": [
+        {
+          "id": "IC_kwDOR2WQqM8AAAABYXVfEQ",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "## October 1 reconciled audit \u2014 three parallel reviewers\n\nReviewed the current dirty working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879. All 29 open issues were refreshed. The 22 original audit findings already have issues; the remaining observations below extend those issues, rather than creating duplicates or closing unqualified work. No historical corruption of the public weights is established.\n\n### Five remaining P1 code defects\n\n- #47 / #50: Failed development gates save a recovery cursor without the last evaluation/failure decision. Resume checks baseline against itself and can continue from the failed model. Persist authenticated failed status and test intermediate/horizon failure across repeated resume before any optimizer update or successful completion.\n- #42: Shared data admission hashes only manifest-listed entries, while loading every required array. Require complete canonical train/dev checksum inventory; missing entries and same-shaped in-range mutations must fail admission.\n- #39 / #42: Raw negative presence is not checked against loaded negative_valid flags. Derive or compare row flags and reject pair/triplet disagreement before allocation.\n- #40 / #42 / #52: Optional parent-checkpoint preflight creates a writable cleanup-enabled Orbax manager. Use a nonmutating committed-metadata reader with corrupt/missing/uncommitted/concurrent-artifact tests and no backend initialization.\n- #53 / #58 / #60: Parity computes complete provenance but stores only packages/source hashes. Retain interpreter, numerical settings, effective configuration and deployment identity; reject changed identity across cases before publication.\n\n### Remaining P2 implementation work\n\n- #47: recall_at_k currently measures first-relevant hit rate for multi-positive queries; correct naming/denominator and version the metric policy.\n- #52 / #55: Historical MIRACL and upload wrappers still use floating installs/source paths; replace them with equivalent hashed manifest recipes.\n- #54: Provisioning does not attach the run labels expected by billing attribution; verify supported labels and reconcile real posted resource identities.\n- #55: Signal after child exit during final upload can prevent the status receipt; persist original return code before telemetry and test the signal window.\n- #60: Full parity test remains monolithic despite a bounded per-case worker; schedule and resume missing immutable cases independently.\n- #53 / #60: Generic parity still assumes layer 10 exists; derive indices or reject unsupported depths before allocation.\n- #54: Budget reservations coordinate one shared filesystem only. Use one campaign owner; add cloud reservations only if independent controllers are introduced.\n\n### Implemented fixes and evidence limits\n\nShared stage policy admission, stage-global evaluation cadence, best/recent commit reconciliation, optimizer-counter checks, actual training output-path binding, live package/interpreter inventory checks, bounded capacity waits, immutable task inventories, finite scores, zero-vector parity guards and generic export stage identity are implemented locally. Do not reopen the earlier descriptions as absent fixes. They are not merged or physically accepted by their presence.\n\nLocal model-free verification: **92 metadata tests, 9 subtests, and 10 standalone stage/contract tests passed**. **78 Markdown files passed validation**; repository and installed training skills passed schema validation, with an independent forward review. No CPU model work, new TPU qualification, workflow dispatch, cloud allocation or storage deletion ran during this audit.\n\nThe embedding-specific physical multi-host worker now defines ownership, global loss/full-parameter-gradient references and four-update GCS resume checks. It has not run on physical multi-host hardware; sustained training, abrupt worker/transport loss, v6e and all-scale acceptance remain unproven.\n\nActual pinned retrieval/bitext/STS/code development data, programming-language coverage, large-mixture host-memory measurement, representative real MTEB split/subset receipt acceptance, matched mmBERT/EmbeddingGemma runs, and CodeSearchNet/CoIR overlap audit remain product/evidence work. Historical scores and paper columns stay separately labeled.\n\n### Concrete next gate\n\nFix the four P1 training admission/recovery defects; freeze source/runtime/parent/data identities; run one bounded physical single-host objective/cache/recovery qualification; then qualify the intended multi-host topology and profile scale before substantial continuation. Release parity defects apply before publication and do not block a training-only correctness run. Continue existing trained YAT weights with bias 1, epsilon 0.01 and trainable alpha.\n\nUpdated local artifacts: docs/SYSTEM_AUDIT_2026-10-01.md, docs/ISSUE_READINESS_CHECKLIST.md, docs/TRAINING_TOOLS.md, docs/REPRESENTATION_TRAINING_RUNBOOK.md, skills/flaxchat-training/SKILL.md and independent review/source-validation receipts under docs/audit-2026-09-30/. These changes remain local until committed/pushed.",
+          "createdAt": "2026-10-01T11:05:19Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/61#issuecomment-5930049297",
+          "viewerDidAuthor": true
+        },
+        {
+          "id": "IC_kwDOR2WQqM8AAAABYXrx6w",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "## October 1 implementation reconciliation\n\nThree parallel agents completed training/data, infrastructure, and evaluation/release review and fixes. This supersedes the earlier comment\u2019s \u201cremaining code defects\u201d status; original findings remain historical evidence. All 29 issues stay open until their actual acceptance criteria pass.\n\nImplemented locally: complete canonical array checksums and raw negative-valid agreement (#39/#42); authenticated failed-development-gate persistence with v2 policy and fractional recall (#47/#50); nonmutating stdlib-only committed-checkpoint reader (#40/#42/#52); signal-safe terminal status, reviewed frozen wrapper routes and normalized provider labels/read-back enforcement (#52/#54/#55); full v3 backend parity identity, depth-aware intermediates and bounded missing-case campaigns (#53/#58/#60).\n\nFinal selected model-free verification: **124 tests and 48 subtests passed**. No CPU model execution or new physical TPU qualification. MTEB 2.21.8 metadata checks are not emitted benchmark results. The retained step-14,000 checkpoint\u2019s committed JSON evidence passed the read-only reader; this does not verify tensor restoration. Changes remain local, unmerged and physically unqualified. Expensive GitHub workflows remain undispatched.\n\nNext gates in order:\n1. Complete/freeze the embedding runtime: the older generic validation lock lacks Safetensors required by export/trainer fixtures.\n2. Run bounded physical single-host objective/cache/full-gradient/optimizer/recovery tests, including failed-gate restarts.\n3. Prepare actual pinned multilingual retrieval/bitext/STS/code development data, baseline the retained parent, preserve programming-language provenance and audit code benchmark overlap.\n4. Qualify sustained physical multi-host recovery/abrupt loss, then warmed profiling and intended scale/device families. v6e/all scales remain unvalidated.\n5. Execute expanded physical parity and actual MTEB receipt/merge/resume coverage; matched mmBERT/EmbeddingGemma comparisons and immutable new-release verification remain pending.\n6. Reconcile actual posted billing and explicit retained-storage policy.\n\nUpdated local delivery: docs/SYSTEM_AUDIT_2026-10-01.md, docs/ISSUE_READINESS_CHECKLIST.md, docs/TRAINING_TOOLS.md, docs/REPRESENTATION_TRAINING_RUNBOOK.md and skills/flaxchat-training/SKILL.md; the installed skill is synchronized. Continue existing YAT weights with fixed bias 1, epsilon 0.01 and trainable alpha.",
+          "createdAt": "2026-10-01T11:30:36Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/61#issuecomment-5930414571",
+          "viewerDidAuthor": true
+        },
+        {
+          "id": "IC_kwDOR2WQqM8AAAABYYSL8A",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "## October 1 physical follow-up and parallel tool upgrades\n\nThe corrected frozen embedding runtime installed offline on physical TPU v5 lite (8 devices, one host; Python 3.12.14, JAX/JAXlib 0.11.1, Flax 0.12.9, Optax 0.2.8). Required imports and provider run/stage label read-back passed. The first attempt failed before model execution on an optional interpreter terminal-database link; the derived headless artifact preserves all retained runtime files and keeps extraction safety checks. Both attempts\u2019 owned TPU VMs and queued resources are independently verified NOT_FOUND. Storage was preserved.\n\n**Physical acceptance: 14 passed, 2 failed, zero skipped.** All four hard-negative objective/gradient cases and all nine trainer cases passed, including off-cadence stops, best-checkpoint reconciliation, intermediate/horizon failed-quality-gate restarts and rejected-update state retention. The global cache/RNG reference passed. Both NNX YAT cache cases failed at optimizer-state leaf comparisons; their earlier loss, gradient and updated-model assertions passed. Tolerances remain unchanged. Added named-leaf numerical diagnostics for the next physical run; BF16 shape-dependent roundoff is a hypothesis, not a proved diagnosis. No unchanged automatic retry or third allocation was launched.\n\nThree parallel agents added programming-language provenance/exposure reporting, a bounded SQLite exact-overlap auditor, a pinned development-only recipe/exporter, and isolated peer-loss/local-SSH-attachment-loss campaigns. Metadata fixtures do not qualify physical faults; local attachment loss does not mean whole-controller SIGKILL or real network outage. Actual data preparation, parent exposure and cross-source quarantine remain required before tuning.\n\n**Selected model-free checks: 150 passed, 55 subtests passed.** 85 Markdown files validated. No CPU model forward/backward/benchmark ran; expensive GitHub workflows remain undispatched. The training skill is upgraded and synchronized.\n\nLocal raw TPU/JUnit evidence: docs/audit-2026-09-30/physical-qualification-02/. Follow-up: docs/audit-2026-09-30/physical-qualification-2026-10-01.md. Source archive SHA-256: bd4e7d7684c5767fab44a59e89d920e3fba2321c1805ef46055b10231005d25e. Changes remain local/unmerged.\n\nAll 29 issues stay open pending their complete acceptance criteria. Next gate: identify the cache optimizer leaf before changing numerics; then qualify actual pinned development data and retained production-parent restoration. Sustained multi-host recovery, v6e/scales, production quality, matched competitor measurements and expanded release parity remain open.",
+          "createdAt": "2026-10-01T12:07:47Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/61#issuecomment-5931043824",
+          "viewerDidAuthor": true
+        }
+      ],
+      "number": 61,
+      "title": "[P1] Track representation-training continuation readiness after September 30 audit",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/61"
+    },
+    {
+      "body": "## Finding\n\n**EVAL-004 \u2014 September 30, 2026 system audit.**\n\nscripts/validate_yat_torch_parity.py:21 uses eight fixed examples length128; retrieval:136 compares only their vectors. Cards correctly disclose narrow scope.\n\n## Proposed change\n\nAdd varied batches, padding/masks, supported lengths128/256/512 and longer advertised shapes; compare held-out queries against corpus, separate JAX/TorchXLA environments.\n\n## Acceptance criteria\n\n- [ ] Supported shapes/masks/languages/code covered\n- [ ] output and ranking tolerances reported\n- [ ] serving latency measured separately.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 60,
+      "title": "[P2] Expand physical-TPU conversion parity beyond eight 128-token inputs",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/60"
+    },
+    {
+      "body": "## Finding\n\n**EVAL-003 \u2014 September 30, 2026 system audit.**\n\nscripts/ci_scope.py has no torch_port route; CPU workflow path filters omit it. Metadata-only invocation for torch_port/yat_encoder.py selects zero tests/all flags false. New evaluator/merger/port test coverage is incomplete; trainer semantics tracked separately in TRAIN-12.\n\n## Proposed change\n\nAdd relevant tests and selection mappings, including port-only changes and manual physical TPU qualification. Keep expensive GitHub checks paused under existing preference.\n\n## Acceptance criteria\n\n- [ ] Port/evaluator changes select appropriate checks\n- [ ] metadata tests reject malformed receipts\n- [ ] physical TPU behavior validated with visible skipped/not-run scope\n- [ ] no automatic paid workflows.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 59,
+      "title": "[P1] Route embedding evaluator and PyTorch changes to appropriate validation",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/59"
+    },
+    {
+      "body": "## Finding\n\n**EVAL-002 \u2014 September 30, 2026 system audit.**\n\nscripts/evaluate_yat_public_mteb.py:67 records model files and MTEB but omits evaluator/loader source, full runtime/topology and per-task batching; resume can reuse results after those change.\n\n## Proposed change\n\nUse frozen benchmark/source/runtime/protocol manifests and reject incompatible merges/resumes.\n\n## Acceptance criteria\n\n- [ ] Changed code/runtime invalidates exact resume\n- [ ] prompts/length/batching/aggregation recorded\n- [ ] inventory drift cannot silently change suite.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 58,
+      "title": "[P2] Bind evaluation receipts to source, runtime and aggregation protocol",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/58"
+    },
+    {
+      "body": "## Finding\n\n**EVAL-001 \u2014 September 30, 2026 system audit.**\n\nevaluate_yat_public_mteb._aggregate and assembler can label empty scores, NaN or missing subset complete based on task counts. Agent reproduced this using metadata-only AST extraction.\n\n## Proposed change\n\nFreeze row/metric inventory and validate exact finite coverage on write/merge/resume; derive completeness from validated rows.\n\n## Acceptance criteria\n\n- [ ] Missing/extra/duplicate/nonfinite rows fail\n- [ ] partial remains partial\n- [ ] valid receipts reproduce published means\n- [ ] physical task receipt passes contract.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 57,
+      "title": "[P1] Require finite scores and exact split/subset coverage for complete evaluations",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/57"
+    },
+    {
+      "body": "## Finding\n\n**INFRA-06 \u2014 September 30, 2026 system audit.**\n\nTraining/checkpoint/data/model prefixes persist after TPU deletion; reusable lifecycle lacks live/noncurrent/soft-delete accounting and retention classes. No bucket state was checked in this audit.\n\n## Proposed change\n\nAdd object generation/byte inventory, durable/disposable classes, retention/cost receipts and explicitly scoped cleanup.\n\n## Acceptance criteria\n\n- [ ] Required checkpoints/public lineage preserved\n- [ ] live/version/soft-delete bytes distinguished\n- [ ] intended deletions independently verified\n- [ ] storage cost separated.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 56,
+      "title": "[P2] Track retained storage and cleanup plans across training stages",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/56"
+    },
+    {
+      "body": "## Finding\n\n**INFRA-05 \u2014 September 30, 2026 system audit.**\n\nscripts/run_yat_embedding_full_tpu.sh:7 embeds historic bucket/recipe/output; :10 periodic/final uploads unbounded and failures ignored; EXIT handler can wait until external guard expires.\n\n## Proposed change\n\nGenerate argv from frozen run manifest and bound uploads while preserving training status and partial evidence.\n\n## Acceptance criteria\n\n- [ ] Distinct stage/output identity\n- [ ] hung upload bounded\n- [ ] failures visible\n- [ ] topology/parent/runtime/lease owner recorded.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 55,
+      "title": "[P2] Use manifest-driven launches and bounded telemetry uploads",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/55"
+    },
+    {
+      "body": "## Finding\n\n**INFRA-04 \u2014 September 30, 2026 system audit.**\n\nflaxchat/report.py:22 guesses Spot prices without SKU/region/unit/date; :76 multiplies logical JAX devices. Ledgers are per-output directory rather than shared campaign. No live spend was checked.\n\n## Proposed change\n\nUse verified slice pricing and shared campaign cap; reconcile posted gross costs, credits, storage/transfer and net costs from available billing evidence.\n\n## Acceptance criteria\n\n- [ ] Correct chip/core units\n- [ ] concurrent admissions share cap\n- [ ] export freshness visible\n- [ ] unknown actual charges remain unknown.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 54,
+      "title": "[P2] Replace device-based cost guesses with verified slice rates and billing reconciliation",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/54"
+    },
+    {
+      "body": "## Finding\n\n**INFRA-03 \u2014 September 30, 2026 system audit.**\n\nConversion receipt hashes weights/tokenizer but not config/shipped yat_encoder.py. validate_yat_torch_parity metrics lack model/input identities. Publisher trusts unbound metrics; NaN bypasses some thresholds. Current public artifact corruption is not established.\n\n## Proposed change\n\nVersion complete release manifest and bind parity to source/target weights, config/code/tokenizer/inputs/runtime; reject nonfinite metrics before upload.\n\n## Acceptance criteria\n\n- [ ] Altered artifact or stale parity rejected\n- [ ] NaN/Inf fail closed\n- [ ] all remote release hashes verified at immutable revision.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 53,
+      "title": "[P1] Bind PyTorch parity to published artifacts and reject nonfinite gate values",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/53"
+    },
+    {
+      "body": "## Finding\n\n**INFRA-02 \u2014 September 30, 2026 system audit.**\n\nEmbedding setup installs floating extras/transitives; eval setup extracts/overlays source without consistent checksums; PyTorch setup fallback clones moving HEAD. Existing generic validation lock is not consistently used.\n\n## Proposed change\n\nFreeze tested separate JAX training/eval and torch_xla environments; require source/archive/overlay hashes and runtime inventories.\n\n## Acceptance criteria\n\n- [ ] Fresh setup exact inventories\n- [ ] source mismatch rejected\n- [ ] target TPU restore/numerics qualify locked stack.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 52,
+      "title": "[P1] Lock embedding training/evaluation environments and source overlays",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/52"
+    },
+    {
+      "body": "## Finding\n\n**INFRA-01 \u2014 September 30, 2026 system audit.**\n\nscripts/train_tpu.py:127 uses laptop threading.Timer; finally:161 deletes but does not independently verify node/queue absence. New gcp_spot_supervisor already has stronger cloud guard.\n\n## Proposed change\n\nRoute legacy paid launcher through verified lifecycle or deprecate its allocation path.\n\n## Acceptance criteria\n\n- [ ] Local process loss leaves independent cleanup armed\n- [ ] uncertain deletion not success\n- [ ] unguarded entrypoint cannot allocate.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 51,
+      "title": "[P1] Unify GCP launch paths behind an independently verified cloud lease",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/51"
+    },
+    {
+      "body": "## Finding\n\n**TRAIN-12 \u2014 September 30, 2026 system audit.**\n\ntests/test_contrastive.py:9 covers symmetric_infonce only; no dedicated tests reference new hard_negative_infonce, train_yat_embedding_finetune or its preparation contract. Existing runs do not prove all variants.\n\n## Proposed change\n\nCreate dedicated admission suite for loss/gradients, masks, pairs, data contracts, rejected updates, replay and interrupted recovery. Complements existing #12.\n\n## Acceptance criteria\n\n- [ ] Physical single-host semantic/recovery evidence\n- [ ] actual multi-host global-negative and local-ownership evidence\n- [ ] explicit JUnit failures/skips/topology\n- [ ] no CPU substitute.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 50,
+      "title": "[P1] Add direct physical-TPU coverage for hard-negative embedding training and recovery",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/50"
+    },
+    {
+      "body": "## Finding\n\n**TRAIN-11 \u2014 September 30, 2026 system audit.**\n\nEmbedding trainer:195 replicates state; :223 encodes invalid negative copies; :269 materializes global batches on every host. No scheduled profiler or useful-token breakdown is integrated.\n\n## Proposed change\n\nProfile warmed TPU steps, add pair-only path/local prefetch, and compare larger contrastive pools via qualified gradient caching/sharding. Accumulation alone does not enlarge negatives.\n\n## Acceptance criteria\n\n- [ ] Pair-only loss/gradients match while third pass avoided\n- [ ] physical scaling/profile records include memory/compile/checkpoint\n- [ ] cached/sharded gradients and resume match baseline.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 49,
+      "title": "[P2] Qualify embedding scaling and remove avoidable encoding and input overhead",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/49"
+    },
+    {
+      "body": "## Finding\n\n**TRAIN-10 \u2014 September 30, 2026 system audit.**\n\nscripts/train_yat_embedding_finetune.py:43 accepts only msmarco/miracl/code; fixed counts:81 put every source in every batch; language replay/curriculum is absent.\n\n## Proposed change\n\nAdd manifest-driven pair/triplet registry, earlier bitext replay, optional homogeneous batches, language balancing and exposure ledger.\n\n## Acceptance criteria\n\n- [ ] New sources configured without editing trainer\n- [ ] resumed IDs identical\n- [ ] source/language unique coverage/repeats/tokens recorded\n- [ ] quality measured on TPU.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 48,
+      "title": "[P1] Generalize replayable dataset/language sampling for representation continuation",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/48"
+    },
+    {
+      "body": "## Finding\n\n**TRAIN-09 \u2014 September 30, 2026 system audit.**\n\nscripts/train_yat_embedding_finetune.py:245 evaluates one fixed loss batch per source and skips small dev sets; retention:214 is recency-only. Current card reports Tatoeba regression in 108/112 language pairs.\n\n## Proposed change\n\nAdd held-out retrieval/bitext/STS/code development probes, regression gates and best-plus-recovery retention. Reserve final tests for reporting.\n\n## Acceptance criteria\n\n- [ ] Representative finite complete dev metrics recorded\n- [ ] regressions visible\n- [ ] best checkpoint survives cleanup\n- [ ] physical TPU verifies evaluator/recovery.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 47,
+      "title": "[P1] Gate embedding continuation on representation quality and preserve best checkpoints",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/47"
+    },
+    {
+      "body": "## Finding\n\n**TRAIN-06 \u2014 September 30, 2026 system audit.**\n\nscripts/prepare_yat_embedding_finetune.py:222 quarantines dev text only within each source; trainer:154 assigns source offsets so cross-source identical texts have different IDs. Historical overlap remains unmeasured.\n\n## Proposed change\n\nBuild mixture-wide shared text identity, train/dev quarantine and overlap receipt.\n\n## Acceptance criteria\n\n- [ ] Injected cross-source duplicates share IDs\n- [ ] global held-out overlap quarantined/rejected\n- [ ] pinned current mixture gets audit receipt.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 44,
+      "title": "[P1] Unify cross-source duplicate identity and train/dev quarantine",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/44"
+    },
+    {
+      "body": "## Finding\n\n**TRAIN-04 \u2014 September 30, 2026 system audit.**\n\nscripts/train_yat_embedding_finetune.py:48-65 checks content hashes and row counts but not pad ID, vocabulary bounds, ranks, widths, dtypes or ID ranges. Preparation accepts arbitrary nonnegative pad IDs.\n\n## Proposed change\n\nAdd data-only semantic preflight matched to selected encoder/tokenizer before allocation.\n\n## Acceptance criteria\n\n- [ ] Wrong padding/shapes/dtypes/ranges rejected\n- [ ] valid pair/triplet arrays admitted without a model\n- [ ] physical TPU training remains required.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 42,
+      "title": "[P1] Validate prepared embedding token schemas and padding against the encoder",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/42"
+    },
+    {
+      "body": "## Finding\n\n**TRAIN-03 \u2014 September 30, 2026 system audit.**\n\nscripts/train_yat_embedding_finetune.py:160-183 hashes six files but omits encoder_data.py, training.py, common.py, optional attention kernels and runtime identity. Older trainer has stronger guards.\n\n## Proposed change\n\nShare complete source/dependency and runtime identity across trainers; qualify intentional migrations separately.\n\n## Acceptance criteria\n\n- [ ] Sampler/kernel/runtime changes alter identity\n- [ ] host mismatch blocks execution\n- [ ] unchanged stage resumes deterministically.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 41,
+      "title": "[P1] Include sampler, imported kernels, and numerical runtime in exact-resume identity",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/41"
+    },
+    {
+      "body": "## Finding\n\n**TRAIN-02 \u2014 September 30, 2026 system audit.**\n\nscripts/train_yat_embedding_finetune.py:166,194 records only checkpoint URI/step and restores parent weights without expected semantic identity. Shape-compatible tokenizer/config mismatches are not explicitly rejected.\n\n## Proposed change\n\nAuthenticate committed parent metadata, tokenizer and encoder settings; record manifest/weight identities and optimizer reset policy.\n\n## Acceptance criteria\n\n- [ ] Wrong tokenizer/config rejected before model mutation\n- [ ] exact parent lineage recorded\n- [ ] fresh-stage optimizer policy verified.\n\n## Evidence scope\n\nAudited working tree based on d64a0d18cac0343a936c13ebea6ce02be5adf879, including uncommitted embedding-stage files. Detailed evidence and source hashes are retained in docs/audit-2026-09-30/. Static review or metadata reproduction does not constitute a new TPU qualification. Goal: continue existing trained YAT weights to improve representations while preserving model lineage.",
+      "comments": [],
+      "number": 40,
+      "title": "[P1] Authenticate parent checkpoint semantics before a fresh embedding stage",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/40"
+    },
+    {
+      "body": "## Failure\\n\\nKaggle TPU runs at revisions 180ef93 and 2049c2b reached TPU initialization, tokenizer loading, and FineWeb dataset setup, then aborted before step 1 with  in . Removing flaxchat's own prefetch thread did not help because Hugging Face FineWeb streaming itself uses PyArrow remote Parquet/Xet I/O.\\n\\n## Required resolution\\n\\n- Build a bounded, deterministic FineWeb token pool in a separate CPU/GPU preparation job.\\n- Publish immutable token shards (for example  or ArrayRecord) with tokenizer/data identity.\\n- Run the TPU trainer only against those local mounted shards; no live HF/PyArrow streaming in the TPU process.\\n- Add a low-cost Kaggle TPU smoke that consumes one prepared shard before a long run.\\n- Preserve checkpoint/resume and artifact provenance.\\n\\n## Evidence\\n\\nKaggle kernel , versions 1 and 2; both returned SIGABRT (-6) before the first optimizer update.",
+      "comments": [],
+      "number": 31,
+      "title": "[P1] Make FineWeb Kaggle TPU training independent of live PyArrow streaming",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/31"
+    },
+    {
+      "body": "## Problem\n\nThe three plans in `benchmarks/baselines/` remain `pending_matched_run`. Current README comparisons describe framework features but do not provide controlled flaxchat, nanochat, and MaxText measurements under the canonical protocol.\n\n## Proposal\n\nImplement adapters and execute all three trainers on the same single-accelerator hardware with identical tokenized batches and controlled model size.\n\n## Acceptance criteria\n\n- All three source repositories and dataset inputs use immutable revisions.\n- Actual trainable parameter counts fall within the protocol tolerance.\n- Tokenized batches, optimizer semantics, precision, warmup, and measured steps match.\n- Records include compile time, steady tokens/sec, MFU, peak memory, checkpoint latency, validation quality, and limitations.\n- `python -m benchmarks.compare --protocol benchmarks/protocol.yaml ...` passes.\n- Raw logs and records are archived; negative results are retained.\n- Documentation makes no apples-to-apples claim until every record passes validation.\n\n",
+      "comments": [
+        {
+          "id": "IC_kwDOR2WQqM8AAAABSoK-xA",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "Implementation and evidence update from PR #25:\n\n- Immutable comparison adapters now run flaxchat, nanochat, and MaxText sequentially in one Kaggle P100 kernel over the same generated/tokenized batches.\n- CPU preflight v4 passed at flaxchat `08f21ea3c5d4455560ba56c349af8f7a2c42c8b9`, nanochat `a445144d3905c6845fda2d3cab8e63248a70cd32`, and MaxText `87b18614b0ef6c68c4be43b4396c695645ecf055`.\n- Counts were 589,902 / 589,902 / 606,848 against the 600,000 \u00b15% gate. The strengthened preflight also completed a native nanochat forward/backward AdamW update with GPU and TPU disabled.\n- P100 v2 retained a negative result for a PyTorch wheel that omitted `sm_60`; P100 v3 proved the pinned `torch==2.5.1+cu118` runtime supports `sm_60`, then retained a second negative result exposing int32 targets at PyTorch cross-entropy. Flaxchat and MaxText completed in both bundles.\n- The adapter now promotes token IDs and targets to `torch.int64`, with focused tests and the CPU-native optimizer-step gate passing.\n\nNo apples-to-apples performance claim has been published because all three records have not yet passed in one bundle. After two GPU attempts, another P100 run is intentionally held for an explicit quota decision rather than consuming accelerator quota automatically.\n",
+          "createdAt": "2026-09-04T18:46:58Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/23#issuecomment-5545049796",
+          "viewerDidAuthor": true
+        }
+      ],
+      "number": 23,
+      "title": "[P1] Execute the matched flaxchat, nanochat, and MaxText benchmark protocol",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/23"
+    },
+    {
+      "body": "## Problem\n\nThe umbrella release-readiness objective requires a small public checkpoint and automated inference demonstration. Current verified TinyStories artifacts are stored as Kaggle output, but there is no documented stable model artifact and one-command hosted or local demonstration tied to a released config/tokenizer/checkpoint identity.\n\n## Proposal\n\nPublish a license-compatible small checkpoint and a reproducible demonstration after inference hardening.\n\n## Acceptance criteria\n\n- Publish model, optimizer-optional checkpoint, tokenizer, resolved config, manifest, license, and checksums at an immutable location.\n- Document training data revision, stage history, intended use, limitations, and evaluation metrics.\n- A clean environment downloads and verifies the artifact before inference.\n- CLI and web demo load configuration from the manifest rather than a model tag heuristic.\n- A smoke workflow generates a deterministic sample from the published artifact.\n- Artifact compatibility is tied to a tagged flaxchat release.\n\n## Dependencies\n\nDepends on #11 and #14.\n",
+      "comments": [
+        {
+          "id": "IC_kwDOR2WQqM8AAAABSoXyGA",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "PR #25 now prepares the small checkpoint/demo for transactional publication:\n\n- tracked checkpoint, tokenizer, resolved config, manifest, dataset revision/license, stage history, metrics, limitations, and per-file SHA-256 checksums are bundled;\n- CLI and web loading use the artifact manifest rather than a model-name heuristic;\n- deterministic generation from the extracted archive passed locally;\n- the tag workflow uploads a draft, downloads the actual release assets, validates basename-stable checksums, installs the downloaded wheel into a fresh Python 3.13 environment, verifies the checkpoint, and runs the deterministic sample;\n- only after those checks pass does the workflow make the release public.\n\nThe remaining acceptance item is external state: merge PR #25 and publish the immutable `v0.1.1` tag/release. Until then, the branch artifact remains explicitly labeled a development preview.\n",
+          "createdAt": "2026-09-04T19:06:59Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/19#issuecomment-5545259544",
+          "viewerDidAuthor": true
+        }
+      ],
+      "number": 19,
+      "title": "[P2] Publish a small checkpoint and automated inference demo",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/19"
+    },
+    {
+      "body": "## Problem\\n\\nKaggle version 6 validates eight TPU devices on one host. Synthetic virtual-device and cross-topology checkpoint tests do not prove multi-process coordination, host-local data partitioning, collective behavior, or recovery on physical TPU workers.\\n\\n## Proposal\\n\\nRun a bounded multi-host Cloud TPU acceptance job using the documented immutable environment and archive machine-readable evidence.\\n\\n## Acceptance criteria\\n\\n- At least two physical processes initialize before any JAX backend query.\\n- The manifest records source SHA, image/environment digest, topology, slice/process/device counts, zone, and commands.\\n- Host batches are disjoint and together reproduce the global order.\\n- A synchronized training step produces finite matching losses and expected shardings.\\n- Checkpoints restore across multi-host to single-host and single-host to multi-host topology.\\n- One interrupted/preempted run resumes without repeating or skipping a batch.\\n- Logs and a structured summary are committed or attached with cost and limitations.",
+      "comments": [
+        {
+          "id": "IC_kwDOR2WQqM8AAAABSofgUA",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "PR #25 now makes the eventual paid physical multi-host acceptance fail fast and auditable before longer phases:\n\n- `infra/tpu/flexstart.sh` defaults to a one-hour `v5litepod-16` request and refuses `create` before any `gcloud` call unless `FLAXCHAT_APPROVE_PAID_RUN=I_UNDERSTAND_TPU_BILLING` is explicitly set.\n- `scripts.multihost_acceptance run` imports the distributed initializer before backend discovery, requires at least two physical processes and a TPU backend, records exact source/environment/location/topology metadata, proves disjoint host-local batches reconstruct canonical global order, creates a `PartitionSpec('data', None)` global array, and executes one synchronized finite gradient update.\n- Every worker emits a structured record. The offline `summarize` command fails closed on missing/duplicate processes, overlapping/duplicate batches, digest drift, revision/environment/topology disagreement, non-finite or mismatched loss, and missing worker success. It requires actual billed cost and states that checkpoint/resume phases remain unproven.\n- The real JAX path passed locally on four synthetic CPU devices with four addressable data shards; 27 focused tests, Ruff, Pyright, shell syntax, and docs checks passed. GitHub Linux validation passed at `0007b13` in 4m11s. No Cloud TPU was provisioned.\n\nIssue #12 remains open: physical multi-host probe evidence, multi-host\u2194single-host checkpoint restore, and an interrupted physical resume still require explicit paid-infrastructure authorization. The new probe is intended to prevent spending on those longer phases if the slice is unexpectedly single-host or worker coordination is unhealthy.\n",
+          "createdAt": "2026-09-04T19:18:11Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/12#issuecomment-5545386064",
+          "viewerDidAuthor": true
+        }
+      ],
+      "number": 12,
+      "title": "[P1] Run and publish a physical multi-host TPU acceptance suite",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/12"
+    },
+    {
+      "body": "## Problem\n\nThe latest release is v0.1.0 at commit `094764b`, while the verified single-host TPU initialization fix is commit `97ba1333bf46b51f85ca3d9099c8c2717438ce91`. Package users do not receive the fix.\n\n## Proposal\n\nPublish a patch release after attaching the exact local, CI, and Kaggle TPU evidence.\n\n## Acceptance criteria\n\n- Project and Pixi versions are 0.1.1 and agree with tag `v0.1.1`.\n- Release gates pass from a clean checkout.\n- Release notes link issue #8, the fix commit, GitHub CI, and Kaggle version 6.\n- Wheel and sdist are built, provenance-attested, uploaded, and install-smoke-tested.\n- Checkpoint/config compatibility with v0.1.0 is explicitly stated and tested.\n- The release contains no uncommitted generated artifacts.\n\n",
+      "comments": [
+        {
+          "id": "IC_kwDOR2WQqM8AAAABSoXt5w",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "PR #25 now contains every locally implementable v0.1.1 release gate:\n\n- project/runtime versions agree at 0.1.1;\n- a tag must point to validated `master` and match the project version;\n- package construction happens once on one Ubuntu runner, then the same wheel is install-smoked under Python 3.11, 3.12, and 3.13;\n- release notes link issue #8, the fix commit, current GitHub Actions, and Kaggle TPU version 12 evidence;\n- checkpoint/config compatibility is documented and covered by tracked restore tests;\n- wheel, sdist, deterministic checkpoint archive, basename-stable checksums, reproducible CycloneDX SBOM, and provenance attestations are release assets;\n- the GitHub release remains a draft until the uploaded assets are downloaded, checksum-verified, installed in a fresh environment, and used for deterministic checkpoint inference.\n\nThe workflow was verified by 338 local non-accelerator tests plus GitHub Linux validation at `85e39f53a24715f641b7aa891529f732897c30e9`. The issue remains open because actually merging and creating `v0.1.1` is a repository release action requiring explicit authorization.\n",
+          "createdAt": "2026-09-04T19:06:53Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/11#issuecomment-5545258471",
+          "viewerDidAuthor": true
+        }
+      ],
+      "number": 11,
+      "title": "[P1] Cut v0.1.1 with the TPU initialization fix and acceptance evidence",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/11"
+    },
+    {
+      "body": "## Objective\n\nProve flaxchat as a reproducible, end-to-end JAX/Flax LLM training system on CPU/GPU and Cloud TPU.\n\n## Required work\n\n- [ ] Make the TinyStories tokenizer\u2192pretrain\u2192SFT\u2192RL\u2192evaluation\u2192inference path reproducible from a clean checkout.\n- [ ] Add CPU smoke tests so core correctness is testable without accelerator access.\n- [ ] Add GPU and TPU CI/periodic runs for training, checkpointing, restore, sharding, and generation.\n- [ ] Publish loss curves, throughput, memory, compile time, and scaling efficiency with exact hardware/configuration.\n- [ ] Compare equivalent configurations against nanochat and a relevant JAX baseline such as MaxText.\n- [ ] Test single-host and multi-host checkpoint portability and interrupted-training recovery.\n- [ ] Validate speculative decoding output correctness and measure accepted-token speedup.\n- [ ] Pin datasets, tokenizer inputs, evaluation versions, and random seeds; document provenance and licensing.\n- [ ] Add configuration schemas, failure messages, architecture diagrams, and operator documentation.\n- [ ] Publish a small checkpoint and an automated inference demonstration when licensing permits.\n\n## Acceptance criteria\n\n- [ ] Clean CPU smoke tests pass on every PR and accelerator runs publish artifacts periodically.\n- [ ] At least one full small-model training run is independently reproducible.\n- [ ] Benchmark results include scripts, configurations, logs, and limitations.\n- [ ] Tagged releases preserve checkpoint and configuration compatibility.\n\n## Path-specific implementation map\n\n### Training engine and distributed execution\n\n- [ ] In `flaxchat/config.py`, replace loose configuration with validated dataclasses/schema covering model, tokenizer, data, optimizer, mesh, precision, checkpoint, evaluation, and generation; serialize the resolved config into every run.\n- [ ] In `flaxchat/engine.py` and `execution.py`, separate pure train/eval steps from orchestration, compilation, device mesh setup, logging, and failure recovery.\n- [ ] Add single-device and synthetic multi-device tests for parameter sharding, optimizer-state sharding, gradient accumulation, loss scaling, donation, and deterministic RNG folding.\n- [ ] In `flaxchat/checkpoint.py`, add atomic temporary writes, manifest hashes, version metadata, async completion, partial-checkpoint detection, resharding, and interrupted-save recovery tests.\n- [ ] In `dataloader.py`, `dataset.py`, and `prefetch.py`, version dataset manifests and test shard ordering, host partitioning, resume offsets, packing boundaries, corrupted examples, and backpressure.\n- [ ] In `flaxchat/gpt.py`, add tiny configurations testing attention masks, RoPE positions, KV caches, tied embeddings, precision, scanning/rematerialization, and reference parity.\n\n### End-to-end reproducibility and evaluation\n\n- [ ] Make `scripts/run_tinystories.py` the canonical small E2E runner that emits a run manifest, tokenizer hash, data hash, resolved config, logs, checkpoint, eval metrics, and sample output.\n- [ ] Refactor `scripts/pretrain.py`, `sft.py`, `rl.py`, and `eval.py` into thin CLI wrappers over reusable functions under `flaxchat/`; test the functions directly.\n- [ ] In `flaxchat/eval.py`, pin task versions and add aggregation confidence intervals, sample counts, prompt templates, generation parameters, and raw prediction export.\n- [ ] Add `benchmarks/` with comparable nanochat/MaxText configs and a parser that reports tokens/sec, model FLOPs utilization, compile time, memory, checkpoint time, and scaling efficiency.\n- [ ] In `scripts/chat_cli.py` and `chat_web.py`, share one generation service and test streaming cancellation, sampling determinism, context limits, and checkpoint/tokenizer mismatch.\n\n### Local, cloud, and release paths\n\n- [ ] Keep `scripts/train_local.py`, `train_tpu.py`, and `train_kaggle.py` as adapters around the same engine/config; avoid platform-specific training logic forks.\n- [ ] Add `infra/tpu/` with a documented launcher, immutable environment/image reference, worker coordination, log collection, shutdown, and cost guardrails.\n- [ ] Add CPU PR tests in `.github/workflows/`, scheduled accelerator benchmarks, coverage, type/lint checks, dependency auditing, package builds, and artifact retention.\n- [ ] Add `docs/REPRODUCIBILITY.md`, `docs/SHARDING.md`, `docs/CHECKPOINT_FORMAT.md`, and `docs/BENCHMARKS.md` linked to executable commands.\n- [ ] Move or clearly label `torch_port/` as a validation baseline; add parity tests and ensure it is not counted as an independent implementation.\n",
+      "comments": [
+        {
+          "id": "IC_kwDOR2WQqM8AAAABScwIRA",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "The full-system audit and refactoring proposal is now published:\n\nhttps://github.com/mlnomadpy/flaxchat/blob/master/docs/SYSTEM_AUDIT_2026-09-03.md\n\nAudit commit: `100ad8b`\n\n## Canonical prioritized backlog\n\n### P0\n\n- #13 Replace the placeholder kgz Kaggle trainer with exact-revision CLI execution\n\n### P1\n\n- #11 Cut v0.1.1 with the verified TPU initialization fix\n- #9 Extract reusable training-stage services and thin CLIs\n- #10 Unify local, GCP TPU, and Kaggle adapters around one launch contract\n- #12 Run physical multi-host TPU acceptance\n- #14 Harden and test the web chat service\n- #16 Align Python/package/accelerator compatibility metadata\n- #17 Harden the generated-Python trust boundary\n- #22 Fix Pages deployment and validate docs in CI\n- #23 Execute the matched flaxchat/nanochat/MaxText benchmark protocol\n- #24 Reconcile public performance claims with machine-readable provenance\n\n### P2\n\n- #15 Make Kaggle monitoring resilient and reconnectable\n- #18 Harden CI/release supply-chain provenance\n- #19 Publish a small checkpoint and automated inference demo\n- #20 Expand static analysis and risk-based coverage\n- #21 Add representative strong and weak TPU scaling benchmarks\n\nThe critical refactoring path is **#9 \u2192 #10 \u2192 #12/#23**. The v0.1.1 patch release in #11 should proceed independently because the fix is already verified locally, in GitHub CI, and on Kaggle TPU.\n\nThis comment supersedes the unchecked status presentation in the original umbrella body; each child issue has independent acceptance criteria and should be the source of truth for closure.\n\n",
+          "createdAt": "2026-09-03T22:42:28Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/1#issuecomment-5533075524",
+          "viewerDidAuthor": true
+        },
+        {
+          "id": "IC_kwDOR2WQqM8AAAABSkWU8w",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "Audit remediation is implemented in #25 and the final checks are green.\n\n- GitHub: docs build passed; Ubuntu validation passed in 4m03s; PR deployment skipped; no macOS workflow ran.\n- Kaggle TPU v5 Lite x8, kernel v10: exact revision `7df9fe85817acf27fa61f5feb46e7f2a0774a3b1`, 298 passed / 2 skipped, all 11 stages passed. Compact records are committed in `benchmarks/results/`.\n- #13, #14, #15, #16, #18, #20, #22, and #24 are linked as resolved on merge.\n- #9, #10, #17, #19, and #21 have substantial implementations but retain acceptance work; they are intentionally not auto-closed.\n- #11 remains open until the PR is merged and `v0.1.1` is deliberately tagged.\n- #12 requires an explicitly authorized paid physical multi-host Cloud TPU run.\n- #23 requires separate pinned nanochat and MaxText executions on matched hardware; no apples-to-apples claim has been made prematurely.\n\nCost controls in #25 make macOS and Kaggle manual-only, consolidate ordinary checks into one cancellable Ubuntu job, skip Pages upload/deploy on PRs, restrict release matrices to tags, and exclude result-only benchmark archives from the full Linux suite.\n",
+          "createdAt": "2026-09-04T13:21:39Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/1#issuecomment-5541041395",
+          "viewerDidAuthor": true
+        },
+        {
+          "id": "IC_kwDOR2WQqM8AAAABUBKR9g",
+          "author": {
+            "login": "mlnomadpy"
+          },
+          "authorAssociation": "OWNER",
+          "body": "Completion sweep after PR #25 / #26: closed #10, #13\u201318, #20\u201322, and #24 as delivered. Remaining work is intentionally external or quota-gated: #11 release/tag publication, #12 physical multi-host TPU acceptance, #19 immutable checkpoint publication, #23 matched P100 benchmark quota decision, plus the new FineWeb TPU input-pipeline blocker.",
+          "createdAt": "2026-09-11T17:38:26Z",
+          "includesCreatedEdit": false,
+          "isMinimized": false,
+          "minimizedReason": "",
+          "reactionGroups": [],
+          "url": "https://github.com/mlnomadpy/flaxchat/issues/1#issuecomment-5638361590",
+          "viewerDidAuthor": true
+        }
+      ],
+      "number": 1,
+      "title": "Repository quality and release-readiness upgrade plan",
+      "url": "https://github.com/mlnomadpy/flaxchat/issues/1"
+    }
+  ]
+}

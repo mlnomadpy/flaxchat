@@ -1,0 +1,38 @@
+{
+  "status": "capacity_timeout_no_training",
+  "observed_at": "2026-10-06T08:37:31.918524+00:00",
+  "credit_available_usd": 877.34,
+  "credit_observation": "Chrome billing Azetta.ai, tahabhs14@gmail.com, Oct6 approximately08:24UTC",
+  "checkpoint_start": 500,
+  "resume_semantics": "model, optimizer, sampler, schedule; explicit quality-policy/source migration",
+  "training_objective": "contrastive representation continuation, not MLM",
+  "lease_hours": 12,
+  "controller_max_hours": 16,
+  "new_reserved_usd": 127,
+  "physical_tests": "not_run",
+  "checkpoint_cleanup_fix": "Disable generic Orbax GCS temporary cleanup; readers read_only. Actualsoftdeletedbest0 restored, authenticated, copied; source/destination object CRC32C match.",
+  "controller_name": "yat-v2-overnight-1006",
+  "controller_created": "2026-10-06T01:37:11.788-07:00",
+  "controller_scheduling": {
+    "automaticRestart": false,
+    "instanceTerminationAction": "DELETE",
+    "maxRunDuration": {
+      "nanos": 0,
+      "seconds": "57600"
+    },
+    "onHostMaintenance": "MIGRATE",
+    "preemptible": false,
+    "provisioningModel": "STANDARD"
+  },
+  "queue": "flaxchat-validation-yat-embed-torch-v2-overn-0-8b9dff0c659341ea",
+  "guard_execution": "e2d840ee-6fda-4d22-adb3-c386de4360ed",
+  "guard_deadline_utc": "2026-10-06T20:39:55.477445+00:00",
+  "guard_verified": true,
+  "local_metadata_tests_passed": 12,
+  "model_execution_state": "not_started",
+  "last_checkpoint": 500,
+  "new_training_steps": 0,
+  "cleanup_verified": true,
+  "finished_at": "2026-10-06T09:10:08.355236+00:00",
+  "failure": "TimeoutError: Spot capacity wait budget exhausted; allocation has not been observed; queue=WAITING_FOR_RESOURCES; node=unknown"
+}

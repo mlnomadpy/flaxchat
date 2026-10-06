@@ -26,15 +26,23 @@ def create_checkpoint_manager(
     checkpoint_dir: str,
     max_to_keep: int | None = 3,
     async_checkpointing: bool = True,
+    *,
+    read_only: bool = False,
 ) -> ocp.CheckpointManager:
-    """Create an atomic Orbax manager honoring the async policy."""
+    """Create a manager without sweeping sibling checkpoint namespaces."""
     if not checkpoint_dir.startswith("gs://"):
         checkpoint_dir = os.path.abspath(os.path.expanduser(checkpoint_dir))
-        os.makedirs(checkpoint_dir, exist_ok=True)
+        if not read_only:
+            os.makedirs(checkpoint_dir, exist_ok=True)
     options = ocp.CheckpointManagerOptions(
         max_to_keep=max_to_keep,
         enable_async_checkpointing=async_checkpointing,
-        cleanup_tmp_directories=True,
+        # On GCS Orbax regards every child without commit_success.txt as
+        # temporary, including the valid nested best/ checkpoint namespace.
+        # Reads and writes must never sweep arbitrary children of this root.
+        cleanup_tmp_directories=False,
+        read_only=read_only,
+        create=not read_only,
     )
     return ocp.CheckpointManager(directory=checkpoint_dir, options=options)
 
@@ -391,7 +399,7 @@ def load_checkpoint(
 def load_checkpoint_metadata(checkpoint_dir: str, step: int | None = None, *, include_receipt: bool = False) -> dict:
     """Read integrity-checked metadata before constructing a live model."""
     manager = create_checkpoint_manager(
-        checkpoint_dir, max_to_keep=999, async_checkpointing=False
+        checkpoint_dir, max_to_keep=999, async_checkpointing=False, read_only=True
     )
     try:
         selected = manager.latest_step() if step is None else step
@@ -498,7 +506,7 @@ def restore_model_from_checkpoint(
 ):
     """Validate first, then atomically apply restored model/optimizer state."""
     manager = create_checkpoint_manager(
-        checkpoint_dir, max_to_keep=999, async_checkpointing=False
+        checkpoint_dir, max_to_keep=999, async_checkpointing=False, read_only=True
     )
     try:
         loaded: Any = load_checkpoint(

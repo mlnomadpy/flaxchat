@@ -1,0 +1,1031 @@
+{
+  "format": "flaxchat-expanded-development-handoff-v1",
+  "model_execution": false,
+  "files": {
+    "terminal-data.json": {
+      "sha256": "e3b9b3afc100bd17b5bb65b7db2463028d2baa565922445ad583972b86ba4f88",
+      "content": {
+        "format": "flaxchat-gce-development-scan-v1",
+        "status": "passed",
+        "model_execution": false,
+        "commands": [
+          {
+            "argv": [
+              "/usr/bin/python3",
+              "-m",
+              "venv",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/venv"
+            ],
+            "timeout_seconds": 30,
+            "log": "command-1.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "/tmp/flaxchat-data-gce-expanded-1005/work/venv/bin/python",
+              "-m",
+              "pip",
+              "install",
+              "--disable-pip-version-check",
+              "--no-deps",
+              "-r",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/requirements-observed.txt"
+            ],
+            "timeout_seconds": 240,
+            "log": "command-2.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "/tmp/flaxchat-data-gce-expanded-1005/work/venv/bin/python",
+              "-m",
+              "pip",
+              "check"
+            ],
+            "timeout_seconds": 30,
+            "log": "command-3.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "/tmp/flaxchat-data-gce-expanded-1005/work/venv/bin/python",
+              "-c",
+              "import sys,numpy,json;print(json.dumps({\"python\":sys.version,\"numpy\":numpy.__version__}))"
+            ],
+            "timeout_seconds": 15,
+            "log": "command-4.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "/tmp/flaxchat-data-gce-expanded-1005/work/venv/bin/python",
+              "-m",
+              "scripts.prepare_representation_development",
+              "--spec",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/configs/data/representation-development-next-stage-v2.json",
+              "--output",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/candidate",
+              "--timeout-seconds",
+              "600"
+            ],
+            "timeout_seconds": 630,
+            "log": "command-5.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "gcloud",
+              "storage",
+              "cp",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/candidate.tar.gz",
+              "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/01-expanded-candidate/candidate.tar.gz",
+              "--if-generation-match=0",
+              "--quiet"
+            ],
+            "timeout_seconds": 90,
+            "log": "command-6.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "gcloud",
+              "storage",
+              "cp",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/01-expanded-candidate-receipt.json",
+              "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/01-expanded-candidate/phase-receipt.json",
+              "--if-generation-match=0",
+              "--quiet"
+            ],
+            "timeout_seconds": 30,
+            "log": "command-7.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "/tmp/flaxchat-data-gce-expanded-1005/work/venv/bin/python",
+              "-m",
+              "scripts.scan_gcs_parent_exposure",
+              "--object-receipt",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/combined-objects.json",
+              "--producer-policies",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/producer-policies.json",
+              "--development-exclusions",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/candidate",
+              "--output",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/scan.json",
+              "--timeout-seconds",
+              "450",
+              "--max-total-bytes",
+              "4294967296",
+              "--stage-metadata",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/checkpoint-metadata.json",
+              "--stage-metadata",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923-metadata.json",
+              "--stage-metadata",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5-metadata.json",
+              "--stage-metadata",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0-metadata.json",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/code",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/miracl",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/msmarco",
+              "--overlap-details-output",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/collisions.json",
+              "--max-overlap-text-identities",
+              "100000"
+            ],
+            "timeout_seconds": 480,
+            "log": "command-8.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "gcloud",
+              "storage",
+              "cp",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/scan.json",
+              "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/02-original-scan/scan.json",
+              "--if-generation-match=0",
+              "--quiet"
+            ],
+            "timeout_seconds": 90,
+            "log": "command-9.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "gcloud",
+              "storage",
+              "cp",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/collisions.json",
+              "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/02-original-scan/collisions.json",
+              "--if-generation-match=0",
+              "--quiet"
+            ],
+            "timeout_seconds": 90,
+            "log": "command-10.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "gcloud",
+              "storage",
+              "cp",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/02-original-scan-receipt.json",
+              "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/02-original-scan/phase-receipt.json",
+              "--if-generation-match=0",
+              "--quiet"
+            ],
+            "timeout_seconds": 30,
+            "log": "command-11.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "/tmp/flaxchat-data-gce-expanded-1005/work/venv/bin/python",
+              "-m",
+              "scripts.filter_representation_development",
+              "--candidate",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/candidate",
+              "--scan",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/scan.json",
+              "--scan-sha256",
+              "2efba0ac0d9b83f71eb27f3e222cc2746ae55f1f22ed5e4b467ae76ab3e6c640",
+              "--overlap-details",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/collisions.json",
+              "--overlap-details-sha256",
+              "64bae94a69be12a3061f55a30a85cbffb330031ce03f044462c8ac8a25b9bb97",
+              "--output",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/filtered",
+              "--min-rows-per-config",
+              "64",
+              "--timeout-seconds",
+              "120"
+            ],
+            "timeout_seconds": 150,
+            "log": "command-12.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "gcloud",
+              "storage",
+              "cp",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/filtered.tar.gz",
+              "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/03-filtered-candidate/filtered.tar.gz",
+              "--if-generation-match=0",
+              "--quiet"
+            ],
+            "timeout_seconds": 90,
+            "log": "command-13.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "gcloud",
+              "storage",
+              "cp",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/03-filtered-candidate-receipt.json",
+              "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/03-filtered-candidate/phase-receipt.json",
+              "--if-generation-match=0",
+              "--quiet"
+            ],
+            "timeout_seconds": 30,
+            "log": "command-14.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "/tmp/flaxchat-data-gce-expanded-1005/work/venv/bin/python",
+              "-m",
+              "scripts.scan_gcs_parent_exposure",
+              "--object-receipt",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/combined-objects.json",
+              "--producer-policies",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/producer-policies.json",
+              "--development-exclusions",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/filtered",
+              "--output",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/filtered-scan.json",
+              "--timeout-seconds",
+              "450",
+              "--max-total-bytes",
+              "4294967296",
+              "--stage-metadata",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/checkpoint-metadata.json",
+              "--stage-metadata",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923-metadata.json",
+              "--stage-metadata",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5-metadata.json",
+              "--stage-metadata",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0-metadata.json",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/code",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/contrastive_9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/miracl",
+              "--prepared-directory",
+              "/tmp/flaxchat-data-gce-expanded-1005/work/source/inputs/msmarco"
+            ],
+            "timeout_seconds": 480,
+            "log": "command-15.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "gcloud",
+              "storage",
+              "cp",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/filtered-scan.json",
+              "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/04-filtered-recheck/filtered-scan.json",
+              "--if-generation-match=0",
+              "--quiet"
+            ],
+            "timeout_seconds": 90,
+            "log": "command-16.log",
+            "returncode": 0
+          },
+          {
+            "argv": [
+              "gcloud",
+              "storage",
+              "cp",
+              "/tmp/flaxchat-data-gce-expanded-1005/results/04-filtered-recheck-receipt.json",
+              "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/04-filtered-recheck/phase-receipt.json",
+              "--if-generation-match=0",
+              "--quiet"
+            ],
+            "timeout_seconds": 30,
+            "log": "command-17.log",
+            "returncode": 0
+          }
+        ],
+        "published_phases": [
+          "01-expanded-candidate",
+          "02-original-scan",
+          "03-filtered-candidate",
+          "04-filtered-recheck"
+        ],
+        "rejected_previous_candidate": {
+          "scan_sha256": "e47cd6cc482baf4e5ec10fcae45bd5081e13f6fe255f694a1a6aa951f46b1927",
+          "candidate_spec_sha256": "5e882ec6e16c6578db3eb012318ccfa1b7b91a942557f33e03988bf269e04a00",
+          "reason": "Arabic 54 and Dutch 45 rows after filtering; minimum64 unchanged"
+        },
+        "candidate_identity": {
+          "policy": "candidate-development-quarantine-v1",
+          "raw_hashes": {
+            "codesearchnet_train__pair.jsonl": "6ccbb86fe6f81aa4c937b1cb7ec8d91fcde15cb23f92c8b74ee22040f27d122c",
+            "globalvoices_train__en-ar.jsonl": "acc93d7b0c247bdb1f44b329c0a08bee068871d9de25adb105e1a71274cabb1b",
+            "globalvoices_train__en-de.jsonl": "87520cf4129cb4e8f9eda6501e4484e002bddfa4ba55ca8d631d29b236380a75",
+            "globalvoices_train__en-es.jsonl": "35b31a0711fef31d6017554fcbeb11ab3f6010f459935ee509555de5a2f7156b",
+            "globalvoices_train__en-fr.jsonl": "80259c7e99ef00ad29825ecbdcdd9338db3a5f9062efd69c2c7900e1ce185ec2",
+            "globalvoices_train__en-it.jsonl": "e79a163446e45f215248ec80739cceae297ffbcf9baa96d8c8d001843f865a75",
+            "globalvoices_train__en-nl.jsonl": "de6b479c03980d1fce0948f9977961410bc6c9ead032179f3fb991ea2700ad62",
+            "globalvoices_train__en-pt.jsonl": "61b4fa44d126d29102760435ca7d39211a34cbdea5ed1ee666dfe8b2e52bac24",
+            "globalvoices_train__en-ru.jsonl": "cca260ec9b876ba626e79601cc42e59d2b5acad6de51213785020366dea1af9d",
+            "native_miracl_train__ar-triplet.jsonl": "7254d60bc36a1b5c45ac92c96cf6196cc57486a6f05e3f188a91387f1ce09874",
+            "native_miracl_train__bn-triplet.jsonl": "71d1e3f910c70231173528d4cbbf4df369bf94bb1c4d897809a207cf8e86dc83",
+            "native_miracl_train__fr-triplet.jsonl": "61dc205749f552b3da0d40fa2dac0d69e505741ef07c5443750f33d249c4bcdd",
+            "native_miracl_train__hi-triplet.jsonl": "8a09998e126845fdc1ed4740c2d5a8ba9d6491ad0a24e701d89af55a9d6b97da",
+            "native_miracl_train__ja-triplet.jsonl": "30c3d00ef3fde18d8a757dcfa3c89999c20439db55774408ff27e2ddd9360a10",
+            "native_miracl_train__ru-triplet.jsonl": "c7efd7655d922d8f58f93e9251c0c3821d8f26c1c8a6f3cbbb586daa6da4f5ea",
+            "native_miracl_train__sw-triplet.jsonl": "d450781c39d80182b3866165698930f714f38d06035a9c74281459b3a13737b7",
+            "native_miracl_train__zh-triplet.jsonl": "effa3d5151efd58ffe369991dd82a1243a786671f0053080e89c603201295edc",
+            "stsb_validation__default.jsonl": "627c9a2675d5612ab55323aac9100abe067d5cec29270a96c6bd20da0e3de379"
+          },
+          "receipt_sha256": "c0321faab3b5ff653a6e584fa32330648c609010a8e640c784e22419b2c42e7a",
+          "spec_sha256": "638a1a39f27508fe516411af42393c521231c08b7d50e7c2294837ab8fa89f23"
+        },
+        "scope": "full supplied-history exact overlap; no tokenized/model admission yet"
+      }
+    },
+    "filtered-scan.json": {
+      "sha256": "75ffcdcc5d569d7b45608819eaa9429c8b2436ee27f1c7f78df853efa20763a7",
+      "content": {
+        "admission_ready": false,
+        "candidate_exposure_checked": true,
+        "candidate_identity": {
+          "policy": "candidate-development-quarantine-v1",
+          "raw_hashes": {
+            "codesearchnet_train__pair.jsonl": "6ccbb86fe6f81aa4c937b1cb7ec8d91fcde15cb23f92c8b74ee22040f27d122c",
+            "globalvoices_train__en-ar.jsonl": "acc93d7b0c247bdb1f44b329c0a08bee068871d9de25adb105e1a71274cabb1b",
+            "globalvoices_train__en-de.jsonl": "87520cf4129cb4e8f9eda6501e4484e002bddfa4ba55ca8d631d29b236380a75",
+            "globalvoices_train__en-es.jsonl": "35b31a0711fef31d6017554fcbeb11ab3f6010f459935ee509555de5a2f7156b",
+            "globalvoices_train__en-fr.jsonl": "80259c7e99ef00ad29825ecbdcdd9338db3a5f9062efd69c2c7900e1ce185ec2",
+            "globalvoices_train__en-it.jsonl": "e79a163446e45f215248ec80739cceae297ffbcf9baa96d8c8d001843f865a75",
+            "globalvoices_train__en-nl.jsonl": "de6b479c03980d1fce0948f9977961410bc6c9ead032179f3fb991ea2700ad62",
+            "globalvoices_train__en-pt.jsonl": "61b4fa44d126d29102760435ca7d39211a34cbdea5ed1ee666dfe8b2e52bac24",
+            "globalvoices_train__en-ru.jsonl": "cca260ec9b876ba626e79601cc42e59d2b5acad6de51213785020366dea1af9d",
+            "native_miracl_train__ar-triplet.jsonl": "7254d60bc36a1b5c45ac92c96cf6196cc57486a6f05e3f188a91387f1ce09874",
+            "native_miracl_train__bn-triplet.jsonl": "71d1e3f910c70231173528d4cbbf4df369bf94bb1c4d897809a207cf8e86dc83",
+            "native_miracl_train__fr-triplet.jsonl": "61dc205749f552b3da0d40fa2dac0d69e505741ef07c5443750f33d249c4bcdd",
+            "native_miracl_train__hi-triplet.jsonl": "8a09998e126845fdc1ed4740c2d5a8ba9d6491ad0a24e701d89af55a9d6b97da",
+            "native_miracl_train__ja-triplet.jsonl": "30c3d00ef3fde18d8a757dcfa3c89999c20439db55774408ff27e2ddd9360a10",
+            "native_miracl_train__ru-triplet.jsonl": "c7efd7655d922d8f58f93e9251c0c3821d8f26c1c8a6f3cbbb586daa6da4f5ea",
+            "native_miracl_train__sw-triplet.jsonl": "d450781c39d80182b3866165698930f714f38d06035a9c74281459b3a13737b7",
+            "native_miracl_train__zh-triplet.jsonl": "effa3d5151efd58ffe369991dd82a1243a786671f0053080e89c603201295edc",
+            "stsb_validation__default.jsonl": "627c9a2675d5612ab55323aac9100abe067d5cec29270a96c6bd20da0e3de379"
+          },
+          "receipt_sha256": "c0321faab3b5ff653a6e584fa32330648c609010a8e640c784e22419b2c42e7a",
+          "spec_sha256": "638a1a39f27508fe516411af42393c521231c08b7d50e7c2294837ab8fa89f23"
+        },
+        "coverage_complete": true,
+        "exact_aligned_overlap_rows": 0,
+        "format": "flaxchat-gcs-parent-raw-scan-v1",
+        "identity_policy": "modality-exact-v2",
+        "limits": {
+          "max_rows_per_file": 5000000,
+          "max_total_bytes": 4294967296,
+          "timeout_seconds": 450.0
+        },
+        "object_receipt_sha256": "272b466062bf6b0bf1ebaca16d5ecf514db7cc5546ffb8b0e18f01de26e1ee11",
+        "producer_policies_sha256": "c82c5f4f55250c4d0d7f434fdbcd9c0bed3cc2029ff52eb3f00a08060d299ec6",
+        "remaining_checks": [
+          "authenticated parent export and full known-stage inventory builder",
+          "independent development admission recomputation",
+          "physical model/quality validation"
+        ],
+        "scope": "supplied-known-contrastive-stage-raw-inputs-only",
+        "sources": [
+          {
+            "bytes": 322595639,
+            "checked_rows": 300000,
+            "directory": null,
+            "manifest_sha256": "f9e1e8a2424264867dec4b8c8d13a9ece60a2b526f3673381f1fcc5fa985cb56",
+            "name": "code",
+            "overlap_kinds": {},
+            "overlap_rows": 0,
+            "train_raw_sha256": "261f09495697aa5cf8976d24973deafc60904a5412e3c9257931ee17c5956d12",
+            "uri": "gs://azettaai-yat-eval-0929/embedding-data/code/train.jsonl#1790709342522310"
+          },
+          {
+            "bytes": 604215624,
+            "checked_rows": 631332,
+            "directory": null,
+            "manifest_sha256": "0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923",
+            "name": "contrastive_0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923",
+            "overlap_kinds": {},
+            "overlap_rows": 0,
+            "train_raw_sha256": "07722c2edb6beda1c50ffc3db4a0c8a47b06bd3780d642dd5602e6de1049894b",
+            "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/history/relocated-v1/contrastive_0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923/train.jsonl#1791215898666329"
+          },
+          {
+            "bytes": 7146575,
+            "checked_rows": 7547,
+            "directory": null,
+            "manifest_sha256": "6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5",
+            "name": "contrastive_6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5",
+            "overlap_kinds": {},
+            "overlap_rows": 0,
+            "train_raw_sha256": "2908053eb9e82161eae731d4e9a127f2600b4c6f397093d505ef48db32ef5e50",
+            "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/history/relocated-v1/contrastive_6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5/train.jsonl#1791213905315735"
+          },
+          {
+            "bytes": 187968148,
+            "checked_rows": 197827,
+            "directory": null,
+            "manifest_sha256": "9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0",
+            "name": "contrastive_9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0",
+            "overlap_kinds": {},
+            "overlap_rows": 0,
+            "train_raw_sha256": "527818c392f6c6a25512e0dad7fa5c8233bee5ac97ed84c8570e0b195cc706a2",
+            "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/history/relocated-v1/contrastive_9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0/train.jsonl#1791215887376368"
+          },
+          {
+            "bytes": 379552557,
+            "checked_rows": 144512,
+            "directory": null,
+            "manifest_sha256": "4fa334d7b1edded82fa3b8b2420ea38cac72a41ffd5bd6c9dff2b02278f4b2fe",
+            "name": "miracl",
+            "overlap_kinds": {},
+            "overlap_rows": 0,
+            "train_raw_sha256": "2d847c34a5230364192b658ef9deb9b44796d4661c4f55f9318825890f29af72",
+            "uri": "gs://azettaai-yat-eval-0929/embedding-data/miracl/train.jsonl#1790709139813804"
+          },
+          {
+            "bytes": 1373813568,
+            "checked_rows": 1250000,
+            "directory": null,
+            "manifest_sha256": "185cf096e242d1fe456b715eafcdf4619b23d9eff7e1aea19e8eea82d84d1204",
+            "name": "msmarco",
+            "overlap_kinds": {},
+            "overlap_rows": 0,
+            "train_raw_sha256": "23a213c4fffde4d37b6884cce21d16ac980e18eee9a43c8ca9814a147cd04e87",
+            "uri": "gs://azettaai-yat-eval-0929/embedding-data/msmarco/train.jsonl#1790708939028409"
+          }
+        ],
+        "stage_metadata_sha256": [
+          "8027033dfdeeaf0255a6779acdd8b8c353baa90ff1390bcfb33ed28b8e433fca",
+          "91565acc2ae69190fd75b05be83f655f97c18e912da4c46eaed3ef3191e9dc5b",
+          "b4edf65cff78cec512c54e72978d757380e1e933bb3c5e64b50daf36824ccb7b",
+          "ff894fb65f2dcea80ae94c19d5d665d3dbcc84672db084c1e7452fc063963587"
+        ],
+        "status": "complete",
+        "unresolved_exposure": [
+          "undisclosed contrastive lineage",
+          "inherited MLM/pretraining",
+          "semantic/near-duplicate/translation exposure"
+        ]
+      }
+    },
+    "combined-objects.json": {
+      "sha256": "272b466062bf6b0bf1ebaca16d5ecf514db7cc5546ffb8b0e18f01de26e1ee11",
+      "content": {
+        "observed_date_utc": "2026-10-01",
+        "project": "azettaai",
+        "account": "tahabhs14@gmail.com",
+        "raw_rows_downloaded_or_authenticated": false,
+        "scope": "provider_object_metadata_only",
+        "objects": [
+          {
+            "uri": "gs://azettaai-yat-eval-0929/embedding-data/code/train.jsonl#1790709342522310",
+            "bytes": 322595639,
+            "crc32c": "16FpSQ=="
+          },
+          {
+            "uri": "gs://azettaai-yat-eval-0929/embedding-data/miracl/train.jsonl#1790709139813804",
+            "bytes": 379552557,
+            "crc32c": "FTOUTA=="
+          },
+          {
+            "uri": "gs://azettaai-yat-eval-0929/embedding-data/msmarco/train.jsonl#1790708939028409",
+            "bytes": 1373813568,
+            "crc32c": "qNl7iw=="
+          },
+          {
+            "source": "contrastive_6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5",
+            "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/history/relocated-v1/contrastive_6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5/train.jsonl#1791213905315735",
+            "bytes": 7146575,
+            "original_sha256": "2908053eb9e82161eae731d4e9a127f2600b4c6f397093d505ef48db32ef5e50"
+          },
+          {
+            "source": "contrastive_9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0",
+            "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/history/relocated-v1/contrastive_9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0/train.jsonl#1791215887376368",
+            "bytes": 187968148,
+            "original_sha256": "527818c392f6c6a25512e0dad7fa5c8233bee5ac97ed84c8570e0b195cc706a2"
+          },
+          {
+            "source": "contrastive_0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923",
+            "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/history/relocated-v1/contrastive_0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923/train.jsonl#1791215898666329",
+            "bytes": 604215624,
+            "original_sha256": "07722c2edb6beda1c50ffc3db4a0c8a47b06bd3780d642dd5602e6de1049894b"
+          }
+        ]
+      }
+    },
+    "filtered/exclusions.json": {
+      "sha256": "c0321faab3b5ff653a6e584fa32330648c609010a8e640c784e22419b2c42e7a",
+      "content_omitted": true,
+      "summary": {
+        "candidate_filter": {
+          "exposure_clean_claim": false,
+          "known_parent_scope": "supplied-known-contrastive-stage-raw-inputs-only",
+          "min_rows_per_config": 64,
+          "original_candidate_identity": {
+            "policy": "candidate-development-quarantine-v1",
+            "raw_hashes": {
+              "codesearchnet_train__pair.jsonl": "debf5c672f2899e6e65b87886ca34e3e18e06d4b73daf82fd694afcaa3bd98f9",
+              "globalvoices_train__en-ar.jsonl": "5a423861f18257c5c9921f4bfecec02c4fa9f3b5af7d6b695a4be247a3f4bced",
+              "globalvoices_train__en-de.jsonl": "50e3a803d61131eeeefcabca691591adf8fc4096f07974189c50f01ca527846f",
+              "globalvoices_train__en-es.jsonl": "39b3777fc9860d50c9f49922323831c9a148c48d4f7b5225ba16387198af0463",
+              "globalvoices_train__en-fr.jsonl": "6a3fee69c0520ed67a9eeec4ea9609c27f3fc866e9d77f0f92053de5dcd66788",
+              "globalvoices_train__en-it.jsonl": "ca718eca1a0c6882f5ed4d25292b278d034ed7e670424867038b9b391c9abc60",
+              "globalvoices_train__en-nl.jsonl": "c5a4e47f30081d35f2484af6eefab269715e8f4d45929176a12b284449c562c1",
+              "globalvoices_train__en-pt.jsonl": "371ddfc177071a4ef91bd3a1776d3e917c7d049700d8ad94c43567866aa3826a",
+              "globalvoices_train__en-ru.jsonl": "63709eb0bb7578ba4e57ee28fa49391982bf16482e585cdf8329f0c68350955e",
+              "native_miracl_train__ar-triplet.jsonl": "c30e6d49d425531c74060780bddc415eeb4ddd841899eab8ebdfbb0ef9580974",
+              "native_miracl_train__bn-triplet.jsonl": "71d1e3f910c70231173528d4cbbf4df369bf94bb1c4d897809a207cf8e86dc83",
+              "native_miracl_train__fr-triplet.jsonl": "61dc205749f552b3da0d40fa2dac0d69e505741ef07c5443750f33d249c4bcdd",
+              "native_miracl_train__hi-triplet.jsonl": "8a09998e126845fdc1ed4740c2d5a8ba9d6491ad0a24e701d89af55a9d6b97da",
+              "native_miracl_train__ja-triplet.jsonl": "30c3d00ef3fde18d8a757dcfa3c89999c20439db55774408ff27e2ddd9360a10",
+              "native_miracl_train__ru-triplet.jsonl": "5e1505c35b8698cb87ce48d6f9f3639b49c469ab222db6d8d9bf7d5e2b379103",
+              "native_miracl_train__sw-triplet.jsonl": "d450781c39d80182b3866165698930f714f38d06035a9c74281459b3a13737b7",
+              "native_miracl_train__zh-triplet.jsonl": "58efe1aac13bb8265e6a28087c03e8e81f5d5da3cb508853cb347fd69f6691e3",
+              "stsb_validation__default.jsonl": "627c9a2675d5612ab55323aac9100abe067d5cec29270a96c6bd20da0e3de379"
+            },
+            "receipt_sha256": "ef69896a6b55eef6e17afd8577ca41f1e1dd8ccae9ed9906b9b5e5f736c36ea2",
+            "spec_sha256": "39cd0e8039a4efaad7a7314a313abb82b66f3fe95ca227eab22e0cb98b375ce2"
+          },
+          "overlap_details_sha256": "64bae94a69be12a3061f55a30a85cbffb330031ce03f044462c8ac8a25b9bb97",
+          "policy": "exact-collision-rejection/new-candidate-v1",
+          "reservation_policy": "retained-selected-rows-only",
+          "scan_sha256": "2efba0ac0d9b83f71eb27f3e222cc2746ae55f1f22ed5e4b467ae76ab3e6c640"
+        },
+        "candidate_filter_counts": {
+          "codesearchnet_train__pair": {
+            "original_rows": 2015,
+            "rejected_rows": 596,
+            "retained_rows": 1419
+          },
+          "globalvoices_train__en-ar": {
+            "original_rows": 1939,
+            "rejected_rows": 1740,
+            "retained_rows": 199
+          },
+          "globalvoices_train__en-de": {
+            "original_rows": 2017,
+            "rejected_rows": 1719,
+            "retained_rows": 298
+          },
+          "globalvoices_train__en-es": {
+            "original_rows": 1964,
+            "rejected_rows": 911,
+            "retained_rows": 1053
+          },
+          "globalvoices_train__en-fr": {
+            "original_rows": 2048,
+            "rejected_rows": 1392,
+            "retained_rows": 656
+          },
+          "globalvoices_train__en-it": {
+            "original_rows": 1975,
+            "rejected_rows": 1520,
+            "retained_rows": 455
+          },
+          "globalvoices_train__en-nl": {
+            "original_rows": 1997,
+            "rejected_rows": 1828,
+            "retained_rows": 169
+          },
+          "globalvoices_train__en-pt": {
+            "original_rows": 1982,
+            "rejected_rows": 1362,
+            "retained_rows": 620
+          },
+          "globalvoices_train__en-ru": {
+            "original_rows": 1961,
+            "rejected_rows": 1334,
+            "retained_rows": 627
+          },
+          "native_miracl_train__ar-triplet": {
+            "original_rows": 706,
+            "rejected_rows": 1,
+            "retained_rows": 705
+          },
+          "native_miracl_train__bn-triplet": {
+            "original_rows": 314,
+            "rejected_rows": 0,
+            "retained_rows": 314
+          },
+          "native_miracl_train__fr-triplet": {
+            "original_rows": 247,
+            "rejected_rows": 0,
+            "retained_rows": 247
+          },
+          "native_miracl_train__hi-triplet": {
+            "original_rows": 243,
+            "rejected_rows": 0,
+            "retained_rows": 243
+          },
+          "native_miracl_train__ja-triplet": {
+            "original_rows": 708,
+            "rejected_rows": 0,
+            "retained_rows": 708
+          },
+          "native_miracl_train__ru-triplet": {
+            "original_rows": 941,
+            "rejected_rows": 1,
+            "retained_rows": 940
+          },
+          "native_miracl_train__sw-triplet": {
+            "original_rows": 374,
+            "rejected_rows": 0,
+            "retained_rows": 374
+          },
+          "native_miracl_train__zh-triplet": {
+            "original_rows": 246,
+            "rejected_rows": 1,
+            "retained_rows": 245
+          },
+          "stsb_validation__default": {
+            "original_rows": 1500,
+            "rejected_rows": 0,
+            "retained_rows": 1500
+          }
+        },
+        "format": "flaxchat-development-exclusion-v1",
+        "parent_exposure_checked": false,
+        "preparation_limits": {
+          "max_input_bytes": 536870912,
+          "max_row_bytes": 4194304,
+          "timeout_seconds": 600.0
+        },
+        "prepared_arrays": false,
+        "quarantine_applied": false,
+        "serialized_input_bytes": 70081669,
+        "sources": {
+          "codesearchnet_train__pair": {
+            "config": "pair",
+            "raw_sha256": "6ccbb86fe6f81aa4c937b1cb7ec8d91fcde15cb23f92c8b74ee22040f27d122c",
+            "repo": "sentence-transformers/codesearchnet",
+            "revision": "079a958b01dc87cf07b66a68414c4b4196d889cc",
+            "scanned_rows": 10000,
+            "selected_rows": 1419,
+            "source_split": "train",
+            "task": "code"
+          },
+          "globalvoices_train__en-ar": {
+            "config": "en-ar",
+            "human_language": "ar",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "acc93d7b0c247bdb1f44b329c0a08bee068871d9de25adb105e1a71274cabb1b",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 199,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-de": {
+            "config": "en-de",
+            "human_language": "de",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "87520cf4129cb4e8f9eda6501e4484e002bddfa4ba55ca8d631d29b236380a75",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 298,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-es": {
+            "config": "en-es",
+            "human_language": "es",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "35b31a0711fef31d6017554fcbeb11ab3f6010f459935ee509555de5a2f7156b",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 1053,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-fr": {
+            "config": "en-fr",
+            "human_language": "fr",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "80259c7e99ef00ad29825ecbdcdd9338db3a5f9062efd69c2c7900e1ce185ec2",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 656,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-it": {
+            "config": "en-it",
+            "human_language": "it",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "e79a163446e45f215248ec80739cceae297ffbcf9baa96d8c8d001843f865a75",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 455,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-nl": {
+            "config": "en-nl",
+            "human_language": "nl",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "de6b479c03980d1fce0948f9977961410bc6c9ead032179f3fb991ea2700ad62",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 169,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-pt": {
+            "config": "en-pt",
+            "human_language": "pt",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "61b4fa44d126d29102760435ca7d39211a34cbdea5ed1ee666dfe8b2e52bac24",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 620,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-ru": {
+            "config": "en-ru",
+            "human_language": "ru",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "cca260ec9b876ba626e79601cc42e59d2b5acad6de51213785020366dea1af9d",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 627,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "native_miracl_train__ar-triplet": {
+            "config": "ar-triplet",
+            "human_language": "ar",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "7254d60bc36a1b5c45ac92c96cf6196cc57486a6f05e3f188a91387f1ce09874",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 3495,
+            "selected_rows": 705,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__bn-triplet": {
+            "config": "bn-triplet",
+            "human_language": "bn",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "71d1e3f910c70231173528d4cbbf4df369bf94bb1c4d897809a207cf8e86dc83",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1631,
+            "selected_rows": 314,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__fr-triplet": {
+            "config": "fr-triplet",
+            "human_language": "fr",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "61dc205749f552b3da0d40fa2dac0d69e505741ef07c5443750f33d249c4bcdd",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1143,
+            "selected_rows": 247,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__hi-triplet": {
+            "config": "hi-triplet",
+            "human_language": "hi",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "8a09998e126845fdc1ed4740c2d5a8ba9d6491ad0a24e701d89af55a9d6b97da",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1169,
+            "selected_rows": 243,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__ja-triplet": {
+            "config": "ja-triplet",
+            "human_language": "ja",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "30c3d00ef3fde18d8a757dcfa3c89999c20439db55774408ff27e2ddd9360a10",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 3477,
+            "selected_rows": 708,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__ru-triplet": {
+            "config": "ru-triplet",
+            "human_language": "ru",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "c7efd7655d922d8f58f93e9251c0c3821d8f26c1c8a6f3cbbb586daa6da4f5ea",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 4683,
+            "selected_rows": 940,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__sw-triplet": {
+            "config": "sw-triplet",
+            "human_language": "sw",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "d450781c39d80182b3866165698930f714f38d06035a9c74281459b3a13737b7",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1901,
+            "selected_rows": 374,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__zh-triplet": {
+            "config": "zh-triplet",
+            "human_language": "zh",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "effa3d5151efd58ffe369991dd82a1243a786671f0053080e89c603201295edc",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1312,
+            "selected_rows": 245,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "stsb_validation__default": {
+            "config": "default",
+            "raw_sha256": "627c9a2675d5612ab55323aac9100abe067d5cec29270a96c6bd20da0e3de379",
+            "repo": "sentence-transformers/stsb",
+            "revision": "ab7a5ac0e35aa22088bdcf23e7fd99b220e53308",
+            "scanned_rows": 1500,
+            "selected_rows": 1500,
+            "source_split": "validation",
+            "task": "sts"
+          }
+        },
+        "spec_sha256": "638a1a39f27508fe516411af42393c521231c08b7d50e7c2294837ab8fa89f23"
+      }
+    }
+  },
+  "terminal.json": {
+    "cleanup_verified": true,
+    "finished_unix": 1791217154.3407404,
+    "job_id": "gce-expanded-1005",
+    "model_execution_qualified": false,
+    "owned_processes_killed": [],
+    "owner": "13f84bacb583457aa49fc532ac2eaaf5",
+    "residual_processes": [],
+    "schema_version": 1,
+    "scratch_removed": true,
+    "spec_sha256": "37f990462a48ee99bfd2eaa856e91038b5b7bc5a7ab889c02a06d621fdf892c2",
+    "started_unix": 1791216758.395574,
+    "status": "execution_succeeded",
+    "worker_returncode": 0
+  },
+  "spec.json": {
+    "command": [
+      "/usr/bin/python3",
+      "{input:runner.py}",
+      "--inputs",
+      "/tmp/flaxchat-data-gce-expanded-1005/inputs",
+      "--scratch",
+      "{scratch}",
+      "--results",
+      "/tmp/flaxchat-data-gce-expanded-1005/results",
+      "--prior-results",
+      "/tmp/flaxchat-data-gce-scan-1005/results",
+      "--provider-delete-unix",
+      "1791219232.747",
+      "--result-prefix",
+      "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02"
+    ],
+    "controller_sha256": "14c42ccb9433df61dfc81bff459d5f979cf809b7328d433ea32bade3592cdb49",
+    "inputs": [
+      {
+        "bytes": 8493,
+        "name": "runner.py",
+        "path": "/tmp/flaxchat-gce-expanded-source-1005/runner.py",
+        "sha256": "777e2967115775e687eb08eb5b27a58a42ae6d046fbf9d639f97e19674f744f5"
+      },
+      {
+        "bytes": 68910,
+        "name": "source-inputs.tar.gz",
+        "path": "/tmp/flaxchat-gce-expanded-source-1005/source-inputs.tar.gz",
+        "sha256": "27c54ca088676a1ebddcdb2ae1adfb65a0817b7450f677b4344e5e69906eee59"
+      }
+    ],
+    "job_id": "gce-expanded-1005",
+    "kill_after_seconds": 15,
+    "root": "/tmp/flaxchat-data-gce-expanded-1005",
+    "schema_version": 1,
+    "timeout_seconds": 1800
+  },
+  "gcs_objects": [
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/01-expanded-candidate/candidate.tar.gz#1791216862643609",
+      "bytes": 8546782
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/03-filtered-candidate/filtered.tar.gz#1791217025629055",
+      "bytes": 5202851
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/04-filtered-recheck/filtered-scan.json#1791217149600503",
+      "bytes": 6816
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-data-expanded02/terminal-data.json#1791217153418357",
+      "bytes": 14086
+    }
+  ],
+  "full_local_handoff_sha256": "45f29085197e07753df7f6dc9a963cb52962f7b0de5f08085d15da34e401a246"
+}

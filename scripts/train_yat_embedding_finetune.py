@@ -8,6 +8,7 @@ later stages can load weights from a prior stage without reusing its optimizer.
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 from functools import partial
 import hashlib
 import json
@@ -34,7 +35,8 @@ from flaxchat.embedding_data import ReplayRows, HomogeneousSchedule, ExposureTra
 from flaxchat.embedding_telemetry import InvocationTelemetry, PHASES, reduce_step
 from flaxchat.embedding_quality import (retrieval_metrics, quality_gate, sts_metrics, programming_language_slices)
 from flaxchat.embedding_gradient_cache import nnx_cached_pool
-from flaxchat.embedding_recovery import evaluation_due, selection_record, reconcile_best, require_save_success, validate_resume_evaluation
+from flaxchat.embedding_recovery import (evaluation_due, selection_record, reconcile_best,
+    require_save_success, validate_resume_evaluation, admit_quality_migration, migration_restore_identity)
 from jax.experimental import multihost_utils
 from flaxchat.public_encoder import load_public_encoder
 from flaxchat.training import (apply_gradients_if_finite, gather_process_metadata,
@@ -93,7 +95,7 @@ def run(args):
     parent_expected = None
     if args.parent_checkpoint:
         parent_metadata = load_checkpoint_metadata(args.parent_checkpoint, args.parent_step, include_receipt=True)
-        parent_receipt.update(validate_parent_metadata(parent_metadata, encoder_config,
+        parent_receipt.update(validate_parent_metadata(parent_metadata, admitted['parent_encoder_config'],
                                                        parent_hashes["tokenizer.json"]))
         parent_receipt["checkpoint"] = args.parent_checkpoint
         parent_receipt["committed_artifact"] = parent_metadata["committed_receipt"]
@@ -127,6 +129,31 @@ def run(args):
               "shuffle": "cursor-derived language-temperature draws with replacement; source-local homogeneous cursors",
               "query_length": next(iter(query_lengths)),
               "document_length": next(iter(document_lengths))}
+    if encoder_config.get("weight_quantization", "none") != "none":
+        recipe["quantization_aware_training"] = {
+            "format": "symmetric-int8-output-channel-v1", "range": [-127, 127],
+            "rounding": "nearest-even", "scale_dtype": "float32",
+            "scale": "max(abs(master))/127; zero row scale 1; floor fp32 tiny",
+            "gradient": "identity-ste-including-scale", "master_dtype": "float32",
+            "linear_reduce_axis": 0, "embedding_reduce_axis": -1,
+            "embedding_policy": "quantize-after-gather",
+            "unquantized": ["norms", "biases", "yat_alpha", "unused-mlm-head"],
+            "activation_quantization": False, "compressed_execution": False,
+            "development_baseline": "quantized-parent; measures stage learning only",
+            "additional_release_gate": "original-parent versus exported-QAT quality and physical loader parity"}
+    regression_action = getattr(args, 'quality_regression_action', 'stop')
+    if regression_action != 'stop':
+        recipe['development_policy']['regression_action'] = regression_action
+    schedule_steps = getattr(args, 'schedule_steps', None)
+    schedule_steps = args.steps if schedule_steps is None else schedule_steps
+    if schedule_steps != args.steps:
+        recipe['schedule_steps'] = schedule_steps
+    migration = None
+    if getattr(args, 'resume_quality_migration', None) is not None:
+        migration, lineage = admit_quality_migration(args.resume_quality_migration,
+            {'resolved_config': recipe, 'tokenizer': parent_hashes['tokenizer.json'],
+             'data_manifest': data_digest, 'source_python_sha256': source_hash}, args.output)
+        recipe['resume_policy_migration'] = lineage
     metadata = {"model_family": "yat_embedding_finetune", "resolved_config": recipe,
                 "tokenizer_identity": parent_hashes["tokenizer.json"],
                 "data_manifest_identity": data_digest,
@@ -143,10 +170,16 @@ def run(args):
     if args.parent_checkpoint and not args.resume:
         restore_model_from_checkpoint(model, args.parent_checkpoint, step=args.parent_step,
                                       expected_identity=parent_expected)
+    # Restore with the original parent config, then enter the new stage policy.
+    # FP32 parameter leaves and trainable alpha retain their original identity.
+    config = replace(model.config, weight_quantization=encoder_config.get("weight_quantization", "none"))
+    model.config = config
+    for layer in model.layers:
+        layer.config = config
     mesh = Mesh(np.asarray(jax.devices()), ("data",))
     nnx.update(model, replicate_on_mesh(nnx.state(model), mesh))
     lr = optax.warmup_cosine_decay_schedule(0.0, args.learning_rate,
-        args.warmup, args.steps, end_value=args.learning_rate * 0.1)
+        args.warmup, schedule_steps, end_value=args.learning_rate * 0.1)
     optimizer = nnx.Optimizer(model, optax.chain(
         optax.clip_by_global_norm(1.0),
         optax.adamw(lr, weight_decay=args.weight_decay,
@@ -165,15 +198,20 @@ def run(args):
             # Initial best step 0 can commit before the first recovery snapshot.
             # It is a complete authenticated model/optimizer/cursor snapshot.
             resume_source = args.output.rstrip("/") + "/best"
-            restored_metadata = load_checkpoint_metadata(resume_source, 0)
+            restored_metadata = load_checkpoint_metadata(resume_source, 0, include_receipt=True)
             bootstrap_resume = True
         else:
-            restored_metadata = load_checkpoint_metadata(resume_source, latest)
+            restored_metadata = load_checkpoint_metadata(resume_source, latest, include_receipt=True)
+        restore_expected = migration_restore_identity(restored_metadata, expected, migration)
         _, state = restore_model_from_checkpoint(model, resume_source, step=restored_metadata["step"],
-            optimizer=optimizer, expected_identity=expected, load_training_state=True)
+            optimizer=optimizer, expected_identity=restore_expected, load_training_state=True)
         start = validate_cursor(state, horizon=args.steps, stop=args.stop_after or args.steps,
                                 committed_step=restored_metadata["step"])
         validate_optimizer_cursor(np.asarray(optimizer.step[...]), start)
+        if migration is not None and jax.process_index() == 0:
+            print(json.dumps({'event': 'embedding_resume_policy_migration', 'step': start,
+                              'lineage': recipe['resume_policy_migration'],
+                              'restored_previous_identity': restore_expected != expected}), flush=True)
     nnx.update(optimizer, replicate_on_mesh(nnx.state(optimizer), mesh))
     manager = create_checkpoint_manager(args.output,
         max_to_keep=args.keep_checkpoints, async_checkpointing=False)
@@ -234,13 +272,15 @@ def run(args):
         quality_state = json.loads(bytes(np.asarray(quality_state, np.uint8)).decode())
         try:
             last_evaluation = validate_resume_evaluation(quality_state, cursor=start,
-                horizon=args.steps, every=args.eval_every, max_regression=args.max_dev_regression)
+                horizon=args.steps, every=args.eval_every, max_regression=args.max_dev_regression,
+                regression_action=regression_action)
         except Exception:
             best_manager.close()
             manager.close()
             raise
         best_metadata = load_checkpoint_metadata(best_output, include_receipt=True)
-        quality_state = reconcile_best(quality_state, best_metadata, expected,
+        best_expected = migration_restore_identity(best_metadata, expected, migration, best=True)
+        quality_state = reconcile_best(quality_state, best_metadata, best_expected,
             horizon=args.steps, every=args.eval_every, bootstrap=bootstrap_resume)
         baseline, best_score = quality_state["baseline"], quality_state["best_score"]
         best_step, best_receipt = quality_state["best_step"], quality_state["best_receipt"]
@@ -320,6 +360,7 @@ def run(args):
         if jax.process_index() == 0:
             print(json.dumps({"event": "embedding_dev", "step": step,
                               "source_metrics": result, "gate": gate, "exposure": exposure.report(),
+                              "regression_action": regression_action,
                               "best_score": best_score}), flush=True)
         return improved, gate
 
@@ -442,7 +483,7 @@ def run(args):
                 improved, gate = evaluate_dev(step + 1)
                 if improved:
                     commit_best(step + 1)
-                if not gate["passed"]:
+                if not gate["passed"] and regression_action == 'stop':
                     commit_recent(step + 1)
                     raise RuntimeError(f"Development representation gate failed: {gate['regressions']}")
             if (step + 1) % args.save_every == 0 or step + 1 == stop:

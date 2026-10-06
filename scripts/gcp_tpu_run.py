@@ -156,14 +156,17 @@ def main(argv=None):
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--directory', default='/tmp/flaxchat-validation')
     parser.add_argument('--timeout', type=int, default=600)
+    parser.add_argument('--allow-long-lease', action='store_true',
+                        help='Explicitly allow a workload timeout up to 12 hours')
     parser.add_argument('--single-worker', action='store_true')
     parser.add_argument('--cancel-peers-on-failure', action='store_true',
                         help='For a supervising owner that tears down the slice on failure; stop peer SSH waits promptly')
     parser.add_argument('--setup', action='store_true', help='Run on every worker without distributed JAX environment')
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
-    if not 1 <= args.timeout <= 7200:
-        parser.error('Timeout must be in [1,7200] seconds')
+    maximum = 43200 if args.allow_long_lease else 7200
+    if not 1 <= args.timeout <= maximum:
+        parser.error(f'Timeout must be in [1,{maximum}] seconds; longer leases require --allow-long-lease')
     command = args.command[1:] if args.command[:1] == ['--'] else args.command
     if not command:
         parser.error('Command required after --')

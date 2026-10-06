@@ -1,0 +1,28 @@
+{
+  "name": "yat-v2-data-1005",
+  "id": "7175463575097341671",
+  "zone": "https://www.googleapis.com/compute/v1/projects/azettaai/zones/us-west4-a",
+  "machineType": "https://www.googleapis.com/compute/v1/projects/azettaai/zones/us-west4-a/machineTypes/e2-standard-4",
+  "status": "RUNNING",
+  "scheduling": {
+    "automaticRestart": false,
+    "instanceTerminationAction": "DELETE",
+    "maxRunDuration": {
+      "nanos": 0,
+      "seconds": "3600"
+    },
+    "onHostMaintenance": "MIGRATE",
+    "preemptible": false,
+    "provisioningModel": "STANDARD"
+  },
+  "lastStartTimestamp": "2026-10-05T08:53:52.747-07:00",
+  "disks": [
+    {
+      "source": "https://www.googleapis.com/compute/v1/projects/azettaai/zones/us-west4-a/disks/yat-v2-data-1005",
+      "autoDelete": true,
+      "boot": true
+    }
+  ],
+  "scope": "provider-readback-before-data-worker; not terminal cleanup",
+  "spec_sha256": "01c2ffd9fecac71349224f6014bb0d83e604d14c21fcf72c861172c9bf946e09"
+}

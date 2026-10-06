@@ -1,0 +1,148 @@
+{
+  "scope": "single_host_selected_tests",
+  "quality_qualified": false,
+  "passed": true,
+  "include_distributed_cpu": false,
+  "source_python_sha256": "6aee823306cdb203fa19bf6e50e528ad3367215aee5a1841ca35252c747c0cd1",
+  "files": [
+    "tests/test_embedding_hard_negative_physical_tpu.py",
+    "tests/test_embedding_trainer_physical_tpu.py"
+  ],
+  "environment_overrides": {
+    "JAX_PLATFORMS": "tpu",
+    "FLAXCHAT_DTYPE": "float32",
+    "JAX_DEFAULT_MATMUL_PRECISION": "highest"
+  },
+  "module_timeout_seconds": 800,
+  "required_nodes": {
+    "tests/test_embedding_hard_negative_physical_tpu.py": [
+      "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[True-True]",
+      "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[True-False]",
+      "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[False-True]",
+      "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[False-False]"
+    ],
+    "tests/test_embedding_trainer_physical_tpu.py": [
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-None]",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-None]",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-baseline0]",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-gatehorizon]",
+      "tests.test_embedding_trainer_physical_tpu::test_physical_rejected_update_preserves_model_and_optimizer",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-independent]",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-migration]"
+    ]
+  },
+  "selected_nodes": {
+    "tests/test_embedding_hard_negative_physical_tpu.py": [
+      "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[True-True]",
+      "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[True-False]",
+      "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[False-True]",
+      "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[False-False]"
+    ],
+    "tests/test_embedding_trainer_physical_tpu.py": [
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-None]",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-None]",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-baseline0]",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-gatehorizon]",
+      "tests.test_embedding_trainer_physical_tpu::test_physical_rejected_update_preserves_model_and_optimizer",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-independent]",
+      "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-migration]"
+    ]
+  },
+  "skip_policy": "all-selected-nodes-must-pass",
+  "results": [
+    {
+      "file": "tests/test_embedding_hard_negative_physical_tpu.py",
+      "returncode": 0,
+      "passed": true,
+      "tests": [
+        {
+          "test": "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[True-True]",
+          "status": "passed",
+          "seconds": 8.507,
+          "message": ""
+        },
+        {
+          "test": "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[True-False]",
+          "status": "passed",
+          "seconds": 0.28,
+          "message": ""
+        },
+        {
+          "test": "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[False-True]",
+          "status": "passed",
+          "seconds": 0.35,
+          "message": ""
+        },
+        {
+          "test": "tests.test_embedding_hard_negative_physical_tpu::test_physical_loss_gradient_complete_relevance[False-False]",
+          "status": "passed",
+          "seconds": 0.226,
+          "message": ""
+        }
+      ],
+      "seconds": 12.883847484,
+      "evidence_error": null,
+      "matmul_precision": "highest"
+    },
+    {
+      "file": "tests/test_embedding_trainer_physical_tpu.py",
+      "returncode": 0,
+      "passed": true,
+      "tests": [
+        {
+          "test": "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-None]",
+          "status": "passed",
+          "seconds": 18.96,
+          "message": ""
+        },
+        {
+          "test": "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-None]",
+          "status": "passed",
+          "seconds": 11.008,
+          "message": ""
+        },
+        {
+          "test": "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-baseline0]",
+          "status": "passed",
+          "seconds": 7.866,
+          "message": ""
+        },
+        {
+          "test": "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-True-gatehorizon]",
+          "status": "passed",
+          "seconds": 3.691,
+          "message": ""
+        },
+        {
+          "test": "tests.test_embedding_trainer_physical_tpu::test_physical_rejected_update_preserves_model_and_optimizer",
+          "status": "passed",
+          "seconds": 0.119,
+          "message": ""
+        },
+        {
+          "test": "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-independent]",
+          "status": "passed",
+          "seconds": 8.03,
+          "message": ""
+        },
+        {
+          "test": "tests.test_embedding_trainer_physical_tpu::test_real_trainer_resume_pair_triplet_schema_and_best[False-False-migration]",
+          "status": "passed",
+          "seconds": 17.656,
+          "message": ""
+        }
+      ],
+      "seconds": 70.93315677000004,
+      "evidence_error": null,
+      "matmul_precision": "highest"
+    }
+  ],
+  "not_run": [],
+  "hardware_passed": true,
+  "counts": {
+    "passed": 11,
+    "failure": 0,
+    "error": 0,
+    "skipped": 0
+  }
+}

@@ -18,7 +18,7 @@ import subprocess
 import time
 
 from flaxchat.embedding_data import IDENTITY_POLICY, row_identities
-from flaxchat.embedding_historical_rows import historical_row_view
+from flaxchat.embedding_historical_rows import historical_row_view, historical_stage_sources, historical_manifest_view
 from flaxchat.embedding_development_quarantine import load_candidate_exclusions
 from scripts.evaluation_contract import write_atomic
 
@@ -149,7 +149,7 @@ def scan(
                 r"gs://[a-z0-9][a-z0-9._-]*/[^#\s]+/train\.jsonl#[1-9][0-9]*", uri
             ):
                 raise ValueError("Explicit immutable GCS train generation required")
-            name = uri.split("/")[-2]
+            name = item.get("source", uri.split("/")[-2])
             if not re.fullmatch(r"[A-Za-z0-9_-]+", name) or name in object_map:
                 raise ValueError("Ambiguous/unsafe source object inventory")
             if type(size) is not int or size < 1:
@@ -161,6 +161,7 @@ def scan(
         sources = {}
         for directory in prepared_directories:
             manifest, digest, raw = read(Path(directory) / "manifest.json")
+            manifest = historical_manifest_view(manifest, digest)
             name = manifest.get("source")
             upstream = manifest.get("source_identity", {})
             rows = manifest.get("rows", {}).get("train")
@@ -188,7 +189,7 @@ def scan(
         for path in stage_metadata:
             metadata, digest, _ = read(path)
             stage_hashes.append(digest)
-            declared = metadata.get("resolved_config", {}).get("data_manifests")
+            declared = historical_stage_sources(metadata)
             if not isinstance(declared, dict) or not declared:
                 raise ValueError("Actual committed stage data_manifests required")
             for name, identity in declared.items():

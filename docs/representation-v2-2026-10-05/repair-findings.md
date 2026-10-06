@@ -1,0 +1,39 @@
+# Preparation failure and repair evidence
+
+The original frozen production preparation failed because `historical/code/dev.jsonl` did not exist. The portable development bundle intentionally contained manifests and training histories; its separate heldout supplement contained only three contrastive pair dev files. The preparer incorrectly assumed code, MIRACL and MS MARCO dev rows were in the portable bundle. Exact-input GCP reproduction retained the full `FileNotFoundError` in `raw-failure-reproduction.json`.
+
+The missing three files still existed in GCS. A complete six-source supplement was built and every file matched its original manifest SHA256. The complete archive was uploaded generation-pinned and fully downloaded again to verify its SHA. See `complete-heldout-receipt.json`.
+
+Repairs:
+
+- Authenticate all six historical heldouts before scanning training data; explicitly bind the complete archive SHA.
+- Keep worker log paths and bounded error tails on failures, timeouts and signals.
+- Preserve whole controller diagnostics using a reserved final-upload window; terminate subprocess groups on timeout.
+- Publish passing prepared data before production preflight and support authenticated reuse, avoiding repeated full preparation after a later failure.
+- Verify frozen controller source, runtime lock, preparation recipe, quarantine receipts, source manifests and mixture weights.
+- Retain failed physical parent-import evidence and refuse to report completion when TPU cleanup remains unverified.
+- Fix bootstrap compatibility with the VM's Python version and retain explicit archive containment/type checks.
+
+Verification: 38 model-free tests passed on the actual Linux VM, including detached-controller lifecycle, an actual eleven-source miniature raw/tokenization/mixture/audit pipeline, corrupted/missing inputs and failed subprocess logs. Three additional whole-controller integration tests exercise prepared-data reuse through actual manifest/argument validation, one-launch admission, failed-preflight data retention and unverified-cleanup rejection. Model forward/backward checks have not run on CPU.
+
+The first full-data run of the corrected source completed bitext preparation (625,054 train / 6,278 dev), then failed on a second defect: historical code and MS MARCO rows lack the natural-language field declared by the generated registry. The miniature fixture had supplied that field, masking the real historical schema. The exact cloud error and all diagnostics are retained under `repair-1005/full-validation/`; the bounded worker confirmed terminal failure and verified owned-process cleanup. No TPU was allocated. Schema normalization and representative fixtures are being repaired before a new separately admitted execution. Full tokenization, final quarantine, production preflight and physical TPU acceptance remain pending.
+
+Second full-data attempt uses source `303b505838cd333bb31b1c31674fe318f1db1f1e793a1477a3227133d42bacc0` and source-authenticated bounded job `repair-full02-1005`. All 48 metadata/orchestration/data tests passed on its Linux runtime. Historical MS MARCO and code rows now receive explicit undetermined natural-language labels, optional negatives are materialized, malformed required fields fail during raw preparation, and code programming-language provenance remains separate and preserved. The representative fixture omits language for both affected historical schemas. This does not substitute for the ongoing full-data execution.
+
+The second full execution passed: 2,165,175 rows across all eleven sources, zero declared exact heldout overlaps, all 48 Linux metadata/lifecycle tests, and shared production stage preflight. Prepared data is generation-pinned and fully SHA-verified. The bounded worker terminated successfully with scratch removed and no residual owned processes. The physical TPU gate remains separate. A single 32GiB cloud controller `yat-v2-train-1005` was created on 2026-10-06 00:46 UTC, provider ID `2216424692240742952`, with automatic deletion at 12:46 UTC and auto-deleted boot disk. It reuses the prepared bundle and must pass physical qualification before training. This is not evidence of model steps yet.
+
+The physical launch on 2026-10-06 UTC found a third deterministic defect before model import: `validate_production_parent_tpu` called deployment provenance during setup, but `runtime-receipt.json` was only written after those setup checks. The parent artifacts and physical backend admission passed; model restoration and the selected tests did not execute. The retained `qualification/parent-qualification.log` names the missing runtime receipt.
+
+The setup ordering is now fixed: an immutable `runtime-setup-receipt.json` records verified packages/hardware/source with acceptance explicitly false. Only setup qualification may use that provisional receipt. Final acceptance is written atomically after successful checks and qualification, binds the provisional receipt hash, and training verifies that hash. Ordinary evaluation cannot silently use provisional evidence. Source mutation during checks fails admission. Six new metadata cases cover ordering, failed checks, rejected acceptance, source mutation, ordinary provenance and invalid provisional identity. The repaired runtime plus existing preparation/controller tests passed 29 tests locally; Ruff passed. No CPU model execution occurred. The corrected runtime still requires a new physical attempt.
+
+Automatic cleanup was independently verified for the exact TPU queue/node, controller VM and boot disk. All were absent; zero new training steps/checkpoints were produced. The complete data/preflight result remains valid for its recorded source, and a minimal runtime-only source diff preserves every data/trainer file. The carried reservation ledger totals $247.00 against the authorized $247.40 cap; this is not posted spend. Reservations are retained across attempts, so another bounded allocation needs additional authorization.
+
+The concrete unlaunched retry is recorded in `repair-retry-plan.json`. Its source archive changes exactly two runtime/provenance files and adds one ordering test; all other 446 files, including data preparation and trainer code, are unchanged. The controller bootstrap uses the same authenticated offline CPython/wheels and exact package lock. One eight-hour physical attempt plus controller reserves another $87.60 (aggregate $334.60, proposed cap $335). Nothing from that retry has been uploaded or allocated.
+
+## Authorized second physical attempt — 2026-10-06
+
+The user approved continuation with “train”; the reservation cap was updated to $335. Corrected source `07e473fc…` passed actual restoration of all 181 parent leaves and all ten selected physical TPU tests (zero skipped/failed). Real production training completed 500 accepted updates / 64,000 pair exposures, median warmed update 0.7725 seconds. Step 500 was committed to GCS, including optimizer and training state, before the configured quality gate raised. Recent checkpoints 300/400/500 are present.
+
+The stop is a measured quality rejection, not recurrence of the runtime-order bug: STS Pearson declined 0.808916→0.778685 (>0.02 bound), and a 14-query historical bitext language probe lost one recall@10 result. Internal independent selected-positive MRR improved retrieval 0.904119→0.953670, code 0.943213→0.948479, and bitext 0.873121→0.931749. These are development probes, not official full-corpus benchmarks. Preserve the rejected checkpoint; do not silently relax the gate or promote it. A subsequent recipe should address semantic-similarity retention and audit the noisy historical-probe gate separately.
+
+The exact attempt's TPU node and queue and controller VM/disk were independently absent after automatic cleanup. No training is currently running. Durable results are in `training02-result.json`; the carried reservation totals $334.60, not posted charges.

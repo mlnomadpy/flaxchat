@@ -1,0 +1,72 @@
+{
+  "format": "flaxchat-development-candidate-v1",
+  "purpose": "bitext and STS candidate preparation only; not a full production recipe or final benchmark",
+  "seed": 29,
+  "max_scanned_rows_per_config": 10000,
+  "max_selected_rows_per_config": 128,
+  "heldout_hash_modulus": 5,
+  "sources": [
+    {
+      "name": "globalvoices_train",
+      "task": "bitext",
+      "repo": "sentence-transformers/parallel-sentences-global-voices",
+      "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+      "configs": [
+        "en-ar",
+        "en-de",
+        "en-fr",
+        "en-hi",
+        "en-ko",
+        "en-ur",
+        "en-tr",
+        "en-ru"
+      ],
+      "split": "train",
+      "fields": {
+        "query": "english",
+        "positive": "non_english"
+      },
+      "group_policy": "english-text-across-configs",
+      "config_language_map": {
+        "en-ar": "ar",
+        "en-de": "de",
+        "en-fr": "fr",
+        "en-hi": "hi",
+        "en-ko": "ko",
+        "en-ur": "ur",
+        "en-tr": "tr",
+        "en-ru": "ru"
+      }
+    },
+    {
+      "name": "stsb_validation",
+      "task": "sts",
+      "repo": "sentence-transformers/stsb",
+      "revision": "ab7a5ac0e35aa22088bdcf23e7fd99b220e53308",
+      "configs": [
+        "default"
+      ],
+      "split": "validation",
+      "fields": {
+        "query": "sentence1",
+        "positive": "sentence2",
+        "score": "score"
+      },
+      "group_policy": "pair-text",
+      "score_range": [
+        0,
+        1
+      ],
+      "metadata_verified_total_rows": 1500
+    }
+  ],
+  "admission": {
+    "official_benchmark_dev_or_test_allowed": false,
+    "quarantine_all_training_sources": true,
+    "existing_parent_exposure_must_be_checked": true,
+    "prepared_rows": false,
+    "production_quality_plan_complete": false,
+    "code_source_independence": "unresolved; legacy parent source is shuffled, not a raw prefix",
+    "retrieval_candidates": "separate native MIRACL candidate identity"
+  }
+}

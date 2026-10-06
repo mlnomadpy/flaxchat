@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "passed": false,
+  "status": "failed",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "run_id": "yat-v2-direct-qat-1005",
+  "stage_id": "parent-direct-qat-qualification",
+  "phase": "cleanup_scope_admission",
+  "started_unix": 1791213936.804575,
+  "whole_slice_hourly_usd": 9.6,
+  "attempt_seconds": 1800,
+  "capacity_wait_seconds": 180,
+  "startup_wait_seconds": 240,
+  "max_attempts": 1,
+  "phases": [
+    {
+      "phase": "admission",
+      "elapsed_seconds": 0.0005169587675482035
+    },
+    {
+      "phase": "identity_admission",
+      "elapsed_seconds": 0.00036245817318558693
+    },
+    {
+      "phase": "cleanup_scope_admission",
+      "elapsed_seconds": 3.713449416914955
+    }
+  ],
+  "attempts": [
+    {
+      "index": 0,
+      "resource_name": "flaxchat-validation-yat-v2-direct-qat-1005-0-30d1679e9fcf4fde",
+      "attempt_id": "30d1679e9fcf4fde:0",
+      "cleanup": {
+        "state": "not_required"
+      },
+      "remote_stages_started": []
+    }
+  ],
+  "model_execution_state": "not_started",
+  "posted_usage_usd": null,
+  "error": "ValueError: Cleanup IAM scope does not explicitly cover exact zone/name before reservation: nodes:tpu.nodes.delete, nodes:tpu.nodes.get, queuedResources:tpu.nodes.delete, queuedResources:tpu.nodes.get",
+  "finished_unix": 1791213940.518891,
+  "elapsed_seconds": 3.7143328338861465,
+  "no_remote_execution": true,
+  "cleanup_required": false,
+  "cleanup_verified": false,
+  "ledger_path": "/private/tmp/flaxchat-fixes-20260930/qualification-aggregate-ledger.json",
+  "reserved_usd": 120.6,
+  "budget_usd": 134
+}

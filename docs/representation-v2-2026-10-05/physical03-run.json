@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "run_id": "yat-embed-torch-v2-direct-qat-1005",
+  "stage_id": "parent-direct-qat-qualification",
+  "parent_identity": {
+    "yat_hf_revision": "571d0ef3d8e1381055845fce334a48be253c3fea",
+    "purpose": "Production parent byte-exact physical import and selected direct/QAT semantic qualification; no production training"
+  },
+  "cleanup_owner": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup",
+  "expected_topology": "v5litepod-8",
+  "expected_device_count": 8,
+  "expected_process_count": 1,
+  "source": {
+    "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/physical-03/source.tar.gz",
+    "sha256": "bf6436852da87a3a3dc8924007391df0e786ac6fa5d16ef448f799c5dbd1313a",
+    "target": "source",
+    "archive": true
+  },
+  "artifacts": [
+    {
+      "uri": "gs://azettaai-yat-eval-0929/system-fixes-1001/runtime-build-02/wheelhouse.tar.gz#1790848299416576",
+      "sha256": "b5650b716f79cb05926d5993809fc3dfd5785563db896041d9d3faed1b3e7460",
+      "target": "wheels",
+      "archive": true
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/system-fixes-1001/physical-qualification-01/safetensors-wheelhouse.tar.gz",
+      "sha256": "5034b5bdaec9a690b9a9a833a81f934a64ee8023effe351d02909f356f86fe0d",
+      "target": "wheels",
+      "archive": true
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/system-fixes-1001/physical-qualification-02/python-headless.tar.gz",
+      "sha256": "7394e559d40b250b48d73989eeca9da69cb61b99e9f037a4d97b95eababfdfad",
+      "target": "cpython",
+      "archive": true,
+      "allow_internal_links": true,
+      "transformation_policy": "headless-exclude-terminfo-v1"
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/embedding-finetune-v1/release/model.safetensors#1790751315402234",
+      "sha256": "6ee56349adbf10a3c3d5805d94539f987250aea2c98611b4d89c6fd9b7142aff",
+      "target": "parent/model.safetensors",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/embedding-finetune-v1/release/tokenizer.json#1790751313193262",
+      "sha256": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+      "target": "parent/tokenizer.json",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/config.json",
+      "sha256": "9f684e509813407633981e8c88fb9a8c2da574f2b28ba9d90cb8053fcc2c9d9e",
+      "target": "parent/config.json",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/checkpoint-metadata.json",
+      "sha256": "ff894fb65f2dcea80ae94c19d5d665d3dbcc84672db084c1e7452fc063963587",
+      "target": "parent/checkpoint-metadata.json",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/checkpoint-manifest.json",
+      "sha256": "7d32068caa94ddf50a56ccc37bdcaf22993cccd968ad24c76a4111e9aded2309",
+      "target": "parent/checkpoint-manifest.json",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/export.json",
+      "sha256": "c594475f857efde0f4b741bc0daa24846d9f9c632dcb9f1f7373985525bc22a5",
+      "target": "parent/export.json",
+      "archive": false
+    }
+  ],
+  "runtime_lock": {
+    "path": "infra/tpu/embedding-qualification-lock.txt",
+    "sha256": "c5328dcbc58c9b2f18b52131b7c5acff17c9a93bb180639395a3259c6ab56bd5",
+    "wheelhouse_target": "wheels",
+    "python_executable": "{root}/cpython/python/bin/python3.12"
+  },
+  "output_prefix": "gs://azettaai-yat-eval-0929/representation-v2-1005/physical-03/yat-embed-torch-v2-direct-qat-1005/parent-direct-qat-qualification",
+  "setup_checks": [
+    "{python}",
+    "-c",
+    "import jax,flax,optax,safetensors,tokenizers; assert jax.default_backend()=='tpu' and jax.device_count()==8 and jax.process_count()==1; import scripts.validate_production_parent_tpu,scripts.validate_test_suite,flaxchat.weight_qat"
+  ],
+  "workload": [
+    "{python}",
+    "-m",
+    "scripts.direct_qat_campaign",
+    "--parent",
+    "{root}/parent",
+    "--output",
+    "{root}/evidence",
+    "--prefix",
+    "{output_prefix}/results"
+  ],
+  "download_timeout_seconds": 180,
+  "upload_timeout_seconds": 60,
+  "deployment": {
+    "project": "azettaai",
+    "zone": "us-west4-a",
+    "accelerator_type": "v5litepod-8",
+    "runtime_version": "v2-alpha-tpuv5-lite",
+    "provisioning_model": "spot",
+    "hourly_usd": 9.6,
+    "budget_usd": 148,
+    "attempt_seconds": 2400,
+    "capacity_wait_seconds": 600,
+    "campaign_ledger": "/private/tmp/flaxchat-fixes-20260930/qualification-aggregate-ledger.json",
+    "pricing": {
+      "sku": "TPU v5e us-west4 on-demand list price conservative ceiling for Spot admission",
+      "region": "us-west4",
+      "accelerator_type": "v5litepod-8",
+      "provisioning_model": "spot",
+      "hourly_usd": 9.6,
+      "currency": "USD",
+      "unit": "whole_slice_hour",
+      "source": "https://cloud.google.com/tpu/pricing",
+      "observed_at": "2026-10-05T14:13:57.538074+00:00",
+      "rate_basis": "on_demand_upper_bound_for_spot_admission",
+      "reference_provisioning_model": "on_demand",
+      "actual_spot_rate_verified": false,
+      "chips": 8,
+      "reference_per_chip_hourly_usd": 1.2
+    },
+    "startup_wait_seconds": 240
+  }
+}

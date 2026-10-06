@@ -1,0 +1,735 @@
+{
+  "controller": {
+    "cleanup_verified": true,
+    "finished_unix": 1791218520.3167093,
+    "job_id": "gce-final-1005",
+    "model_execution_qualified": false,
+    "owned_processes_killed": [],
+    "owner": "a505dc6a188d4ba7a79e0108f6c17a77",
+    "residual_processes": [],
+    "schema_version": 1,
+    "scratch_removed": true,
+    "spec_sha256": "2f45ea5d49c01661ee3549da3d75aeb2bfbe0a352626b3bb0d6429a40e55de09",
+    "started_unix": 1791218143.8829486,
+    "status": "execution_succeeded",
+    "worker_returncode": 0
+  },
+  "data": {
+    "format": "flaxchat-portable-development-finalization-v1",
+    "status": "passed",
+    "model_execution": false,
+    "prior_timeout_receipt_sha256": "1a30d71fd5f4f4c4c0e84ee14e87cc4c4c7e46f7b8ac188cbab445c801ca84f8",
+    "commands": [
+      {
+        "argv": [
+          "/usr/bin/python3",
+          "-c",
+          "import pathlib,tarfile,sys;r=pathlib.Path(sys.argv[1]);t=tarfile.open(sys.argv[2],\"w:gz\",compresslevel=1);[t.add(p,arcname=str(p.relative_to(r)),recursive=False) for p in sorted(r.rglob(\"*\")) if p.is_file()];t.close()",
+          "/tmp/flaxchat-data-gce-portable-1005/results/bundle",
+          "/tmp/flaxchat-data-gce-final-1005/results/portable-development.tar.gz"
+        ],
+        "limit": 180,
+        "log": "command-1.log",
+        "returncode": 0
+      },
+      {
+        "argv": [
+          "gcloud",
+          "storage",
+          "cp",
+          "/tmp/flaxchat-data-gce-final-1005/results/portable-development.tar.gz",
+          "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-portable-final04/portable-development.tar.gz",
+          "--if-generation-match=0",
+          "--quiet"
+        ],
+        "limit": 150,
+        "log": "command-2.log",
+        "returncode": 0
+      },
+      {
+        "argv": [
+          "gcloud",
+          "storage",
+          "objects",
+          "describe",
+          "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-portable-final04/portable-development.tar.gz",
+          "--format=json"
+        ],
+        "limit": 30,
+        "log": "command-3.log",
+        "returncode": 0
+      },
+      {
+        "argv": [
+          "gcloud",
+          "storage",
+          "cp",
+          "/tmp/flaxchat-data-gce-final-1005/results/archive-receipt.json",
+          "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-portable-final04/archive-receipt.json",
+          "--if-generation-match=0",
+          "--quiet"
+        ],
+        "limit": 30,
+        "log": "command-4.log",
+        "returncode": 0
+      },
+      {
+        "argv": [
+          "/usr/bin/python3",
+          "-m",
+          "venv",
+          "/tmp/flaxchat-data-gce-final-1005/work/venv"
+        ],
+        "limit": 30,
+        "log": "command-5.log",
+        "returncode": 0
+      },
+      {
+        "argv": [
+          "/tmp/flaxchat-data-gce-final-1005/work/venv/bin/python",
+          "-m",
+          "pip",
+          "install",
+          "--no-deps",
+          "numpy==2.5.3"
+        ],
+        "limit": 90,
+        "log": "command-6.log",
+        "returncode": 0
+      },
+      {
+        "argv": [
+          "/tmp/flaxchat-data-gce-final-1005/work/venv/bin/python",
+          "-c",
+          "import pathlib,json,sys,time;from flaxchat.embedding_development_quarantine import load_candidate_exclusions;from flaxchat.embedding_dev_exposure import parent_exposure;r=pathlib.Path(sys.argv[1]);idx=load_candidate_exclusions(r/\"candidate\");h=json.loads((r/\"parent-files.json\").read_text());\nfor d in sorted((r/\"independent\").iterdir()):\n p=parent_exposure(d/\"parent-exposure-input.json\",idx,h);assert p==json.loads((d/\"parent-exposure-proof.json\").read_text());print(json.dumps({\"task\":d.name,\"complete\":p[\"complete\"],\"overlap_rows\":p[\"overlap_rows\"]}),flush=True)",
+          "/tmp/flaxchat-data-gce-portable-1005/results/bundle"
+        ],
+        "limit": 600,
+        "log": "command-7.log",
+        "returncode": 0
+      },
+      {
+        "argv": [
+          "gcloud",
+          "storage",
+          "cp",
+          "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-portable-final04/portable-development.tar.gz#1791218219777261",
+          "/tmp/flaxchat-data-gce-final-1005/work/readback.tar.gz",
+          "--quiet"
+        ],
+        "limit": 150,
+        "log": "command-8.log",
+        "returncode": 0
+      }
+    ],
+    "archive_sha256": "4447de1376a17cd0c5c98cf082d16b37391469d34fa5a6225e317ebff8df2559",
+    "archive_bytes": 1265421119,
+    "qualification": "complete portable proof replay and full immutable GCS byte readback",
+    "archive_uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-portable-final04/portable-development.tar.gz#1791218219777261",
+    "proof_replay": [
+      {
+        "task": "bitext",
+        "complete": true,
+        "overlap_rows": 0
+      },
+      {
+        "task": "code",
+        "complete": true,
+        "overlap_rows": 0
+      },
+      {
+        "task": "retrieval",
+        "complete": true,
+        "overlap_rows": 0
+      }
+    ],
+    "verified_full_remote_bytes": true,
+    "parent_weight_archive_included": false,
+    "manifests": {
+      "retrieval": {
+        "candidate_identity": {
+          "policy": "candidate-development-quarantine-v1",
+          "raw_hashes": {
+            "codesearchnet_train__pair.jsonl": "6ccbb86fe6f81aa4c937b1cb7ec8d91fcde15cb23f92c8b74ee22040f27d122c",
+            "globalvoices_train__en-ar.jsonl": "acc93d7b0c247bdb1f44b329c0a08bee068871d9de25adb105e1a71274cabb1b",
+            "globalvoices_train__en-de.jsonl": "87520cf4129cb4e8f9eda6501e4484e002bddfa4ba55ca8d631d29b236380a75",
+            "globalvoices_train__en-es.jsonl": "35b31a0711fef31d6017554fcbeb11ab3f6010f459935ee509555de5a2f7156b",
+            "globalvoices_train__en-fr.jsonl": "80259c7e99ef00ad29825ecbdcdd9338db3a5f9062efd69c2c7900e1ce185ec2",
+            "globalvoices_train__en-it.jsonl": "e79a163446e45f215248ec80739cceae297ffbcf9baa96d8c8d001843f865a75",
+            "globalvoices_train__en-nl.jsonl": "de6b479c03980d1fce0948f9977961410bc6c9ead032179f3fb991ea2700ad62",
+            "globalvoices_train__en-pt.jsonl": "61b4fa44d126d29102760435ca7d39211a34cbdea5ed1ee666dfe8b2e52bac24",
+            "globalvoices_train__en-ru.jsonl": "cca260ec9b876ba626e79601cc42e59d2b5acad6de51213785020366dea1af9d",
+            "native_miracl_train__ar-triplet.jsonl": "7254d60bc36a1b5c45ac92c96cf6196cc57486a6f05e3f188a91387f1ce09874",
+            "native_miracl_train__bn-triplet.jsonl": "71d1e3f910c70231173528d4cbbf4df369bf94bb1c4d897809a207cf8e86dc83",
+            "native_miracl_train__fr-triplet.jsonl": "61dc205749f552b3da0d40fa2dac0d69e505741ef07c5443750f33d249c4bcdd",
+            "native_miracl_train__hi-triplet.jsonl": "8a09998e126845fdc1ed4740c2d5a8ba9d6491ad0a24e701d89af55a9d6b97da",
+            "native_miracl_train__ja-triplet.jsonl": "30c3d00ef3fde18d8a757dcfa3c89999c20439db55774408ff27e2ddd9360a10",
+            "native_miracl_train__ru-triplet.jsonl": "c7efd7655d922d8f58f93e9251c0c3821d8f26c1c8a6f3cbbb586daa6da4f5ea",
+            "native_miracl_train__sw-triplet.jsonl": "d450781c39d80182b3866165698930f714f38d06035a9c74281459b3a13737b7",
+            "native_miracl_train__zh-triplet.jsonl": "effa3d5151efd58ffe369991dd82a1243a786671f0053080e89c603201295edc",
+            "stsb_validation__default.jsonl": "627c9a2675d5612ab55323aac9100abe067d5cec29270a96c6bd20da0e3de379"
+          },
+          "receipt_sha256": "c0321faab3b5ff653a6e584fa32330648c609010a8e640c784e22419b2c42e7a",
+          "spec_sha256": "638a1a39f27508fe516411af42393c521231c08b7d50e7c2294837ab8fa89f23"
+        },
+        "candidate_sources": [
+          "native_miracl_train__ar-triplet",
+          "native_miracl_train__bn-triplet",
+          "native_miracl_train__fr-triplet",
+          "native_miracl_train__hi-triplet",
+          "native_miracl_train__ja-triplet",
+          "native_miracl_train__ru-triplet",
+          "native_miracl_train__sw-triplet",
+          "native_miracl_train__zh-triplet"
+        ],
+        "document_length": 256,
+        "files": {
+          "parent-exposure-input.json": "464ed735a2f139863c0c9488b62467cfc82f8a4f072ef655de4ef4e10b8959a9",
+          "parent-exposure-proof.json": "af70f12f2dca41f35a1f57c2cf6a2cf94728add5bdf8f8d8fe02ddb525697786",
+          "positive_group_ids.npy": "2d02f93ef2a77da64cd2d3f01bba1b3d191624ecc6fa020e2707c68eb2d280de",
+          "positive_text_ids.npy": "68527148e09f2703919f1807b19bcb51bc5e83e43a912176ba2e9c312228e256",
+          "positive_tokens.npy": "c0200db809ea8b633085231fd1b9a3342fafb3853cf2b0678336a5632d5074af",
+          "query_text_ids.npy": "725eb13897fe6f2b11a9082482f4dcea1ea72bf5a4edd7b5016c743ddf8a90d9",
+          "query_tokens.npy": "645ecae83d8b1608be1ae4bd26da6ac29d00cb51272a170ce8466734bbc54062",
+          "raw.jsonl": "be5a12581c193e8d19043fc826609cd96e0f14e5881e9134fb28010232c6198b",
+          "tokenizer.json": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356"
+        },
+        "format": "flaxchat-embedding-retrieval-dev-v1",
+        "pad_id": 0,
+        "parent_exposure": {
+          "checked_stage_identities": [
+            "8027033dfdeeaf0255a6779acdd8b8c353baa90ff1390bcfb33ed28b8e433fca",
+            "91565acc2ae69190fd75b05be83f655f97c18e912da4c46eaed3ef3191e9dc5b",
+            "b4edf65cff78cec512c54e72978d757380e1e933bb3c5e64b50daf36824ccb7b",
+            "ff894fb65f2dcea80ae94c19d5d665d3dbcc84672db084c1e7452fc063963587"
+          ],
+          "complete": true,
+          "proof_sha256": "af70f12f2dca41f35a1f57c2cf6a2cf94728add5bdf8f8d8fe02ddb525697786",
+          "scope": "declared-known-contrastive-stage-inventory",
+          "unresolved_exposure": [
+            "inherited MLM/pretraining exposure",
+            "semantic/near-duplicate/translation exposure",
+            "completeness of historical contrastive-stage lineage beyond declared inventory"
+          ]
+        },
+        "parent_files_sha256": {
+          "config.json": "9f684e509813407633981e8c88fb9a8c2da574f2b28ba9d90cb8053fcc2c9d9e",
+          "model.safetensors": "6ee56349adbf10a3c3d5805d94539f987250aea2c98611b4d89c6fd9b7142aff",
+          "tokenizer.json": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356"
+        },
+        "preparation_sha256": "e90c372a2c0bb8d45f3893158e2683914c85f19c53d3a2fa86e7410b58fb353f",
+        "query_length": 128,
+        "rows": 3776,
+        "selection_split": "independent-candidate-holdout",
+        "source_identity": {
+          "native_miracl_train__ar-triplet": {
+            "config": "ar-triplet",
+            "human_language": "ar",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "7254d60bc36a1b5c45ac92c96cf6196cc57486a6f05e3f188a91387f1ce09874",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 3495,
+            "selected_rows": 705,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__bn-triplet": {
+            "config": "bn-triplet",
+            "human_language": "bn",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "71d1e3f910c70231173528d4cbbf4df369bf94bb1c4d897809a207cf8e86dc83",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1631,
+            "selected_rows": 314,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__fr-triplet": {
+            "config": "fr-triplet",
+            "human_language": "fr",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "61dc205749f552b3da0d40fa2dac0d69e505741ef07c5443750f33d249c4bcdd",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1143,
+            "selected_rows": 247,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__hi-triplet": {
+            "config": "hi-triplet",
+            "human_language": "hi",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "8a09998e126845fdc1ed4740c2d5a8ba9d6491ad0a24e701d89af55a9d6b97da",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1169,
+            "selected_rows": 243,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__ja-triplet": {
+            "config": "ja-triplet",
+            "human_language": "ja",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "30c3d00ef3fde18d8a757dcfa3c89999c20439db55774408ff27e2ddd9360a10",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 3477,
+            "selected_rows": 708,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__ru-triplet": {
+            "config": "ru-triplet",
+            "human_language": "ru",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "c7efd7655d922d8f58f93e9251c0c3821d8f26c1c8a6f3cbbb586daa6da4f5ea",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 4683,
+            "selected_rows": 940,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__sw-triplet": {
+            "config": "sw-triplet",
+            "human_language": "sw",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "d450781c39d80182b3866165698930f714f38d06035a9c74281459b3a13737b7",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1901,
+            "selected_rows": 374,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          },
+          "native_miracl_train__zh-triplet": {
+            "config": "zh-triplet",
+            "human_language": "zh",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "effa3d5151efd58ffe369991dd82a1243a786671f0053080e89c603201295edc",
+            "repo": "sentence-transformers/miracl",
+            "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+            "scanned_rows": 1312,
+            "selected_rows": 245,
+            "source_split": "train",
+            "task": "retrieval",
+            "upstream_text_fields": {
+              "negative": "negative",
+              "positive": "positive",
+              "query": "anchor"
+            }
+          }
+        },
+        "task": "retrieval",
+        "tokenizer_sha256": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+        "truncated": {
+          "positive_tokens": 857,
+          "query_tokens": 0
+        },
+        "truncation_policy": "disable-inherited;terminal-token-preserving-v1",
+        "vocab_size": 256000
+      },
+      "bitext": {
+        "candidate_identity": {
+          "policy": "candidate-development-quarantine-v1",
+          "raw_hashes": {
+            "codesearchnet_train__pair.jsonl": "6ccbb86fe6f81aa4c937b1cb7ec8d91fcde15cb23f92c8b74ee22040f27d122c",
+            "globalvoices_train__en-ar.jsonl": "acc93d7b0c247bdb1f44b329c0a08bee068871d9de25adb105e1a71274cabb1b",
+            "globalvoices_train__en-de.jsonl": "87520cf4129cb4e8f9eda6501e4484e002bddfa4ba55ca8d631d29b236380a75",
+            "globalvoices_train__en-es.jsonl": "35b31a0711fef31d6017554fcbeb11ab3f6010f459935ee509555de5a2f7156b",
+            "globalvoices_train__en-fr.jsonl": "80259c7e99ef00ad29825ecbdcdd9338db3a5f9062efd69c2c7900e1ce185ec2",
+            "globalvoices_train__en-it.jsonl": "e79a163446e45f215248ec80739cceae297ffbcf9baa96d8c8d001843f865a75",
+            "globalvoices_train__en-nl.jsonl": "de6b479c03980d1fce0948f9977961410bc6c9ead032179f3fb991ea2700ad62",
+            "globalvoices_train__en-pt.jsonl": "61b4fa44d126d29102760435ca7d39211a34cbdea5ed1ee666dfe8b2e52bac24",
+            "globalvoices_train__en-ru.jsonl": "cca260ec9b876ba626e79601cc42e59d2b5acad6de51213785020366dea1af9d",
+            "native_miracl_train__ar-triplet.jsonl": "7254d60bc36a1b5c45ac92c96cf6196cc57486a6f05e3f188a91387f1ce09874",
+            "native_miracl_train__bn-triplet.jsonl": "71d1e3f910c70231173528d4cbbf4df369bf94bb1c4d897809a207cf8e86dc83",
+            "native_miracl_train__fr-triplet.jsonl": "61dc205749f552b3da0d40fa2dac0d69e505741ef07c5443750f33d249c4bcdd",
+            "native_miracl_train__hi-triplet.jsonl": "8a09998e126845fdc1ed4740c2d5a8ba9d6491ad0a24e701d89af55a9d6b97da",
+            "native_miracl_train__ja-triplet.jsonl": "30c3d00ef3fde18d8a757dcfa3c89999c20439db55774408ff27e2ddd9360a10",
+            "native_miracl_train__ru-triplet.jsonl": "c7efd7655d922d8f58f93e9251c0c3821d8f26c1c8a6f3cbbb586daa6da4f5ea",
+            "native_miracl_train__sw-triplet.jsonl": "d450781c39d80182b3866165698930f714f38d06035a9c74281459b3a13737b7",
+            "native_miracl_train__zh-triplet.jsonl": "effa3d5151efd58ffe369991dd82a1243a786671f0053080e89c603201295edc",
+            "stsb_validation__default.jsonl": "627c9a2675d5612ab55323aac9100abe067d5cec29270a96c6bd20da0e3de379"
+          },
+          "receipt_sha256": "c0321faab3b5ff653a6e584fa32330648c609010a8e640c784e22419b2c42e7a",
+          "spec_sha256": "638a1a39f27508fe516411af42393c521231c08b7d50e7c2294837ab8fa89f23"
+        },
+        "candidate_sources": [
+          "globalvoices_train__en-ar",
+          "globalvoices_train__en-de",
+          "globalvoices_train__en-es",
+          "globalvoices_train__en-fr",
+          "globalvoices_train__en-it",
+          "globalvoices_train__en-nl",
+          "globalvoices_train__en-pt",
+          "globalvoices_train__en-ru"
+        ],
+        "document_length": 256,
+        "files": {
+          "parent-exposure-input.json": "464ed735a2f139863c0c9488b62467cfc82f8a4f072ef655de4ef4e10b8959a9",
+          "parent-exposure-proof.json": "af70f12f2dca41f35a1f57c2cf6a2cf94728add5bdf8f8d8fe02ddb525697786",
+          "positive_group_ids.npy": "73e79b059c8f1f06f5325268fd38b150746f3fca1f0c20d6dc896316ce06686b",
+          "positive_text_ids.npy": "d8bb43bce1cee560d10e2ba60ca45a3bb22b11122afd3ba226d94300d23b2349",
+          "positive_tokens.npy": "d7917dfff1d45345c2e651d53ac51bcf19fd788e4467946c95c00dcdd46953d8",
+          "query_text_ids.npy": "e2a76d7a8992c4fe6faeeb45162a8f72e874eced68cac6a69ebeebc5e84a78c1",
+          "query_tokens.npy": "475ab6de0e5f919b39f392cf93f6101c9c92f3d5bd118cee3b67ed030641498b",
+          "raw.jsonl": "e603dd5518f1f2a1c152b5d874fe826c840b5c0f8a766f7da656071c52df098a",
+          "tokenizer.json": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356"
+        },
+        "format": "flaxchat-embedding-retrieval-dev-v1",
+        "pad_id": 0,
+        "parent_exposure": {
+          "checked_stage_identities": [
+            "8027033dfdeeaf0255a6779acdd8b8c353baa90ff1390bcfb33ed28b8e433fca",
+            "91565acc2ae69190fd75b05be83f655f97c18e912da4c46eaed3ef3191e9dc5b",
+            "b4edf65cff78cec512c54e72978d757380e1e933bb3c5e64b50daf36824ccb7b",
+            "ff894fb65f2dcea80ae94c19d5d665d3dbcc84672db084c1e7452fc063963587"
+          ],
+          "complete": true,
+          "proof_sha256": "af70f12f2dca41f35a1f57c2cf6a2cf94728add5bdf8f8d8fe02ddb525697786",
+          "scope": "declared-known-contrastive-stage-inventory",
+          "unresolved_exposure": [
+            "inherited MLM/pretraining exposure",
+            "semantic/near-duplicate/translation exposure",
+            "completeness of historical contrastive-stage lineage beyond declared inventory"
+          ]
+        },
+        "parent_files_sha256": {
+          "config.json": "9f684e509813407633981e8c88fb9a8c2da574f2b28ba9d90cb8053fcc2c9d9e",
+          "model.safetensors": "6ee56349adbf10a3c3d5805d94539f987250aea2c98611b4d89c6fd9b7142aff",
+          "tokenizer.json": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356"
+        },
+        "preparation_sha256": "e90c372a2c0bb8d45f3893158e2683914c85f19c53d3a2fa86e7410b58fb353f",
+        "query_length": 128,
+        "rows": 4077,
+        "selection_split": "independent-candidate-holdout",
+        "source_identity": {
+          "globalvoices_train__en-ar": {
+            "config": "en-ar",
+            "human_language": "ar",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "acc93d7b0c247bdb1f44b329c0a08bee068871d9de25adb105e1a71274cabb1b",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 199,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-de": {
+            "config": "en-de",
+            "human_language": "de",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "87520cf4129cb4e8f9eda6501e4484e002bddfa4ba55ca8d631d29b236380a75",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 298,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-es": {
+            "config": "en-es",
+            "human_language": "es",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "35b31a0711fef31d6017554fcbeb11ab3f6010f459935ee509555de5a2f7156b",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 1053,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-fr": {
+            "config": "en-fr",
+            "human_language": "fr",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "80259c7e99ef00ad29825ecbdcdd9338db3a5f9062efd69c2c7900e1ce185ec2",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 656,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-it": {
+            "config": "en-it",
+            "human_language": "it",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "e79a163446e45f215248ec80739cceae297ffbcf9baa96d8c8d001843f865a75",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 455,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-nl": {
+            "config": "en-nl",
+            "human_language": "nl",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "de6b479c03980d1fce0948f9977961410bc6c9ead032179f3fb991ea2700ad62",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 169,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-pt": {
+            "config": "en-pt",
+            "human_language": "pt",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "61b4fa44d126d29102760435ca7d39211a34cbdea5ed1ee666dfe8b2e52bac24",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 620,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          },
+          "globalvoices_train__en-ru": {
+            "config": "en-ru",
+            "human_language": "ru",
+            "human_language_provenance": "pinned-spec-config-language-map",
+            "raw_sha256": "cca260ec9b876ba626e79601cc42e59d2b5acad6de51213785020366dea1af9d",
+            "repo": "sentence-transformers/parallel-sentences-global-voices",
+            "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+            "scanned_rows": 10000,
+            "selected_rows": 627,
+            "source_split": "train",
+            "task": "bitext",
+            "upstream_text_fields": {
+              "positive": "non_english",
+              "query": "english"
+            }
+          }
+        },
+        "task": "bitext",
+        "tokenizer_sha256": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+        "truncated": {
+          "positive_tokens": 4,
+          "query_tokens": 31
+        },
+        "truncation_policy": "disable-inherited;terminal-token-preserving-v1",
+        "vocab_size": 256000
+      },
+      "code": {
+        "candidate_identity": {
+          "policy": "candidate-development-quarantine-v1",
+          "raw_hashes": {
+            "codesearchnet_train__pair.jsonl": "6ccbb86fe6f81aa4c937b1cb7ec8d91fcde15cb23f92c8b74ee22040f27d122c",
+            "globalvoices_train__en-ar.jsonl": "acc93d7b0c247bdb1f44b329c0a08bee068871d9de25adb105e1a71274cabb1b",
+            "globalvoices_train__en-de.jsonl": "87520cf4129cb4e8f9eda6501e4484e002bddfa4ba55ca8d631d29b236380a75",
+            "globalvoices_train__en-es.jsonl": "35b31a0711fef31d6017554fcbeb11ab3f6010f459935ee509555de5a2f7156b",
+            "globalvoices_train__en-fr.jsonl": "80259c7e99ef00ad29825ecbdcdd9338db3a5f9062efd69c2c7900e1ce185ec2",
+            "globalvoices_train__en-it.jsonl": "e79a163446e45f215248ec80739cceae297ffbcf9baa96d8c8d001843f865a75",
+            "globalvoices_train__en-nl.jsonl": "de6b479c03980d1fce0948f9977961410bc6c9ead032179f3fb991ea2700ad62",
+            "globalvoices_train__en-pt.jsonl": "61b4fa44d126d29102760435ca7d39211a34cbdea5ed1ee666dfe8b2e52bac24",
+            "globalvoices_train__en-ru.jsonl": "cca260ec9b876ba626e79601cc42e59d2b5acad6de51213785020366dea1af9d",
+            "native_miracl_train__ar-triplet.jsonl": "7254d60bc36a1b5c45ac92c96cf6196cc57486a6f05e3f188a91387f1ce09874",
+            "native_miracl_train__bn-triplet.jsonl": "71d1e3f910c70231173528d4cbbf4df369bf94bb1c4d897809a207cf8e86dc83",
+            "native_miracl_train__fr-triplet.jsonl": "61dc205749f552b3da0d40fa2dac0d69e505741ef07c5443750f33d249c4bcdd",
+            "native_miracl_train__hi-triplet.jsonl": "8a09998e126845fdc1ed4740c2d5a8ba9d6491ad0a24e701d89af55a9d6b97da",
+            "native_miracl_train__ja-triplet.jsonl": "30c3d00ef3fde18d8a757dcfa3c89999c20439db55774408ff27e2ddd9360a10",
+            "native_miracl_train__ru-triplet.jsonl": "c7efd7655d922d8f58f93e9251c0c3821d8f26c1c8a6f3cbbb586daa6da4f5ea",
+            "native_miracl_train__sw-triplet.jsonl": "d450781c39d80182b3866165698930f714f38d06035a9c74281459b3a13737b7",
+            "native_miracl_train__zh-triplet.jsonl": "effa3d5151efd58ffe369991dd82a1243a786671f0053080e89c603201295edc",
+            "stsb_validation__default.jsonl": "627c9a2675d5612ab55323aac9100abe067d5cec29270a96c6bd20da0e3de379"
+          },
+          "receipt_sha256": "c0321faab3b5ff653a6e584fa32330648c609010a8e640c784e22419b2c42e7a",
+          "spec_sha256": "638a1a39f27508fe516411af42393c521231c08b7d50e7c2294837ab8fa89f23"
+        },
+        "candidate_sources": [
+          "codesearchnet_train__pair"
+        ],
+        "document_length": 256,
+        "files": {
+          "parent-exposure-input.json": "464ed735a2f139863c0c9488b62467cfc82f8a4f072ef655de4ef4e10b8959a9",
+          "parent-exposure-proof.json": "af70f12f2dca41f35a1f57c2cf6a2cf94728add5bdf8f8d8fe02ddb525697786",
+          "positive_group_ids.npy": "8a5cba8ad2451f418d389862498351cc2343c5e41a3f3e992a7c6bcdba1c7e4a",
+          "positive_text_ids.npy": "2a4db8168a15003fe4bac733dad7cfe641220e17fa7e15cdbf4cdc05523a9a94",
+          "positive_tokens.npy": "4760adc5f7e2f93d549e47668b0bfc9c0ce40bb7b045972f81388e6c71d4f095",
+          "query_text_ids.npy": "146eb3edc9c91c38e9be391720171d8bb22cf0837baad3de4bfb347623415a5d",
+          "query_tokens.npy": "9e1522e7256c5c827740fe9b2ba5f5cec8375de08f0205c06031859afe9f4ec8",
+          "raw.jsonl": "6ccbb86fe6f81aa4c937b1cb7ec8d91fcde15cb23f92c8b74ee22040f27d122c",
+          "tokenizer.json": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356"
+        },
+        "format": "flaxchat-embedding-retrieval-dev-v1",
+        "pad_id": 0,
+        "parent_exposure": {
+          "checked_stage_identities": [
+            "8027033dfdeeaf0255a6779acdd8b8c353baa90ff1390bcfb33ed28b8e433fca",
+            "91565acc2ae69190fd75b05be83f655f97c18e912da4c46eaed3ef3191e9dc5b",
+            "b4edf65cff78cec512c54e72978d757380e1e933bb3c5e64b50daf36824ccb7b",
+            "ff894fb65f2dcea80ae94c19d5d665d3dbcc84672db084c1e7452fc063963587"
+          ],
+          "complete": true,
+          "proof_sha256": "af70f12f2dca41f35a1f57c2cf6a2cf94728add5bdf8f8d8fe02ddb525697786",
+          "scope": "declared-known-contrastive-stage-inventory",
+          "unresolved_exposure": [
+            "inherited MLM/pretraining exposure",
+            "semantic/near-duplicate/translation exposure",
+            "completeness of historical contrastive-stage lineage beyond declared inventory"
+          ]
+        },
+        "parent_files_sha256": {
+          "config.json": "9f684e509813407633981e8c88fb9a8c2da574f2b28ba9d90cb8053fcc2c9d9e",
+          "model.safetensors": "6ee56349adbf10a3c3d5805d94539f987250aea2c98611b4d89c6fd9b7142aff",
+          "tokenizer.json": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356"
+        },
+        "preparation_sha256": "e90c372a2c0bb8d45f3893158e2683914c85f19c53d3a2fa86e7410b58fb353f",
+        "query_length": 128,
+        "rows": 1419,
+        "selection_split": "independent-candidate-holdout",
+        "source_identity": {
+          "codesearchnet_train__pair": {
+            "config": "pair",
+            "raw_sha256": "6ccbb86fe6f81aa4c937b1cb7ec8d91fcde15cb23f92c8b74ee22040f27d122c",
+            "repo": "sentence-transformers/codesearchnet",
+            "revision": "079a958b01dc87cf07b66a68414c4b4196d889cc",
+            "scanned_rows": 10000,
+            "selected_rows": 1419,
+            "source_split": "train",
+            "task": "code"
+          }
+        },
+        "task": "code",
+        "tokenizer_sha256": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+        "truncated": {
+          "positive_tokens": 397,
+          "query_tokens": 1
+        },
+        "truncation_policy": "disable-inherited;terminal-token-preserving-v1",
+        "vocab_size": 256000
+      },
+      "sts": {
+        "files": {
+          "positive_tokens.npy": "900226e814a0d4f302bf836227a6f3ca7b90cc921b41c0b1629930f68e9a26cd",
+          "query_tokens.npy": "7c5aef9113be14689a632dc6a80f226cb4e5aeac734acf2d14d3f3526f737de5",
+          "raw.jsonl": "627c9a2675d5612ab55323aac9100abe067d5cec29270a96c6bd20da0e3de379",
+          "scores.npy": "931ce1ffea324dd8f17805093505ff1d20e05dc89fe74071629d87ec8e16e2f6"
+        },
+        "format": "flaxchat-embedding-sts-dev-v1",
+        "length": 128,
+        "pad_id": 0,
+        "preparation_sha256": "5655513035b8e8352841e924a565e6604ce1c07177672b11bd3ddf7664111bb5",
+        "rows": 1500,
+        "source_identity": {
+          "repo": "sentence-transformers/stsb",
+          "revision": "ab7a5ac0e35aa22088bdcf23e7fd99b220e53308",
+          "sha256": "627c9a2675d5612ab55323aac9100abe067d5cec29270a96c6bd20da0e3de379"
+        },
+        "source_split": "validation",
+        "tokenizer_sha256": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+        "truncated": {
+          "positive_tokens": 0,
+          "query_tokens": 0
+        },
+        "truncation_policy": "disable-inherited; terminal-token-preserving-v1",
+        "vocab_size": 256000
+      }
+    }
+  },
+  "files": {
+    "controller-terminal.json": {
+      "sha256": "f3e9336433543afffeae486f29e2ec5e5bc2db4b20abd57e89dff113140cf4ec",
+      "bytes": 425
+    },
+    "job-spec.json": {
+      "sha256": "2f45ea5d49c01661ee3549da3d75aeb2bfbe0a352626b3bb0d6429a40e55de09",
+      "bytes": 625
+    },
+    "terminal-data.json": {
+      "sha256": "043bc8b1436d24530781a45b3d828746018f368b075fe243f114d644ddd04794",
+      "bytes": 32897
+    }
+  },
+  "finalization_source_sha256": "e647aaa6eba7c9c304bfe8027bc3d67006cefbedb0b48bd11d55281c805d7f12",
+  "gcs_objects": [
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-portable-final04/terminal-data.json#1791218519228490",
+      "bytes": 32897
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-portable-final04/controller-terminal.json#1791218569827161",
+      "bytes": 425
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-portable-final04/job-spec.json#1791218571806548",
+      "bytes": 625
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/gce-portable-final04/finalization-source.tar.gz#1791218573896008",
+      "bytes": 7183
+    }
+  ]
+}

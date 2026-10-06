@@ -23,6 +23,18 @@ def historical_row_view(row, source_identity, source_name, manifest=None, *, pro
     """
     del source_name
     result = dict(row)
+    if (manifest or {}).get('format') == 'flaxchat-contrastive-text-pairs-v1':
+        provenance = row.get('provenance')
+        if (not isinstance(provenance, list) or not provenance or
+                any(not isinstance(item, dict) or
+                    (item.get('dataset'), item.get('revision')) != GLOBAL_VOICES or
+                    item.get('split') != 'train' for item in provenance) or
+                any(not isinstance(row.get(key), str) or not row[key].strip()
+                    for key in ('sentence1', 'sentence2', 'language1', 'language2', 'component'))):
+            raise ValueError('Original contrastive row provenance or pair fields differ')
+        result.update(query=row['sentence1'], positive=row['sentence2'], negative=None,
+                      language=row['language2'], group=row['component'],
+                      modalities={'query': 'text', 'positive': 'text'})
     identity = (source_identity.get('repo'), source_identity.get('revision'))
     if identity[0] in (CODESEARCHNET[0], MIRACL[0]) and identity not in (CODESEARCHNET, MIRACL):
         raise ValueError('Historical known-source revision lacks an authenticated semantic adapter')
@@ -50,3 +62,35 @@ def historical_row_view(row, source_identity, source_name, manifest=None, *, pro
             raise ValueError('Historical MIRACL group is not the verified language/id encoding')
         result['upstream_group'] = match[2]
     return result
+
+
+GLOBAL_VOICES = ('sentence-transformers/parallel-sentences-global-voices',
+                 '4cc20add371f246bb1559b543f8b0dea178a1803')
+
+
+def historical_stage_sources(metadata):
+    """Interpret original committed schemas without rewriting historical bytes."""
+    config = metadata.get('resolved_config', {})
+    declared = config.get('data_manifests')
+    if declared:
+        return declared
+    digest = config.get('data_manifest_sha256')
+    if (metadata.get('model_family') != 'modernbert_contrastive_encoder' or
+            not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest) or
+            metadata.get('data_manifest_identity') != digest):
+        raise ValueError('Authenticated committed historical data identity required')
+    return {'contrastive_' + digest: digest}
+
+
+def historical_manifest_view(manifest, digest):
+    """Return a normalized read-only view of a hashed original pair manifest."""
+    if manifest.get('format') != 'flaxchat-contrastive-text-pairs-v1':
+        return manifest
+    train = manifest.get('files', {}).get('train.jsonl', {})
+    if (type(train.get('rows')) is not int or train['rows'] < 1 or
+            not isinstance(train.get('sha256'), str) or
+            not re.fullmatch('[0-9a-f]{64}', train['sha256'])):
+        raise ValueError('Original contrastive train inventory missing')
+    return {**manifest, 'source': 'contrastive_' + digest,
+            'source_identity': {'repo': GLOBAL_VOICES[0], 'revision': GLOBAL_VOICES[1]},
+            'rows': {'train': train['rows']}, 'raw_files': {'train.jsonl': train['sha256']}}

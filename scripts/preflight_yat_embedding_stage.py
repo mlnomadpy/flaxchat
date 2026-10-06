@@ -19,7 +19,7 @@ def main():
     parser.add_argument('--receipt', type=Path, required=True)
     args = parser.parse_args()
     admitted = prepare_stage(args, device_count=args.expected_devices, process_count=args.expected_processes)
-    hashes, encoder = admitted['parent_hashes'], admitted['encoder_config']
+    hashes, encoder = admitted['parent_hashes'], admitted['parent_encoder_config']
     parent = {'public_files_sha256': hashes}
     if args.parent_checkpoint:
         from flaxchat.checkpoint_metadata import read_committed_metadata

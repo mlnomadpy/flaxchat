@@ -1,0 +1,43 @@
+{
+  "state": "full_data_and_production_preflight_passed",
+  "original_error_confirmed": "FileNotFoundError: historical/code/dev.jsonl",
+  "also_missing": [
+    "miracl/dev.jsonl",
+    "msmarco/dev.jsonl"
+  ],
+  "source_sha256": "303b505838cd333bb31b1c31674fe318f1db1f1e793a1477a3227133d42bacc0",
+  "job_spec_sha256": "b2b84c79564e8dc19a79aa5fa95cc4b4d9f316251e07c64121d0e1c680c3ffb0",
+  "job_root": "/opt/flaxchat-data-repair-full02-1005",
+  "instance": "yat-v2-repair-1005",
+  "provider_id": "3912088814472499079",
+  "provider_max_seconds": 21600,
+  "job_max_seconds": 16200,
+  "model_execution": false,
+  "tpu_allocated": false,
+  "cloud_linux_lifecycle_tests_passed": 25,
+  "result_prefix": "gs://azettaai-yat-eval-0929/representation-v2-1005/repair-1005/full-validation02",
+  "cloud_metadata_tests_passed": 48,
+  "prior_attempt": {
+    "state": "full_data_validation_failed_schema",
+    "source_sha256": "de3de1deea2f9c786bfa5638701014dbe0c43134e06b7f9acd8412979f4a121c",
+    "job_spec_sha256": "ff89a2e8d4eebf0c551f63a2050af2b1bd67931e4e5763f5d4b2608bacc5b032",
+    "job_root": "/opt/flaxchat-data-repair-full-1005",
+    "error": "KeyError: language in code_replay; also absent in marco_replay",
+    "owned_process_cleanup_verified": true
+  },
+  "final_training_rows": 2165175,
+  "final_sources": 11,
+  "exact_declared_heldout_overlaps": 0,
+  "prepared_data": {
+    "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/repair-1005/full-validation02/training-data.tar.gz#1791246504631680",
+    "sha256": "79db51cc6cf43f4ab1a9c458676889fd2fa8b0ca8e193a052bfb4bcd0868c9ee",
+    "bytes": 3025936914,
+    "source_sha256": "303b505838cd333bb31b1c31674fe318f1db1f1e793a1477a3227133d42bacc0"
+  },
+  "owned_process_cleanup_verified": true,
+  "production_preflight_passed": true,
+  "physical_tpu_qualified": false,
+  "training_steps": 0,
+  "data_vm_deleted": true,
+  "data_vm_boot_disk_absent_verified": true
+}

@@ -199,3 +199,36 @@ with four separate terminal cleanup observations. Earlier statements that fresh
 changed-source Linux acceptance was pending are superseded for this exact source;
 whole-controller/provider/TPU faults remain separate. The measured-transfer worker
 started under a finite timeout; its result is not yet established.
+
+## INT8 YAT weight export
+
+`python -m scripts.quantize_yat_encoder` creates a separate authenticated INT8
+weight-only PyTorch artifact without constructing a model. The custom loader
+`torch_port.yat_quantized.load_quantized` preserves shared YAT projection/prototype
+weights and gathers quantized embedding rows before reconstruction. See
+[YAT_INT8_QUANTIZATION.md](YAT_INT8_QUANTIZATION.md) for the scheme and outstanding
+physical acceptance. Export/format checks do not qualify TPU quality or speed.
+
+## Representation continuation and QAT (October 5)
+
+The current [stage checklist](YAT_REPRESENTATION_V2_CAMPAIGN.md) tracks the
+representation, INT8-QAT, INT4 and ternary release sequence. The embedding trainer
+accepts opt-in `--weight-quantization int8_per_channel_ste`; omission inherits the
+parent's policy. FP32 masters are retained, embedding rows are quantized after
+lookup, and YAT projection/distance share one reconstructed kernel. Gradient
+caching and MLM are not admitted with this QAT path. Changed policy starts a new
+stage; its development baseline is the quantized parent, so original-parent
+quality retention remains an additional comparison.
+
+`validate_test_suite --selected-nodes nodes.json` executes an exact per-module
+JUnit inventory, while `--required-nodes` checks coverage. Selection must name
+every selected module; extra/missing/skipped tests fail. This permits direct
+training qualification without rerunning unrelated cache cases. Code and
+model-free checks do not establish physical acceptance.
+
+Original contrastive pair manifests are now recognized by exposure inventory
+and scanning tools. Include their authenticated raw histories as well as the
+later MS MARCO/MIRACL/code stage; omitting earlier training would mislabel seen
+examples as independent development. The bounded
+`scripts.prepare_next_stage_development` accepts a completed candidate and an
+actual history relocation receipt, then scans, filters and independently rescans.

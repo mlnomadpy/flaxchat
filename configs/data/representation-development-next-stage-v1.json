@@ -1,0 +1,128 @@
+{
+  "format": "flaxchat-development-candidate-v1",
+  "purpose": "Complete next-stage candidate pool; requires actual full known-history filtering and tokenized admission before training",
+  "seed": 29,
+  "max_scanned_rows_per_config": 10000,
+  "max_selected_rows_per_config": 512,
+  "heldout_hash_modulus": 5,
+  "sources": [
+    {
+      "name": "native_miracl_train",
+      "task": "retrieval",
+      "repo": "sentence-transformers/miracl",
+      "revision": "07e2b629250bf4185f4c87f640fac15949b8aa73",
+      "configs": [
+        "ar-triplet",
+        "bn-triplet",
+        "fr-triplet",
+        "hi-triplet",
+        "ja-triplet",
+        "ru-triplet",
+        "sw-triplet",
+        "zh-triplet"
+      ],
+      "config_language_map": {
+        "ar-triplet": "ar",
+        "bn-triplet": "bn",
+        "fr-triplet": "fr",
+        "hi-triplet": "hi",
+        "ja-triplet": "ja",
+        "ru-triplet": "ru",
+        "sw-triplet": "sw",
+        "zh-triplet": "zh"
+      },
+      "split": "train",
+      "fields": {
+        "query": "anchor",
+        "positive": "positive",
+        "negative": "negative"
+      },
+      "group_policy": "query-text"
+    },
+    {
+      "name": "globalvoices_train",
+      "task": "bitext",
+      "repo": "sentence-transformers/parallel-sentences-global-voices",
+      "revision": "4cc20add371f246bb1559b543f8b0dea178a1803",
+      "configs": [
+        "en-ar",
+        "en-de",
+        "en-fr",
+        "en-es",
+        "en-it",
+        "en-nl",
+        "en-pt",
+        "en-ru"
+      ],
+      "split": "train",
+      "fields": {
+        "query": "english",
+        "positive": "non_english"
+      },
+      "group_policy": "english-text-across-configs",
+      "config_language_map": {
+        "en-ar": "ar",
+        "en-de": "de",
+        "en-fr": "fr",
+        "en-es": "es",
+        "en-it": "it",
+        "en-nl": "nl",
+        "en-pt": "pt",
+        "en-ru": "ru"
+      }
+    },
+    {
+      "name": "codesearchnet_train",
+      "task": "code",
+      "repo": "sentence-transformers/codesearchnet",
+      "revision": "079a958b01dc87cf07b66a68414c4b4196d889cc",
+      "configs": [
+        "pair"
+      ],
+      "split": "train",
+      "fields": {
+        "query": "comment",
+        "positive": "code"
+      },
+      "group_policy": "query-text",
+      "programming_language": "unknown",
+      "metadata_verified_total_rows": 1375067
+    },
+    {
+      "name": "stsb_validation",
+      "task": "sts",
+      "repo": "sentence-transformers/stsb",
+      "revision": "ab7a5ac0e35aa22088bdcf23e7fd99b220e53308",
+      "configs": [
+        "default"
+      ],
+      "split": "validation",
+      "fields": {
+        "query": "sentence1",
+        "positive": "sentence2",
+        "score": "score"
+      },
+      "group_policy": "pair-text",
+      "score_range": [
+        0,
+        1
+      ],
+      "metadata_verified_total_rows": 1500
+    }
+  ],
+  "admission": {
+    "production_quality_plan_complete": false,
+    "official_benchmark_dev_or_test_allowed": false,
+    "quarantine_all_training_sources": true,
+    "existing_parent_exposure_must_be_checked": true,
+    "prepared_rows": false,
+    "known_history_required": [
+      "500-step contrastive pilot",
+      "6000-step Global Voices continuation",
+      "12000-step Global Voices continuation",
+      "14000-step embedding-v1 fine-tune"
+    ],
+    "code_programming_languages": "unknown in pinned stripped source; no programming-language coverage claim",
+    "independence": "not established; filter exact collisions against all known historical training inventories before admission"
+  }
+}

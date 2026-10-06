@@ -14,6 +14,8 @@ import time
 from flaxchat.embedding_data import row_identities
 from flaxchat.embedding_historical_rows import (
     historical_row_view,
+    historical_stage_sources,
+    historical_manifest_view,
     MIRACL,
     VERIFIED_LEGACY_PRODUCERS,
 )
@@ -116,6 +118,7 @@ def build(
             manifest, identity = read(directory / "manifest.json")
             if identity in sources:
                 raise ValueError("Ambiguous duplicated prepared manifest identity")
+            manifest = historical_manifest_view(manifest, identity)
             source = manifest.get("source")
             upstream = manifest.get("source_identity", {})
             if (
@@ -178,7 +181,7 @@ def build(
             if identity in seen_stages:
                 raise ValueError("Duplicate stage metadata identity")
             seen_stages.add(identity)
-            declared = metadata.get("resolved_config", {}).get("data_manifests")
+            declared = historical_stage_sources(metadata)
             if not isinstance(declared, dict) or not declared:
                 raise ValueError(
                     "Stage lacks committed resolved_config.data_manifests; recover actual metadata"

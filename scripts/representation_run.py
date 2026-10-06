@@ -152,6 +152,13 @@ def load_manifest(path):
         raise ValueError('Wheelhouse must be a hashed archive in artifacts')
     if 'deployment' in value:
         deployment = value['deployment']
+        opt_in = deployment.get('allow_long_lease', False)
+        if type(opt_in) is not bool:
+            raise ValueError('Long lease opt-in must be boolean')
+        duration = deployment.get('attempt_seconds', 1800)
+        maximum = 43200 if opt_in else 7200
+        if type(duration) is not int or not 180 <= duration <= maximum:
+            raise ValueError(f'Attempt lease must be 180–{maximum} seconds; longer leases require explicit opt-in')
         rate = validated_rate(deployment['pricing'])
         zone = deployment.get('zone')
         if not isinstance(zone, str) or not re.fullmatch(r'[a-z]+-[a-z0-9]+-[a-z]', zone) or rate['region'] != zone.rsplit('-', 1)[0]:
@@ -184,6 +191,9 @@ def load_manifest(path):
         argv = value[key]
         if not isinstance(argv, list) or not argv or not all(isinstance(x, str) and x for x in argv):
             raise ValueError(f'{key} must be a nonempty argv array')
+    checks_timeout = value.get('setup_checks_timeout_seconds', 300)
+    if type(checks_timeout) is not int or not 30 <= checks_timeout <= 1800:
+        raise ValueError('Setup checks timeout must be an integer in 30–1800 seconds')
     meaningful_setup(value['setup_checks'])
     training_output(value)
     if value.get('qualification'):
@@ -250,6 +260,32 @@ def source_snapshot(source_dir):
             and path.suffix not in {'.pyc', '.log'}}
 
 
+def qualify_setup_runtime(manifest, root, source_dir, identity, python, inventory, lock, environment):
+    """Publish verified runtime identity before checks, acceptance only afterward."""
+    from scripts.evaluation_contract import write_atomic
+    tree = source_snapshot(source_dir)
+    runtime = {'schema_version': 2, 'runtime_verified': True,
+        'setup_checks_executed': False, 'physical_acceptance': False, 'qualification': None,
+        'manifest_sha256': identity, 'source_tree': tree,
+        'runtime_lock_sha256': digest(lock), 'packages': json.loads(inventory),
+        'platform': platform.platform(), 'interpreter_sha256': digest(Path(python).resolve()),
+        'python': subprocess.check_output([python, '--version'], text=True, timeout=30).strip()}
+    # Keep this immutable after checks: their provenance hashes this exact file.
+    provisional = root / 'runtime-setup-receipt.json'
+    write_atomic(provisional, runtime)
+    check_environment = {**environment, 'FLAXCHAT_SETUP_QUALIFICATION': '1',
+                         'FLAXCHAT_SOURCE_TREE_SHA256': source_tree_digest(tree)}
+    check = [x.replace('{python}', python).replace('{root}', str(root)) for x in manifest['setup_checks']]
+    subprocess.run(check, cwd=source_dir, env=check_environment, check=True,
+                   timeout=manifest.get('setup_checks_timeout_seconds', 300))
+    if source_snapshot(source_dir) != tree:
+        raise ValueError('Deployed source changed during setup qualification')
+    qualification = verify_qualification(manifest, root, identity, tree)
+    write_atomic(root / 'runtime-receipt.json', {**runtime, 'setup_checks_executed': True,
+        'physical_acceptance': bool(qualification), 'qualification': qualification,
+        'setup_runtime_receipt_sha256': digest(provisional)})
+
+
 def setup(manifest_path, root):
     manifest = load_manifest(manifest_path)
     root = Path(root).resolve()
@@ -259,7 +295,7 @@ def setup(manifest_path, root):
     if receipt.exists() and receipt.read_text().strip() != identity:
         raise ValueError('Cannot reuse run directory for a different manifest')
     # A failed re-setup must never inherit yesterday's passing qualification.
-    prior_receipts = ['runtime-receipt.json', 'hardware-receipt.json']
+    prior_receipts = ['runtime-receipt.json', 'runtime-setup-receipt.json', 'hardware-receipt.json']
     if manifest.get('qualification'):
         prior_receipts.append(manifest['qualification']['receipt'])
     for previous in prior_receipts:
@@ -321,14 +357,7 @@ def setup(manifest_path, root):
             if key in manifest and manifest[key] != actual:
                 raise ValueError(f'Topology mismatch: {key} expected {manifest[key]}, observed {actual}')
     (root / 'hardware-receipt.json').write_text(json.dumps(hardware, indent=2) + '\n')
-    check = [x.replace('{python}', python).replace('{root}', str(root)) for x in manifest['setup_checks']]
-    environment['FLAXCHAT_SOURCE_TREE_SHA256'] = source_tree_digest(source_snapshot(source_dir))
-    subprocess.run(check, cwd=source_dir, env=environment, check=True, timeout=300)
-    tree = source_snapshot(source_dir)
-    qualification = verify_qualification(manifest, root, identity, tree)
-    (root / 'runtime-receipt.json').write_text(json.dumps({'schema_version': 2, 'setup_checks_executed': True, 'physical_acceptance': bool(qualification), 'qualification': qualification,
-        'manifest_sha256': identity, 'source_tree': tree, 'runtime_lock_sha256': digest(lock), 'packages': json.loads(inventory),
-        'platform': platform.platform(), 'interpreter_sha256': digest(Path(python).resolve()), 'python': subprocess.check_output([python, '--version'], text=True).strip()}, indent=2) + '\n')
+    qualify_setup_runtime(manifest, root, source_dir, identity, python, inventory, lock, environment)
     return 0
 
 
@@ -338,6 +367,8 @@ def run_worker(manifest_path, root):
     receipt = json.loads((root / 'runtime-receipt.json').read_text())
     if receipt.get('setup_checks_executed') is not True or receipt.get('schema_version') != 2 or receipt['manifest_sha256'] != digest(manifest_path):
         raise ValueError('Setup receipt does not match worker manifest')
+    if 'setup_runtime_receipt_sha256' in receipt:
+        checked_hash(root / 'runtime-setup-receipt.json', receipt['setup_runtime_receipt_sha256'])
     python = str(root / 'venv/bin/python')
     checkpoint_output = training_output(manifest) or manifest['output_prefix'].rstrip('/') + '/checkpoints'
     argv = [x.replace('{python}', python).replace('{root}', str(root)).replace('{output_prefix}', manifest['output_prefix'].rstrip('/')).replace('{checkpoint_output}', checkpoint_output) for x in manifest['workload']]
@@ -440,6 +471,8 @@ PYTHONPATH={shlex.quote(root + '/' + source_target)} python3 -m scripts.represen
     for key in ('project', 'zone', 'accelerator_type', 'runtime_version', 'provisioning_model', 'hourly_usd', 'budget_usd', 'attempt_seconds', 'capacity_wait_seconds', 'startup_wait_seconds', 'campaign_ledger'):
         if key in deployment:
             argv.extend(['--' + key.replace('_', '-'), str(deployment[key])])
+    if deployment.get('allow_long_lease') is True:
+        argv.append('--allow-long-lease')
     if deployment.get('tunnel_through_iap'):
         argv.append('--tunnel-through-iap')
     return argv

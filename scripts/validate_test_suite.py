@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
@@ -12,15 +13,42 @@ from typing import Any
 from scripts.validate_tpu import junit_inventory, source_digest
 
 
-def validate_inventory(path, returncode, required_nodes=()):
+def validate_inventory(path, returncode, required_nodes=(), selected_nodes=None):
     tests = junit_inventory(path)
     if not tests or not any(t['status'] == 'passed' for t in tests):
         return tests, False
     names = [t['test'] for t in tests]
     coverage = len(names) == len(set(names)) and set(required_nodes) <= set(names)
+    if selected_nodes is not None:
+        coverage = coverage and set(names) == set(selected_nodes)
     # A skipped required check is not accelerator acceptance, even if another
     # check in the same module passes. Default policy requires every node.
     return tests, returncode == 0 and coverage and all(t['status'] == 'passed' for t in tests)
+
+
+def selected_test_arguments(selection, files, required_nodes):
+    """Translate exact module-level JUnit names to bounded pytest selectors.
+
+    Selection is distinct from required post-run coverage. Every selected module
+    must have an explicit nonempty inventory; undeclared tests cannot qualify it.
+    """
+    if not isinstance(selection, dict) or set(selection) != {str(file) for file in files}:
+        raise ValueError('Selected nodes must cover exactly the selected test modules')
+    arguments = {}
+    for file, nodes in selection.items():
+        if (not isinstance(nodes, list) or not nodes or
+                any(not isinstance(node, str) for node in nodes) or len(nodes) != len(set(nodes))):
+            raise ValueError('Selected nodes must be nonempty unique JUnit names')
+        prefix = Path(file).with_suffix('').as_posix().replace('/', '.') + '::'
+        suffixes = [node.removeprefix(prefix) for node in nodes]
+        if any(not node.startswith(prefix) or
+               re.fullmatch(r'test_[A-Za-z0-9_]+(?:\[[^\r\n]*\])?', suffix) is None
+               for node, suffix in zip(nodes, suffixes, strict=True)):
+            raise ValueError('Selected node must name a test in its exact module')
+        if not set(required_nodes.get(file, ())) <= set(nodes):
+            raise ValueError('Required nodes must be included in selected nodes')
+        arguments[file] = [file + '::' + suffix for suffix in suffixes]
+    return arguments
 
 
 def module_environment(environment, file):
@@ -53,6 +81,8 @@ def main():
                         help='Enable localhost multiprocess recovery tests; not physical multi-host qualification')
     parser.add_argument('--required-nodes', type=Path,
                         help='JSON map of test module paths to required exact JUnit node names')
+    parser.add_argument('--selected-nodes', type=Path,
+                        help='JSON map selecting exact module-level JUnit nodes; every selected module must be listed')
     parser.add_argument('--test-files', nargs='+', help='Explicit retry subset; reported as partial validation')
     args = parser.parse_args()
     if not args.prefix.startswith('gs://') or not 60 <= args.timeout_seconds <= 2100:
@@ -76,11 +106,19 @@ def main():
             or any(not isinstance(node, str) for node in nodes) or len(nodes) != len(set(nodes))
             for nodes in required_nodes.values()) or not set(required_nodes) <= {str(file) for file in files}):
         parser.error('Required nodes must uniquely name nodes in selected test modules')
+    selected_nodes = json.loads(args.selected_nodes.read_text()) if args.selected_nodes else None
+    selected_arguments = {}
+    if args.selected_nodes:
+        try:
+            selected_arguments = selected_test_arguments(selected_nodes, files, required_nodes)
+        except ValueError as exc:
+            parser.error(str(exc))
     report: dict[str, Any] = dict(scope='single_host_selected_tests' if args.test_files else 'single_host_test_suite', quality_qualified=False, passed=False,
                   include_distributed_cpu=args.include_distributed_cpu,
                   source_python_sha256=source_digest(Path.cwd()), files=[str(f) for f in files],
                   environment_overrides={k: environment[k] for k in ('JAX_PLATFORMS', 'FLAXCHAT_DTYPE', 'JAX_DEFAULT_MATMUL_PRECISION')},
-                  module_timeout_seconds=args.module_timeout_seconds, required_nodes=required_nodes, skip_policy='all-selected-nodes-must-pass',
+                  module_timeout_seconds=args.module_timeout_seconds, required_nodes=required_nodes,
+                  selected_nodes=selected_nodes, skip_policy='all-selected-nodes-must-pass',
                   results=[], not_run=[])
     def persist(paths=()):
         summary = args.output / 'summary.json'
@@ -104,12 +142,14 @@ def main():
             break
         xml, log = args.output/(file.stem+'.xml'), args.output/(file.stem+'.log')
         start = time.monotonic()
-        code = bounded([sys.executable,'-m','pytest',str(file),'-q','--tb=short',f'--junitxml={xml}'],
+        selectors = selected_arguments.get(str(file), [str(file)])
+        code = bounded([sys.executable,'-m','pytest',*selectors,'-q','--tb=short',f'--junitxml={xml}'],
                        log, min(args.module_timeout_seconds,remaining-65), module_environment(environment, file))
         tests, passed = [], False
         error = None
         try:
-            tests, passed = validate_inventory(xml, code, required_nodes.get(str(file), ()))
+            tests, passed = validate_inventory(xml, code, required_nodes.get(str(file), ()),
+                selected_nodes.get(str(file)) if selected_nodes is not None else None)
         except Exception as exc:
             error = f'{type(exc).__name__}: {exc}'
         result = dict(file=str(file),returncode=code,passed=passed,tests=tests,

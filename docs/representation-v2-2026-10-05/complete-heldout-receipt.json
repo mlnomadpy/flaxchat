@@ -1,0 +1,44 @@
+{
+  "files": [
+    {
+      "name": "code/dev.jsonl",
+      "sha256": "b0927a294d44bab3f0d4a03e058c774eafef271b22f3bf0b24d153c83cc17afa",
+      "bytes": 3799742,
+      "gcs_source": "gs://azettaai-yat-eval-0929/embedding-data/code/dev.jsonl#1790709341274584"
+    },
+    {
+      "name": "contrastive_0eb6c456c95f51feb8ac5d1bf6d99841c792d8ebe8c037eddf65e9b52372c923/dev.jsonl",
+      "sha256": "1fd5e0e5597a6a3dc677a92045c79b9904d47c4f2451468942b274c1740a3ba1",
+      "bytes": 5774484,
+      "gcs_source": null
+    },
+    {
+      "name": "contrastive_6a9a2e9ea142ad32f772c9e41ac00192555382eb7c8c6d0ee8d84de6f25ec9f5/dev.jsonl",
+      "sha256": "bb6b3599bf515258e001f00be1d91957bb5b5968b4327d0b1c6ca97f657a1f23",
+      "bytes": 399647,
+      "gcs_source": null
+    },
+    {
+      "name": "contrastive_9083c1ce5fdd6f6489e545e73e40543caa6439547467bf3c2d2f928dc56d4ab0/dev.jsonl",
+      "sha256": "18e9706bf5823099e4bd8b8bfd754db2ebf313fadfef5eac424e1674473dce83",
+      "bytes": 3841636,
+      "gcs_source": null
+    },
+    {
+      "name": "miracl/dev.jsonl",
+      "sha256": "13082c78741da2159966da2bddd9ca55e461775e8ba874543e8749c48595a836",
+      "bytes": 3631503,
+      "gcs_source": "gs://azettaai-yat-eval-0929/embedding-data/miracl/dev.jsonl#1790709138388011"
+    },
+    {
+      "name": "msmarco/dev.jsonl",
+      "sha256": "883390b59d5f40d08acad2b6f7688f52a50260101ca441260d559ac0799fcdaa",
+      "bytes": 16518077,
+      "gcs_source": "gs://azettaai-yat-eval-0929/embedding-data/msmarco/dev.jsonl#1790708934581633"
+    }
+  ],
+  "purpose": "all six original heldouts; never training",
+  "sha256": "2310e8cb0607e928412a34deafc211e9242225702c3012b2b6f2335f88208ee4",
+  "bytes": 13902096,
+  "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/repair-1005/complete-heldout.tar.gz#1791242883233725"
+}

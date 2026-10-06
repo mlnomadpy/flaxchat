@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "passed": false,
+  "status": "failed",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "run_id": "yat-embed-torch-v2-direct-qat-1005",
+  "stage_id": "parent-direct-qat-qualification",
+  "phase": "cleanup",
+  "started_unix": 1791214197.361582,
+  "whole_slice_hourly_usd": 9.6,
+  "attempt_seconds": 1800,
+  "capacity_wait_seconds": 180,
+  "startup_wait_seconds": 240,
+  "max_attempts": 1,
+  "phases": [
+    {
+      "phase": "admission",
+      "elapsed_seconds": 0.00047975010238587856
+    },
+    {
+      "phase": "identity_admission",
+      "elapsed_seconds": 0.0003086249344050884
+    },
+    {
+      "phase": "cleanup_scope_admission",
+      "elapsed_seconds": 6.608205874916166
+    },
+    {
+      "phase": "guard_verification",
+      "elapsed_seconds": 5.394495000131428
+    },
+    {
+      "phase": "provisioning",
+      "elapsed_seconds": 5.790903207845986
+    },
+    {
+      "phase": "capacity_wait",
+      "elapsed_seconds": 179.96471904218197
+    },
+    {
+      "phase": "cleanup",
+      "elapsed_seconds": 4.275108957896009
+    }
+  ],
+  "attempts": [
+    {
+      "index": 0,
+      "resource_name": "flaxchat-validation-yat-embed-torch-v2-direc-0-a250ee23b33b4851",
+      "attempt_id": "a250ee23b33b4851:0",
+      "cleanup": {
+        "state": "resource_absent",
+        "started_unix": 1791214395.17404,
+        "queue_absent": true,
+        "node_absent": true,
+        "queue_state": null,
+        "node_state": null,
+        "observed_unix": 1791214399.445996,
+        "finished_unix": 1791214399.446785
+      },
+      "remote_stages_started": [],
+      "cleanup_scope": {
+        "schema": "cleanup-project-allow-scope-v1",
+        "service_account": "flaxchat-validation-cleanup@azettaai.iam.gserviceaccount.com",
+        "resources": {
+          "queuedResources": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-v2-direc-0-a250ee23b33b4851",
+          "nodes": "projects/azettaai/locations/us-west4-a/nodes/flaxchat-validation-yat-embed-torch-v2-direc-0-a250ee23b33b4851"
+        },
+        "policy_sha256": "41e079502b61f52705bcbf205a9792f849be46b009b4e93296ce01433bb80551",
+        "roles_sha256": "9f881d7ab4e9c78f7bc38933d969b967c4928624c2767fa16db4dbf38d9d4a31",
+        "supported_project_allow_coverage": true,
+        "effective_iam_verified": false,
+        "server_permission_probes_required": true,
+        "workflow_revision": "000001-6a6",
+        "workflow_sha256": "377eb136895c54a2fab1a8f2b4dd889a8c87a9c24be3ca5f49d5a518433acdd4",
+        "observed_unix": 1791214200.924503,
+        "discovery": {
+          "schema": "cleanup-scope-discovery-v1",
+          "reads": [
+            {
+              "operation": [
+                "workflows",
+                "describe",
+                "flaxchat-validation-cleanup"
+              ],
+              "attempt": 1,
+              "timeout_seconds": 20,
+              "status": "succeeded",
+              "output_sha256": "9e44810d5830d81181bdbc95df90046c239ba4e3a278a1c22919dd03d11ff020",
+              "elapsed_seconds": 1.2052696670871228
+            },
+            {
+              "operation": [
+                "projects",
+                "get-iam-policy",
+                "azettaai"
+              ],
+              "attempt": 1,
+              "timeout_seconds": 20,
+              "status": "succeeded",
+              "output_sha256": "5413f4e2b027309d730488010d71bec053285811a90bbe0565c799be1fdbdd20",
+              "elapsed_seconds": 1.215130167081952
+            },
+            {
+              "operation": [
+                "iam",
+                "roles",
+                "describe"
+              ],
+              "attempt": 1,
+              "timeout_seconds": 20,
+              "status": "succeeded",
+              "output_sha256": "2d66a37580e192fa71d9daa5042118ee10ed33e974c2a9d7dd5be21948437c2a",
+              "elapsed_seconds": 1.1329713750164956
+            }
+          ],
+          "total_timeout_seconds": 120,
+          "command_timeout_seconds": 20,
+          "maximum_attempts_per_read": 2
+        }
+      },
+      "guard_receipt_path": "/private/tmp/flaxchat-improve-1005/physical02/cloud/attempt-0/guard.json",
+      "create_requested": true,
+      "resource_state_observations": [
+        {
+          "queue_state": "WAITING_FOR_RESOURCES",
+          "node_state": null,
+          "wait_phase": "capacity_wait",
+          "observation_error": null,
+          "observed_unix": 1791214216.60656
+        },
+        {
+          "queue_state": "WAITING_FOR_RESOURCES",
+          "node_state": null,
+          "wait_phase": "capacity_wait",
+          "observation_error": "read_timeout; current provider state unknown",
+          "observed_unix": 1791214395.167676
+        }
+      ],
+      "failure": {
+        "phase": "capacity_wait",
+        "error": "TimeoutError: Spot capacity wait budget exhausted; allocation has not been observed; queue=WAITING_FOR_RESOURCES; node=unknown",
+        "observed_unix": 1791214395.169971
+      }
+    }
+  ],
+  "model_execution_state": "not_started",
+  "posted_usage_usd": null,
+  "error": "TimeoutError: Spot capacity wait budget exhausted; allocation has not been observed; queue=WAITING_FOR_RESOURCES; node=unknown",
+  "finished_unix": 1791214399.44868,
+  "elapsed_seconds": 202.03422183310613,
+  "no_remote_execution": true,
+  "cleanup_required": true,
+  "cleanup_verified": true,
+  "ledger_path": "/private/tmp/flaxchat-fixes-20260930/qualification-aggregate-ledger.json",
+  "reserved_usd": 132.2,
+  "budget_usd": 134
+}

@@ -1,0 +1,104 @@
+{
+  "original_terminal": {
+    "cleanup_verified": true,
+    "finished_unix": 1791212392.806551,
+    "job_id": "parent-v2-1005",
+    "model_execution_qualified": false,
+    "owned_processes_killed": [],
+    "owner": "e8a8706ca11149b2afe10bfad432460b",
+    "residual_processes": [],
+    "schema_version": 1,
+    "scratch_removed": true,
+    "spec_sha256": "c2bacd3d26e892c6ec2f83ea0a2a83a32c5841c675e85a3a4a873ec9eb8fa074",
+    "started_unix": 1791212129.4455485,
+    "status": "execution_failed",
+    "worker_returncode": 1
+  },
+  "verified_metadata": {
+    "checkpoint-manifest.json": {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/checkpoint-manifest.json",
+      "bytes": 96159,
+      "sha256": "7d32068caa94ddf50a56ccc37bdcaf22993cccd968ad24c76a4111e9aded2309"
+    },
+    "checkpoint-metadata.json": {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/checkpoint-metadata.json",
+      "bytes": 2480,
+      "sha256": "ff894fb65f2dcea80ae94c19d5d665d3dbcc84672db084c1e7452fc063963587"
+    },
+    "config.json": {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/config.json",
+      "bytes": 1110,
+      "sha256": "9f684e509813407633981e8c88fb9a8c2da574f2b28ba9d90cb8053fcc2c9d9e"
+    },
+    "export.json": {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/export.json",
+      "bytes": 1117,
+      "sha256": "c594475f857efde0f4b741bc0daa24846d9f9c632dcb9f1f7373985525bc22a5"
+    },
+    "files.sha256.json": {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/files.sha256.json",
+      "bytes": 548,
+      "sha256": "e4842c5d2cf8530f425c646f307cd6a315996ab32a36c78af247314b0ab1976e"
+    },
+    "historical-export.json": {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/historical-export.json",
+      "bytes": 619,
+      "sha256": "fb0ad66565dd7d1934fdfeeb63c2f86e4b0ebe4a6af006e2266dcf5799bc335d"
+    },
+    "historical-files.sha256.json": {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/historical-files.sha256.json",
+      "bytes": 352,
+      "sha256": "64baebb00ac854a34f4e6883f6cdd67f567d2e42c0f3202300eaec54bbea4d68"
+    },
+    "preparation-receipt.json": {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/preparation-receipt.json",
+      "bytes": 2221,
+      "sha256": "b07f52bf585b4609804e4106db1163993d426785cdb28971a5eed31b716f9060"
+    },
+    "public-identity-receipt.json": {
+      "uri": "gs://azettaai-yat-eval-0929/representation-v2-1005/parent-metadata/public-identity-receipt.json",
+      "bytes": 3150,
+      "sha256": "3035b24d13314558f8c9b0b9012e123841fbdc56dc41a17eccb5f1f5b17a0339"
+    }
+  },
+  "preparation": {
+    "format": "flaxchat-enriched-parent-export-v1",
+    "immutable_public_revision": "571d0ef3d8e1381055845fce334a48be253c3fea",
+    "model_id": "mlnomad/yat-mmbert-base-embedding-v1",
+    "public_identity_receipt_sha256": "3035b24d13314558f8c9b0b9012e123841fbdc56dc41a17eccb5f1f5b17a0339",
+    "original_input_sha256": {
+      "model.safetensors": "6ee56349adbf10a3c3d5805d94539f987250aea2c98611b4d89c6fd9b7142aff",
+      "config.json": "9f684e509813407633981e8c88fb9a8c2da574f2b28ba9d90cb8053fcc2c9d9e",
+      "tokenizer.json": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+      "export.json": "fb0ad66565dd7d1934fdfeeb63c2f86e4b0ebe4a6af006e2266dcf5799bc335d",
+      "files.sha256.json": "64baebb00ac854a34f4e6883f6cdd67f567d2e42c0f3202300eaec54bbea4d68",
+      "checkpoint-metadata.json": "ff894fb65f2dcea80ae94c19d5d665d3dbcc84672db084c1e7452fc063963587",
+      "checkpoint-manifest.json": "7d32068caa94ddf50a56ccc37bdcaf22993cccd968ad24c76a4111e9aded2309",
+      "public-identity-receipt.json": "3035b24d13314558f8c9b0b9012e123841fbdc56dc41a17eccb5f1f5b17a0339"
+    },
+    "enriched_artifacts_sha256": {
+      "model.safetensors": "6ee56349adbf10a3c3d5805d94539f987250aea2c98611b4d89c6fd9b7142aff",
+      "config.json": "9f684e509813407633981e8c88fb9a8c2da574f2b28ba9d90cb8053fcc2c9d9e",
+      "tokenizer.json": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+      "checkpoint-metadata.json": "ff894fb65f2dcea80ae94c19d5d665d3dbcc84672db084c1e7452fc063963587",
+      "checkpoint-manifest.json": "7d32068caa94ddf50a56ccc37bdcaf22993cccd968ad24c76a4111e9aded2309",
+      "export.json": "c594475f857efde0f4b741bc0daa24846d9f9c632dcb9f1f7373985525bc22a5"
+    },
+    "checkpoint_manifest_canonical_sha256": "ebde175cdfffaa01d1f8bc095342a7e8a4552305abe6622f9f5679d58a9acfe0",
+    "input_bytes": 1248793679,
+    "max_input_bytes": 2147483648,
+    "timeout_seconds": 180,
+    "safetensors_inventory": {
+      "checked_leaves": 181,
+      "payload_bytes": 1231145136,
+      "header_bytes": 19336,
+      "policy": "bounded-header-and-streamed-committed-leaf-sha256-v1",
+      "tensor_math": false
+    },
+    "model_execution": false,
+    "weight_import_qualified": false,
+    "quality_qualified": false,
+    "historical_public_release_changed": false
+  },
+  "large_files_policy": "reuse retained immutable release objects; do not upload duplicate weights/tokenizer"
+}

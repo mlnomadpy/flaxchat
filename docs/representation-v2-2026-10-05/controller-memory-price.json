@@ -1,0 +1,14 @@
+{
+  "observed_at": "2026-10-06T00:36:39.030628+00:00",
+  "source": "https://cloud.google.com/products/compute/pricing/general-purpose",
+  "browser_region_selected": "Las Vegas (us-west4)",
+  "machine_type": "e2-highmem-4",
+  "vcpus": 4,
+  "memory_gib": 32,
+  "on_demand_hourly_usd": 0.20361348,
+  "reservation_hourly_usd": 0.25,
+  "max_seconds": 43200,
+  "ancillary_reserve_usd": 1.0,
+  "total_reservation_usd": 4.0,
+  "reason": "Actual full-data preflight observed RSS 16751184 KiB; 16 GiB controller insufficient"
+}

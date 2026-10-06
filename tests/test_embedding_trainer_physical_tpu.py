@@ -19,7 +19,9 @@ pytestmark = pytest.mark.skipif(os.environ.get('FLAXCHAT_PHYSICAL_TPU') != '1',
     (False, False, None), (False, True, None), (True, False, None), (True, True, None),
     (True, True, 'best4'), (False, True, 'baseline0'),
     (True, True, 'gate4'), (False, True, 'gatehorizon'),
-    (False, False, 'independent')])
+    (True, False, 'best4'), (False, False, 'baseline0'),
+    (True, False, 'gate4'), (False, False, 'gatehorizon'),
+    (False, False, 'independent'), (True, False, 'qat'), (False, False, 'migration')])
 def test_real_trainer_resume_pair_triplet_schema_and_best(tmp_path, monkeypatch, capsys, triplets, cached, fault):
     import jax
     from flax import nnx
@@ -33,6 +35,12 @@ def test_real_trainer_resume_pair_triplet_schema_and_best(tmp_path, monkeypatch,
     import tokenizers
     assert jax.default_backend() == 'tpu'
     assert jax.process_count() == 1, 'This admission is single-host; multi-host suite is separate'
+    qat = fault == 'qat'
+    if qat:
+        fault = None
+    migration_case = fault == 'migration'
+    if migration_case:
+        fault = 'gate4'
     independent = fault == 'independent'
     if independent:
         fault = None  # Independent metrics are real; no controlled quality override.
@@ -105,6 +113,8 @@ def test_real_trainer_resume_pair_triplet_schema_and_best(tmp_path, monkeypatch,
         '--batch-size', str(max(16, 2 * jax.device_count())), '--save-every', '1', '--eval-every', '4',
         '--keep-checkpoints', '1', '--dev-max-rows', '8', '--max-dev-regression', '1',
         '--training-scope', 'qualification']
+    if qat:
+        common += ['--weight-quantization', 'int8_per_channel_ste']
     if cached:
         common += ['--encoder-chunk-size', str(max(4, jax.device_count()))]
     if independent:
@@ -136,6 +146,54 @@ def test_real_trainer_resume_pair_triplet_schema_and_best(tmp_path, monkeypatch,
             events = capsys.readouterr().out
             assert 'embedding_step' not in events and 'embedding_already_completed' not in events
         assert load_checkpoint_metadata(str(resumed / 'best'))['step'] == 0
+        if migration_case:
+            from flaxchat.embedding_recovery import checkpoint_stage_identity
+            from flaxchat.embedding_contract import source_identity
+            from pathlib import Path
+            old = load_checkpoint_metadata(str(resumed), 4, include_receipt=True)
+            old_best = load_checkpoint_metadata(str(resumed / 'best'), 0, include_receipt=True)
+            specification = {'format': 'flaxchat-quality-policy-migration-v1',
+                'checkpoint_prefix': str(resumed),
+                'target_source_python_sha256': source_identity(Path(__file__).resolve().parents[1])['sha256'],
+                'previous_identity': checkpoint_stage_identity(old),
+                'checkpoint': {key: old['committed_receipt'][key] for key in ('step', 'manifest_sha256')},
+                'best': {key: old_best['committed_receipt'][key] for key in ('step', 'manifest_sha256')}}
+            migration_path = tmp_path / 'migration.json'
+            migration_path.write_text(json.dumps(specification))
+            common[common.index('--steps') + 1] = '12'
+            common += ['--schedule-steps', '8', '--quality-regression-action', 'report-only']
+            # Same seed, data and fixed8-step schedule;12updates uninterrupted
+            # is the reference for preserved optimizer moments after migration.
+            run(complete)
+            common += ['--resume-quality-migration', str(migration_path)]
+            run(resumed, ['--resume', '--stop-after', '8'])
+            run(resumed, ['--resume'])
+            migrated = load_checkpoint_metadata(str(resumed), 12, include_receipt=True)
+            assert migrated['resolved_config']['schedule_steps'] == 8
+            assert migrated['resolved_config']['steps'] == 12
+            assert migrated['resolved_config']['resume_policy_migration']['source_checkpoint']['step'] == 4
+            assert load_checkpoint_metadata(str(resumed / 'best'), 0, include_receipt=True) == old_best
+            import optax
+            from flaxchat.checkpoint import create_checkpoint_manager, load_checkpoint
+            optimizer = nnx.Optimizer(model, optax.chain(optax.clip_by_global_norm(1.),
+                optax.adamw(optax.warmup_cosine_decay_schedule(0., 3e-5, 1, 8, end_value=3e-6),
+                    weight_decay=.01, mask=lambda params: jax.tree.map(lambda value: value.ndim > 1, params))), wrt=nnx.Param)
+            restored = []
+            for output in (complete, resumed):
+                manager = create_checkpoint_manager(str(output), async_checkpointing=False)
+                try:
+                    restored.append(load_checkpoint(manager, 12, model=model, optimizer=optimizer, load_training_state=True))
+                finally:
+                    manager.close()
+            for element in (0, 1):
+                for expected, actual in zip(jax.tree.leaves(restored[0][element]), jax.tree.leaves(restored[1][element]), strict=True):
+                    np.testing.assert_array_equal(np.asarray(expected), np.asarray(actual))
+            for key in restored[0][3]:
+                if key != 'quality_state':
+                    np.testing.assert_array_equal(restored[0][3][key], restored[1][3][key])
+            state = json.loads(bytes(np.asarray(restored[1][3]['quality_state'], np.uint8)).decode())
+            assert state['last_evaluation']['gate']['passed'] is False
+            assert state['last_evaluation']['step'] == 12
         return
     run(complete)
     complete_events = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.startswith('{')]
@@ -189,6 +247,9 @@ def test_real_trainer_resume_pair_triplet_schema_and_best(tmp_path, monkeypatch,
     right = load_checkpoint_metadata(str(resumed), 4, include_receipt=True)
     assert left['committed_receipt']['model_state'] == right['committed_receipt']['model_state']
     assert left['resolved_config'] == right['resolved_config']
+    if qat:
+        assert right['resolved_config']['encoder']['weight_quantization'] == 'int8_per_channel_ste'
+        assert right['resolved_config']['quantization_aware_training']['gradient'] == 'identity-ste-including-scale'
     if independent:
         receipt = right['resolved_config']['independent_retrieval_development']['alignment']
         assert receipt['candidate_identity'] == independent_manifest['candidate_identity']

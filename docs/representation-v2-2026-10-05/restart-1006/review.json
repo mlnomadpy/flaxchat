@@ -1,0 +1,17 @@
+{
+  "files": {
+    "source.tar.gz": "a867bdb0a20265265e17b8195a9aa3ff7a5fa1cf4963e28f5f369a6f924237ef",
+    "run.json": "ebab538778f2e2e647ea334099f5b7e26cbb3de556f503033b57ef23e227e28d",
+    "campaign-ledger.json": "4e7464f469e606c76a19d7b3d86ca7f285f2767db2ea05a4431a785c88bb68c5",
+    "launch.py": "7bdd28aa7dfcc4612d54c31444d63f658ab215711236308f87e3278a5340a4bb",
+    "bootstrap_runtime.py": "1fe894654000d73be4a306ad42bb10398ef49565373589ba80b702e8a405b503",
+    "startup.sh": "bf22159c85d48104bc50d98dd1f8bbbd3ddc4df928776cb320605bf774e11f1b"
+  },
+  "source_unchanged": true,
+  "same_checkpoint_namespace": "gs://azettaai-yat-eval-0929/representation-v2-1005/overnight-1006/yat-embed-torch-v2-overnight-1006/representation-continuation",
+  "capacity_wait_seconds": 7200,
+  "lease_seconds": 43200,
+  "new_reservation_usd": 127,
+  "aggregate_reservation_usd": 588.5999999999999,
+  "credit_usd": 876.63
+}

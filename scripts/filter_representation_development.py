@@ -133,12 +133,22 @@ def plan(candidate, scan_raw, details_raw, *, min_rows_per_config, deadline=None
     groups, texts, output_files = set(), set(), {}
     selected_receipt = json.loads(json.dumps(receipt))
     counts = {}
+    retained_by_source = {
+        name: [row for row in rows if row['group'] not in rejected_groups]
+        for name, rows in original_rows.items()
+    }
+    deficits = {
+        name: {'retained': len(rows), 'minimum': max(
+            min_rows_per_config, 3 if receipt['sources'][name]['task'] == 'sts' else 2)}
+        for name, rows in retained_by_source.items()
+        if len(rows) < max(min_rows_per_config, 3 if receipt['sources'][name]['task'] == 'sts' else 2)
+    }
+    if deficits:
+        raise ValueError('Filtered candidate lacks required rows per configuration: '
+                         + json.dumps(deficits, sort_keys=True))
     for name, rows in original_rows.items():
         check()
-        retained = [row for row in rows if row['group'] not in rejected_groups]
-        minimum = max(min_rows_per_config, 3 if receipt['sources'][name]['task'] == 'sts' else 2)
-        if len(retained) < minimum:
-            raise ValueError('Filtered candidate lacks required rows per configuration')
+        retained = retained_by_source[name]
         output_files[name + '.jsonl'] = ''.join(json.dumps(row, ensure_ascii=False, sort_keys=True) + '\n'
                                                for row in retained).encode()
         selected_receipt['sources'][name].update(selected_rows=len(retained),

@@ -1,0 +1,27 @@
+{
+  "source_sha256": "a867bdb0a20265265e17b8195a9aa3ff7a5fa1cf4963e28f5f369a6f924237ef",
+  "source_python_sha256": "4593139ce8e4201de6a78b675b5f3cd787c7ca930e78013d2b9935e1a1be69ca",
+  "manifest_sha256": "38e1cea88a9b94fd5f700b14afe1a125bc3997d05f67f0477c913508f0782128",
+  "files": {
+    "source.tar.gz": "a867bdb0a20265265e17b8195a9aa3ff7a5fa1cf4963e28f5f369a6f924237ef",
+    "run.json": "38e1cea88a9b94fd5f700b14afe1a125bc3997d05f67f0477c913508f0782128",
+    "campaign-ledger.json": "d36039e1077f471a931f030b84c0ef31698489ee194f7b31a2ab9b9b6bf75bde",
+    "launch.py": "ca7cb4e47252f0c38184d27e55b1ccf577077d1c828684977f514d0ba432e2ee",
+    "bootstrap_runtime.py": "115901fcc0e1377389c27a42deb0a7dfa01ef6928ff5036739b16e74f7cad711",
+    "startup.sh": "3c583a676534a10d2ee639009c7f20e4ebc22c9ecb887fe81a913e9dff056689",
+    "migration.json": "9a6f4853b514f3faa964c8ce35ea1daba619fb355336b9dc6a273e3c75deed16"
+  },
+  "prior_reservation_usd": 334.59999999999997,
+  "new_tpu_reservation_usd": 122,
+  "new_controller_reservation_usd": 5,
+  "total_reservation_usd": 461.59999999999997,
+  "required_physical_tests": 11,
+  "checkpoint": {
+    "step": 500,
+    "manifest_sha256": "c45bbd0de129d8b891f1e8737c3edcc74a01f989186ece5e587c2e33ffcefea7"
+  },
+  "best": {
+    "step": 0,
+    "manifest_sha256": "df2691338b336c166cfe39754750546c0c6dd884cd33ffbb10e56a95b627bf83"
+  }
+}

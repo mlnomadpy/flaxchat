@@ -1,0 +1,26 @@
+{
+  "prior_source_sha256": "303b505838cd333bb31b1c31674fe318f1db1f1e793a1477a3227133d42bacc0",
+  "source_sha256": "07e473fc03cbc03a988e366770e9e51efca2762b1b2d5d3712b623a1bcc4f58b",
+  "source_uri_proposed": "gs://azettaai-yat-eval-0929/representation-v2-1005/repair-training02-1005/source.tar.gz",
+  "changed_files": [
+    {
+      "path": "scripts/evaluation_contract.py",
+      "before_sha256": "c5c796c878bcefdcef69d3a2b8d77a17904fd2e65313f81ac5006006d46fa5f3",
+      "after_sha256": "c541f591e3c84c1a0410a8eb1a470a430d0b147405ac4cd5976aeec2f1e17b77"
+    },
+    {
+      "path": "scripts/representation_run.py",
+      "before_sha256": "34b99ac3a75b1fc4290c43dea87072801d69370bd88121103bc4bc3e39173e39",
+      "after_sha256": "d6b32be543af7321a1872a8c6f6fb46879b75f7d69701314b94e8fb6283ca476"
+    },
+    {
+      "path": "tests/test_runtime_setup_order_metadata.py",
+      "before_sha256": null,
+      "after_sha256": "5facce76dd1a16cea96bea7b37b0e183581a674cddc431bcf932ead8eec76f23"
+    }
+  ],
+  "unchanged_file_count": 446,
+  "original_files_preserved": true,
+  "data_and_trainer_code_identical": true,
+  "cloud_actions_performed": false
+}
