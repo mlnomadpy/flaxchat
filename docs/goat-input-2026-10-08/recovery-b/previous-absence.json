@@ -1,0 +1,13 @@
+{
+  "schema": "flaxchat-independent-tpu-absence-v1",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "attempt_id": "5b85897e731e4bca:0",
+  "resource_name": "flaxchat-validation-yat-embed-torch-goat-inp-0-5b85897e731e4bca",
+  "queue_absent": true,
+  "node_absent": true,
+  "observed_unix": 1791467496.835393,
+  "source": "Independent gcloud node/queue inventories after final capacity-timeout receipt",
+  "queue_read_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "node_read_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+}

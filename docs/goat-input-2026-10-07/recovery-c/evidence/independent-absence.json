@@ -1,0 +1,13 @@
+{
+  "schema": "flaxchat-independent-tpu-absence-v1",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "attempt_id": "cdffb8cb372d4c2a:0",
+  "resource_name": "flaxchat-validation-yat-embed-torch-goat-inp-0-cdffb8cb372d4c2a",
+  "queue_absent": true,
+  "node_absent": true,
+  "observed_unix": 1791371897.989853,
+  "source": "Fresh independent gcloud lists of exact zone; both empty",
+  "node_read_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "queue_read_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+}

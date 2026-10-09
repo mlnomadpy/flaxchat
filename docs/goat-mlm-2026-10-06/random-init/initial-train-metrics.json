@@ -1,0 +1,30 @@
+[
+  {
+    "step": 1,
+    "loss": 12.560367584228516,
+    "gradient_norm_before_clip": 3.361051321029663,
+    "nonpadding_tokens_per_second": 264.92553961512795,
+    "includes_compilation": true
+  },
+  {
+    "step": 2,
+    "loss": 12.570063591003418,
+    "gradient_norm_before_clip": 3.587416648864746,
+    "nonpadding_tokens_per_second": 54395.66445902562,
+    "includes_compilation": false
+  },
+  {
+    "step": 3,
+    "loss": 12.570108413696289,
+    "gradient_norm_before_clip": 3.8337724208831787,
+    "nonpadding_tokens_per_second": 54389.49065522411,
+    "includes_compilation": false
+  },
+  {
+    "step": 4,
+    "loss": 12.569378852844238,
+    "gradient_norm_before_clip": 3.378192901611328,
+    "nonpadding_tokens_per_second": 61082.263459439,
+    "includes_compilation": false
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "status": "training_running",
+  "training_running": true,
+  "completed_step_observed": 3333,
+  "latest_checkpoint_step": 3250,
+  "latest_training_loss": 3.4844374656677246,
+  "last_heldout_step": 3000,
+  "last_heldout_loss": 3.381012543304881,
+  "physical_recovery_qualified": true,
+  "evaluation_batch_size": 16,
+  "known_failure": "Full-model batch8 forward producesNaNs; unresolved. Batch16 evaluation/training separately qualified.",
+  "resource": "flaxchat-validation-yat-embed-torch-goat-inp-0-585f03aa360b47da",
+  "controller": "yat-goat-input-1007d",
+  "cleanup_deadline_utc": "2026-10-07T23:46:28.342175+00:00",
+  "workload_seconds": 39600,
+  "observed_at": "2026-10-07T12:03:09.819141+00:00"
+}

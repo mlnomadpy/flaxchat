@@ -1,0 +1,130 @@
+[
+  {
+    "canIpForward": false,
+    "cpuPlatform": "Intel Broadwell",
+    "creationTimestamp": "2026-10-09T05:00:47.992-07:00",
+    "deletionProtection": false,
+    "disks": [
+      {
+        "architecture": "X86_64",
+        "autoDelete": true,
+        "boot": true,
+        "deviceName": "persistent-disk-0",
+        "diskSizeGb": "100",
+        "guestOsFeatures": [
+          {
+            "type": "UEFI_COMPATIBLE"
+          },
+          {
+            "type": "VIRTIO_SCSI_MULTIQUEUE"
+          },
+          {
+            "type": "GVNIC"
+          },
+          {
+            "type": "SEV_CAPABLE"
+          },
+          {
+            "type": "SEV_LIVE_MIGRATABLE_V2"
+          },
+          {
+            "type": "SUSPEND_SAFE_FPR"
+          }
+        ],
+        "index": 0,
+        "interface": "SCSI",
+        "kind": "compute#attachedDisk",
+        "licenses": [
+          "https://www.googleapis.com/compute/v1/projects/debian-cloud/global/licenses/debian-12-bookworm"
+        ],
+        "mode": "READ_WRITE",
+        "source": "https://www.googleapis.com/compute/v1/projects/azettaai/zones/us-west4-a/disks/yat-goat-input-1009c",
+        "type": "PERSISTENT"
+      }
+    ],
+    "fingerprint": "CC3c1dPdNMo=",
+    "id": "7069079228039653760",
+    "kind": "compute#instance",
+    "labelFingerprint": "9drsazqS7mU=",
+    "labels": {
+      "flaxchat-run": "yat-embed-torch-goat-input-1007b",
+      "flaxchat-stage": "input-goat-scratch-base-mlm"
+    },
+    "lastStartTimestamp": "2026-10-09T05:00:57.256-07:00",
+    "machineType": "https://www.googleapis.com/compute/v1/projects/azettaai/zones/us-west4-a/machineTypes/e2-standard-4",
+    "metadata": {
+      "fingerprint": "vhDzvqgR6VM=",
+      "items": [
+        {
+          "key": "startup-script",
+          "value": "#!/bin/bash\nset -euo pipefail\nroot=/opt/flaxchat-goat-input-1009c\nmkdir -p \"$root/source\"\nif test -e \"$root/launched\"; then exit 0; fi\ntouch \"$root/launched\"\ncat > \"$root/run.sh\" <<'RUNNER'\n#!/bin/bash\nset -euo pipefail\nexport CLOUDSDK_STORAGE_PROCESS_COUNT=1 CLOUDSDK_STORAGE_THREAD_COUNT=1\nroot=/opt/flaxchat-goat-input-1009c\ncd \"$root\"\nfailed_bootstrap() {\n gcloud storage cp \"$root/pipeline.log\" gs://azettaai-yat-eval-0929/goat-input-1009c/bootstrap-failed.log || true\n gcloud compute instances delete yat-goat-input-1009c --project=azettaai --zone=us-west4-a --quiet || true\n}\ntrap failed_bootstrap ERR\ntimeout 300 gcloud storage cp gs://azettaai-yat-eval-0929/goat-input-1007b/source.tar.gz source.tar.gz\nprintf '%s  %s\\n' efd98ee424a170d3c2cfa913a6a80603d6e2f6bb71d2d04ca31c5c0533136ab9 source.tar.gz | sha256sum -c -\ntimeout 300 gcloud storage cp gs://azettaai-yat-eval-0929/goat-input-1009c/run.json run.json\nprintf '%s  %s\\n' c31cfd61c435905a051ab76bd2456d664b84f752e299eddb30ed535dbf229d97 run.json | sha256sum -c -\ntimeout 300 gcloud storage cp gs://azettaai-yat-eval-0929/goat-input-1009c/campaign-ledger.json campaign-ledger.json\nprintf '%s  %s\\n' 69c4c6dc7a309e6be7dd12e9ba13ad38f166b400a1dc8743de0eee2cf793bd2f campaign-ledger.json | sha256sum -c -\ntimeout 300 gcloud storage cp gs://azettaai-yat-eval-0929/goat-input-1009c/bootstrap_runtime.py bootstrap_runtime.py\nprintf '%s  %s\\n' 2d7b941de491534120849b74c946dceefd2037d3b8306850499272de313c5d97 bootstrap_runtime.py | sha256sum -c -\ntimeout 300 gcloud storage cp gs://azettaai-yat-eval-0929/goat-input-1009c/pipeline.py pipeline.py\nprintf '%s  %s\\n' 41718fbb335e414cf3f964e6573d2347af57702310edb9928c927d4fc29ca425 pipeline.py | sha256sum -c -\ntar -xzf source.tar.gz -C source\nexport PYTHONPATH=\"$root/source\"\ntimeout --signal=TERM --kill-after=30 2400 python3 bootstrap_runtime.py\ntrap - ERR\nexec \"$root/venv/bin/python\" -u \"$root/pipeline.py\"\nRUNNER\nchmod 700 \"$root/run.sh\"\nsystemd-run --unit=flaxchat-goat-input-1009c --property=RuntimeMaxSec=50000 --property=KillMode=control-group --property=StandardOutput=append:\"$root/pipeline.log\" --property=StandardError=append:\"$root/pipeline.log\" /bin/bash \"$root/run.sh\"\n"
+        }
+      ],
+      "kind": "compute#metadata"
+    },
+    "name": "yat-goat-input-1009c",
+    "networkInterfaces": [
+      {
+        "accessConfigs": [
+          {
+            "kind": "compute#accessConfig",
+            "name": "external-nat",
+            "natIP": "136.85.174.184",
+            "networkTier": "PREMIUM",
+            "type": "ONE_TO_ONE_NAT"
+          }
+        ],
+        "fingerprint": "tqwUWi4qLCQ=",
+        "kind": "compute#networkInterface",
+        "name": "nic0",
+        "network": "https://www.googleapis.com/compute/v1/projects/azettaai/global/networks/default",
+        "networkIP": "10.182.0.3",
+        "stackType": "IPV4_ONLY",
+        "subnetwork": "https://www.googleapis.com/compute/v1/projects/azettaai/regions/us-west4/subnetworks/default"
+      }
+    ],
+    "resourceStatus": {
+      "effectiveInstanceMetadata": {
+        "vmDnsSettingMetadataValue": "ZonalOnly"
+      },
+      "scheduling": {
+        "terminationTimestamp": "2026-10-10T02:00:50.205714Z"
+      }
+    },
+    "satisfiesPzi": true,
+    "scheduling": {
+      "automaticRestart": true,
+      "instanceTerminationAction": "DELETE",
+      "maxRunDuration": {
+        "nanos": 0,
+        "seconds": "50400"
+      },
+      "onHostMaintenance": "MIGRATE",
+      "preemptible": false,
+      "provisioningModel": "STANDARD"
+    },
+    "selfLink": "https://www.googleapis.com/compute/v1/projects/azettaai/zones/us-west4-a/instances/yat-goat-input-1009c",
+    "serviceAccounts": [
+      {
+        "email": "525030193900-compute@developer.gserviceaccount.com",
+        "scopes": [
+          "https://www.googleapis.com/auth/cloud-platform"
+        ]
+      }
+    ],
+    "shieldedInstanceConfig": {
+      "enableIntegrityMonitoring": true,
+      "enableSecureBoot": false,
+      "enableVtpm": true
+    },
+    "shieldedInstanceIntegrityPolicy": {
+      "updateAutoLearnPolicy": true
+    },
+    "startRestricted": false,
+    "status": "RUNNING",
+    "tags": {
+      "fingerprint": "42WmSpB8rSM="
+    },
+    "zone": "https://www.googleapis.com/compute/v1/projects/azettaai/zones/us-west4-a"
+  }
+]

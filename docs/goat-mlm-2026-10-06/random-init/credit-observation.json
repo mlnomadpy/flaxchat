@@ -1,0 +1,9 @@
+{
+  "observed_at": "2026-10-06T22:43:52.275807+00:00",
+  "available_usd": 858.59,
+  "expiry": "2027-07-22",
+  "billing_account": "012CAE-712976-475489",
+  "source": "Google Cloud Credits page in Chrome authuser1",
+  "billing_enabled": true,
+  "not_per_run_spend": true
+}

@@ -1,0 +1,16 @@
+{
+  "bucket": "cloud-sdk-release",
+  "content_type": "application/octet-stream",
+  "crc32c_hash": "h33E3Q==",
+  "creation_time": "2026-10-06T13:14:49+0000",
+  "etag": "CPG9gsS8pZcDEAE=",
+  "generation": "1791292489113329",
+  "md5_hash": "8wARtdT7zU6cM8xrRT19Vg==",
+  "metageneration": 1,
+  "name": "google-cloud-cli-588.0.0-linux-x86_64.tar.gz",
+  "size": 88024908,
+  "storage_class": "STANDARD",
+  "storage_class_update_time": "2026-10-06T13:14:49+0000",
+  "storage_url": "gs://cloud-sdk-release/google-cloud-cli-588.0.0-linux-x86_64.tar.gz#1791292489113329",
+  "update_time": "2026-10-06T13:14:49+0000"
+}

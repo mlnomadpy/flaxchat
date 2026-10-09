@@ -1,0 +1,11 @@
+{
+  "lease": {
+    "project": "azettaai",
+    "zone": "us-west4-a",
+    "queue": "flaxchat-validation-yat-embed-torch-goat-inp-0-8e55f848c3084f38",
+    "deadline": 1791583682.5949833,
+    "allow_long_lease": true
+  },
+  "execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/3c851cf5-deab-4174-8482-c4d682c780df",
+  "location": "us-central1"
+}

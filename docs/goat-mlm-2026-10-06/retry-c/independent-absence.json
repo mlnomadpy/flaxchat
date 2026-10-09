@@ -1,0 +1,13 @@
+{
+  "schema": "flaxchat-independent-tpu-absence-v1",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "attempt_id": "83734dc58b3149cb:0",
+  "resource_name": "flaxchat-validation-yat-embed-torch-goat-100-0-83734dc58b3149cb",
+  "queue_absent": true,
+  "node_absent": true,
+  "observed_unix": 1791324889.947445,
+  "source": "Independent gcloud whole-zone list reads after final receipt; both lists empty; controller also absent",
+  "node_read_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "queue_read_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+}

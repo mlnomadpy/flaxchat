@@ -1,0 +1,9 @@
+# Full GOAT-input MLM recovery — October7
+
+Exact resume from committed checkpoint3000 in the originalB stage namespace. Same frozen model/trainer source `efd98ee424a170d3c2cfa913a6a80603d6e2f6bb71d2d04ca31c5c0533136ab9`, tokenizer, corpus, optimizer, schedule, seed and cursor. Existing30 physical tests and step8 qualification are authenticated; fresh TPU tests and paired checkpoint3000 heldout evaluation must pass before resumed updates. External recovery controller code does not modify the frozen model source. Fourteen metadata tests passed, Ruff clean.
+
+Controller `yat-goat-input-1007c`, Spot v5e8 in `azettaai/us-west4-a`. Independent12h TPU cleanup guard; provider14h controller DELETE. Training workload11h, horizon100k optimizer steps, checkpoint250, eval2000, latest3 retention. This attempt does not claim to finish100k steps or establish production embedding quality.
+
+Fresh credit observation831.01USD active, expiresJuly22,2027; expired credit excluded. Three terminal campaigns with independent absent-resource observations released271.31USD unused reservations. Prior retained627.98USD +130new conservative bound =757.98 within unchanged900 cap. On-demand9.60USD per8-chip-hour is a conservative ceiling for dynamic Spot admission; bound includes12h lease plus30minutes cleanup plus10USD ancillary. These are reservations, not posted charges.
+
+Physical recovery FAILED safely before resumed updates:all30 physical attention tests passed, but actual checkpoint3000 heldout evaluation raised Nonfinite evaluation loss. Fresh scope lists empty and campaign cleanup verified. The unused118.34USD reservation was released; retained conservative bound11.66USD, not posted charges. Numerical TPU checkpoint diagnosis is the next gate. Durable status at `gs://azettaai-yat-eval-0929/goat-input-1007c/training-evidence/`; checkpoint namespace remains originalB and is recorded in run.json.

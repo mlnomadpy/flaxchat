@@ -1,0 +1,14 @@
+{
+  "objective": "masked_language_modeling",
+  "architecture": "goat_input",
+  "initialization": "random_seed1006_fresh_optimizer",
+  "started_unix": 1791361177.6539707,
+  "status": "failed",
+  "corpus": {
+    "recipe_sha256": "f5b183d5b03353e4e184462d4a398571ff908d7863c6fc3963fca738757f6309",
+    "train_manifest_sha256": "22542d887efaf01618344d57b65c3977cbe2ebe9ff4168a92c9c7df216234421",
+    "validation_manifest_sha256": "3f0d892d20f68a0c526c786b8cc8daab50590cc36364ac83b22c315e3ded6773"
+  },
+  "manifest_sha256": "8808d0f4e716d769a06f994c77ed4c6d9ba38f05a32a8a2eb8ea2cd0c8209cbc",
+  "error": "ValueError: Total retry budget exhausted"
+}

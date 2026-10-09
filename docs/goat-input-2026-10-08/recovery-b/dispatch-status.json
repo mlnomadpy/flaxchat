@@ -1,0 +1,21 @@
+{
+  "status": "training_running",
+  "controller": "yat-goat-input-1008b",
+  "resource": "flaxchat-validation-yat-embed-torch-goat-inp-0-49d4ace2c2914488",
+  "resume_checkpoint_step": 27750,
+  "objective": "masked_language_modeling",
+  "cleanup_verified": true,
+  "cleanup_deadline_utc": "2026-10-08T22:59:33.665324+00:00",
+  "cleanup_execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/d27d4c01-1989-4145-b755-0320bf7d916b",
+  "new_reservation_usd": 101.2,
+  "total_reserved_usd": 899.7,
+  "physical_status": "passed",
+  "requires_laptop": false,
+  "physical_tests_passed": 30,
+  "checkpoint_evaluated": 27750,
+  "heldout_mlm_loss": 2.085473982373747,
+  "observed_training_step": 27766,
+  "observed_training_loss": 2.3075366020202637,
+  "observed_update_applied": true,
+  "observed_at": "2026-10-08T14:11:42.756476+00:00"
+}

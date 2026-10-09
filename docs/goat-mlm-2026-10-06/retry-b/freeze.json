@@ -1,0 +1,22 @@
+{
+  "observed_at": "2026-10-06T21:22:26.020474+00:00",
+  "objective": "masked_language_modeling",
+  "architecture": "goat",
+  "parent_step": 48236,
+  "available_credit_usd": 858.63,
+  "credit_expiry": "2027-07-22",
+  "prior_reserved_usd": 853.6,
+  "new_reservation_usd": 41.6,
+  "campaign_cap_usd": 900,
+  "source_sha256": "9759a8d10fe9c252bea75e5a4571e7e3ff1646d94838a06502670257a40b26ec",
+  "manifest_sha256": "75ff0e72bc0d83f8c9af932a68953928bb68e9bb5c3d06d44d77045c3398af9d",
+  "billing_enabled": true,
+  "account": "tahabhs14@gmail.com",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "conservative_slice_hourly_usd": 9.6,
+  "pricing_source": "https://cloud.google.com/tpu/pricing",
+  "actual_spot_rate_verified": false,
+  "physical_status": "not_run",
+  "controller": "yat-goat-1006b"
+}

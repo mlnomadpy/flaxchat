@@ -1,0 +1,18 @@
+{
+  "status": "completed",
+  "steps": [
+    {
+      "step": 3000,
+      "returncode": 0
+    },
+    {
+      "step": 2750,
+      "returncode": 1
+    },
+    {
+      "step": 2500,
+      "returncode": 1
+    }
+  ],
+  "diagnostic_sha256": "96c74b21f36729748ea58aa6f7d9703927f8f91e6abc86543eed177c65a33344"
+}

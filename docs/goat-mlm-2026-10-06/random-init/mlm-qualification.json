@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "backend": "tpu",
+  "devices": 8,
+  "processes": 1,
+  "source_tree_sha256": "0e5aac2fa146dff7a257c1d7ce9075c0f8d1df2d0914a7edaa902ca0df99bdb8",
+  "training_arguments_sha256": "da9c29b3d9265c84c4534a70b4221db583330d5319d7ae285409173b1598609e",
+  "manifest_sha256": "ec29df722581d412e2e9d2ff7c2fdcc7f30968b6cd2c02ee538068619e472d0c",
+  "runtime_lock_sha256": "c5328dcbc58c9b2f18b52131b7c5acff17c9a93bb180639395a3259c6ab56bd5",
+  "random_initialization": {
+    "seed": 1006,
+    "attention_score": "goat",
+    "reference_metadata_sha256": "35cff96b97c0a9d5ba401c39545dfeff62e1c73e527d5f5661ba0960042bf4f4",
+    "reference_manifest_sha256": "bf891c59974ec83f69349e08e704a99388fd8bdad6fd356ee2be9dfa1fb1b4d3",
+    "weights_loaded": false,
+    "quality_baseline": "identical_random_initializer",
+    "maximum_loss_ratio": 1.05
+  },
+  "step8_evaluation_sha256": "4e372cb5e38abc84d343a6a74f8ae7f383f9f5327ad582e20ff990beafdcdbb3",
+  "tests": [
+    {
+      "id": "mlm-random-initialization-update",
+      "status": "passed"
+    },
+    {
+      "id": "mlm-random-checkpoint-resume",
+      "status": "passed"
+    },
+    {
+      "id": "mlm-heldout-random-initializer-gate",
+      "status": "passed"
+    },
+    {
+      "id": "goat-physical-forward-backward-migration",
+      "status": "passed"
+    }
+  ],
+  "random_initializer_evaluation_sha256": "9f03eb4792f3336dd207132908b56efe9607fbadb7058f976b7e8c494375fa69",
+  "goat_physical_tests_sha256": "182a53c73898c6540e6449b1af4f589fac01ad39de48aa56f557af11f707c642"
+}

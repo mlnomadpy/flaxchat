@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "status": "passed",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "run_id": "yat-embed-torch-goat-input-1007b",
+  "stage_id": "input-goat-scratch-base-mlm",
+  "phase": "cleanup",
+  "started_unix": 1791372449.822723,
+  "whole_slice_hourly_usd": 9.6,
+  "attempt_seconds": 3600,
+  "capacity_wait_seconds": 900,
+  "startup_wait_seconds": 600,
+  "max_attempts": 1,
+  "allow_long_lease": false,
+  "phases": [
+    {
+      "phase": "admission",
+      "elapsed_seconds": 0.004483526999990772
+    },
+    {
+      "phase": "identity_admission",
+      "elapsed_seconds": 0.0042155300000104035
+    },
+    {
+      "phase": "cleanup_scope_admission",
+      "elapsed_seconds": 6.293900194000003
+    },
+    {
+      "phase": "guard_verification",
+      "elapsed_seconds": 5.4338852540000175
+    },
+    {
+      "phase": "provisioning",
+      "elapsed_seconds": 5.06516177200001
+    },
+    {
+      "phase": "capacity_wait",
+      "elapsed_seconds": 25.352629768999975
+    },
+    {
+      "phase": "startup_wait",
+      "elapsed_seconds": 111.691377778
+    },
+    {
+      "phase": "label_verification",
+      "elapsed_seconds": 1.1168996910000146
+    },
+    {
+      "phase": "setup",
+      "elapsed_seconds": 219.51677262600003
+    },
+    {
+      "phase": "workload",
+      "elapsed_seconds": 160.45884779199991
+    },
+    {
+      "phase": "cleanup",
+      "elapsed_seconds": 99.65052772299998
+    }
+  ],
+  "attempts": [
+    {
+      "index": 0,
+      "resource_name": "flaxchat-validation-yat-embed-torch-goat-inp-0-392c6a8b92964e6c",
+      "attempt_id": "392c6a8b92964e6c:0",
+      "cleanup": {
+        "state": "resource_absent",
+        "started_unix": 1791372984.7651427,
+        "queue_absent": true,
+        "node_absent": true,
+        "queue_state": null,
+        "node_state": null,
+        "observed_unix": 1791373084.3908126,
+        "finished_unix": 1791373084.3949006
+      },
+      "remote_stages_started": [
+        "setup",
+        "workload"
+      ],
+      "cleanup_scope": {
+        "schema": "cleanup-project-allow-scope-v1",
+        "service_account": "flaxchat-validation-cleanup@azettaai.iam.gserviceaccount.com",
+        "resources": {
+          "queuedResources": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-goat-inp-0-392c6a8b92964e6c",
+          "nodes": "projects/azettaai/locations/us-west4-a/nodes/flaxchat-validation-yat-embed-torch-goat-inp-0-392c6a8b92964e6c"
+        },
+        "policy_sha256": "41e079502b61f52705bcbf205a9792f849be46b009b4e93296ce01433bb80551",
+        "roles_sha256": "9f881d7ab4e9c78f7bc38933d969b967c4928624c2767fa16db4dbf38d9d4a31",
+        "supported_project_allow_coverage": true,
+        "effective_iam_verified": false,
+        "server_permission_probes_required": true,
+        "workflow_revision": "000002-9d2",
+        "workflow_sha256": "7a9153691c8910b4de595e91fa2bf38b33cfb5d213507697741f5a5ff6bde76a",
+        "observed_unix": 1791372453.7936616,
+        "discovery": {
+          "schema": "cleanup-scope-discovery-v1",
+          "reads": [
+            {
+              "operation": [
+                "workflows",
+                "describe",
+                "flaxchat-validation-cleanup"
+              ],
+              "attempt": 1,
+              "timeout_seconds": 20,
+              "status": "succeeded",
+              "output_sha256": "caee6effe8d644a7e7a16c484d15413278bb18b38f968d32613d6ccb0aabc948",
+              "elapsed_seconds": 1.4587263600000142
+            },
+            {
+              "operation": [
+                "projects",
+                "get-iam-policy",
+                "azettaai"
+              ],
+              "attempt": 1,
+              "timeout_seconds": 20,
+              "status": "succeeded",
+              "output_sha256": "5413f4e2b027309d730488010d71bec053285811a90bbe0565c799be1fdbdd20",
+              "elapsed_seconds": 1.2156410059999985
+            },
+            {
+              "operation": [
+                "iam",
+                "roles",
+                "describe"
+              ],
+              "attempt": 1,
+              "timeout_seconds": 20,
+              "status": "succeeded",
+              "output_sha256": "2d66a37580e192fa71d9daa5042118ee10ed33e974c2a9d7dd5be21948437c2a",
+              "elapsed_seconds": 1.2642047230000344
+            }
+          ],
+          "total_timeout_seconds": 120,
+          "command_timeout_seconds": 20,
+          "maximum_attempts_per_read": 2
+        }
+      },
+      "guard_receipt_path": "/opt/flaxchat-goat-input-1007diag/tpu-controller/attempt-0/guard.json",
+      "create_requested": true,
+      "resource_state_observations": [
+        {
+          "queue_state": "WAITING_FOR_RESOURCES",
+          "node_state": null,
+          "wait_phase": "capacity_wait",
+          "observation_error": null,
+          "observed_unix": 1791372467.710069
+        },
+        {
+          "queue_state": "PROVISIONING",
+          "node_state": null,
+          "wait_phase": "startup_wait",
+          "observation_error": null,
+          "observed_unix": 1791372491.981737
+        },
+        {
+          "queue_state": "PROVISIONING",
+          "node_state": "CREATING",
+          "wait_phase": "startup_wait",
+          "observation_error": null,
+          "observed_unix": 1791372505.248788
+        },
+        {
+          "queue_state": "PROVISIONING",
+          "node_state": "READY",
+          "wait_phase": "startup_wait",
+          "observation_error": null,
+          "observed_unix": 1791372603.6637158
+        }
+      ],
+      "returncode": 0
+    }
+  ],
+  "model_execution_state": "not_inferred",
+  "posted_usage_usd": null,
+  "returncode": 0,
+  "finished_unix": 1791373084.4114356,
+  "elapsed_seconds": 634.5887069309999,
+  "no_remote_execution": false,
+  "cleanup_required": true,
+  "cleanup_verified": true,
+  "ledger_path": "/opt/flaxchat-goat-input-1007diag/campaign-ledger.json",
+  "reserved_usd": 656.04,
+  "budget_usd": 900.0
+}

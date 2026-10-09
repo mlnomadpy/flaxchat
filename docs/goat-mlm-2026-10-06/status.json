@@ -1,0 +1,20 @@
+{
+  "observed_at": "2026-10-06T21:17:07.930801+00:00",
+  "status": "first_attempt_failed_before_tests_and_updates",
+  "training_steps_verified": 0,
+  "controller": "yat-goat-1006",
+  "tpu": "flaxchat-validation-yat-embed-torch-goat-100-0-85ce39bcf83741bb",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "objective": "masked_language_modeling",
+  "architecture": "goat",
+  "corpus_preflight_passed": true,
+  "cleanup_guard_verified": true,
+  "cleanup_deadline_unix": 1791364341.6475801,
+  "manifest_sha256": "2644dac5bd8dea2c91a41d09bb0ee5e57e477f5db5bf7c44d08964b7596efe2a",
+  "cleanup_verified": true,
+  "cleanup_independently_verified_at": "2026-10-06T21:23:28.346830+00:00",
+  "failure": "Supervisor metadata preflight initialized libtpu and prevented physical child from acquiring TPU",
+  "fix": "Metadata-only preflight isolated in CPU child process, exited and reaped before TPU work",
+  "corrected_attempt": "retry-b/run.json"
+}

@@ -1,0 +1,1637 @@
+{
+  "step": 3000,
+  "source_tree_sha256": "e00bb7f13bf8f42dd24f9c91dfb266d62d76174a07b1c19bf6588b277304ae7d",
+  "runtime_lock_sha256": "c5328dcbc58c9b2f18b52131b7c5acff17c9a93bb180639395a3259c6ab56bd5",
+  "manifest_sha256": "30cee0bb60f24ca2ad1444a879cff8d1a1bfeb6c599f1e866eac101537d61dd2",
+  "diagnostic_sha256": "96c74b21f36729748ea58aa6f7d9703927f8f91e6abc86543eed177c65a33344",
+  "backend": "tpu",
+  "devices": 8,
+  "status": "nonfinite_heldout_localized",
+  "weights": [
+    {
+      "path": "decoder_bias",
+      "finite": true,
+      "absmax": 0.5177220106124878,
+      "minimum": -0.5177220106124878,
+      "maximum": 0.06551043689250946
+    },
+    {
+      "path": "embedding/embedding",
+      "finite": true,
+      "absmax": 0.24445761740207672,
+      "minimum": -0.23599876463413239,
+      "maximum": 0.24445761740207672
+    },
+    {
+      "path": "embedding_norm/scale",
+      "finite": true,
+      "absmax": 1.311513900756836,
+      "minimum": 0.6978073120117188,
+      "maximum": 1.311513900756836
+    },
+    {
+      "path": "final_norm/scale",
+      "finite": true,
+      "absmax": 1.017409086227417,
+      "minimum": 0.7869676351547241,
+      "maximum": 1.017409086227417
+    },
+    {
+      "path": "head_dense/kernel",
+      "finite": true,
+      "absmax": 0.4093109965324402,
+      "minimum": -0.1530926525592804,
+      "maximum": 0.4093109965324402
+    },
+    {
+      "path": "head_norm/scale",
+      "finite": true,
+      "absmax": 1.668391227722168,
+      "minimum": 0.6146745681762695,
+      "maximum": 1.668391227722168
+    },
+    {
+      "path": "layers/0/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.20469287037849426,
+      "minimum": -0.2010965347290039,
+      "maximum": 0.20469287037849426
+    },
+    {
+      "path": "layers/0/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.1269879341125488,
+      "minimum": 0.8936488628387451,
+      "maximum": 1.1269879341125488
+    },
+    {
+      "path": "layers/0/v/kernel",
+      "finite": true,
+      "absmax": 0.1103600263595581,
+      "minimum": -0.09581352770328522,
+      "maximum": 0.1103600263595581
+    },
+    {
+      "path": "layers/0/wi/kernel",
+      "finite": true,
+      "absmax": 0.19663505256175995,
+      "minimum": -0.18123699724674225,
+      "maximum": 0.19663505256175995
+    },
+    {
+      "path": "layers/0/wo/kernel",
+      "finite": true,
+      "absmax": 0.3183453679084778,
+      "minimum": -0.3183453679084778,
+      "maximum": 0.2998713254928589
+    },
+    {
+      "path": "layers/0/yat_alpha",
+      "finite": true,
+      "absmax": 1.0696499347686768,
+      "minimum": 1.0696499347686768,
+      "maximum": 1.0696499347686768
+    },
+    {
+      "path": "layers/0/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.1696292608976364,
+      "minimum": 0.1696292608976364,
+      "maximum": 0.1696292608976364
+    },
+    {
+      "path": "layers/1/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.0410284996032715,
+      "minimum": 0.8659570813179016,
+      "maximum": 1.0410284996032715
+    },
+    {
+      "path": "layers/1/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.17704176902770996,
+      "minimum": -0.14158914983272552,
+      "maximum": 0.17704176902770996
+    },
+    {
+      "path": "layers/1/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.1321433782577515,
+      "minimum": 0.868918776512146,
+      "maximum": 1.1321433782577515
+    },
+    {
+      "path": "layers/1/v/kernel",
+      "finite": true,
+      "absmax": 0.10399200767278671,
+      "minimum": -0.10032069683074951,
+      "maximum": 0.10399200767278671
+    },
+    {
+      "path": "layers/1/wi/kernel",
+      "finite": true,
+      "absmax": 0.19313454627990723,
+      "minimum": -0.16611702740192413,
+      "maximum": 0.19313454627990723
+    },
+    {
+      "path": "layers/1/wo/kernel",
+      "finite": true,
+      "absmax": 0.2734014391899109,
+      "minimum": -0.2734014391899109,
+      "maximum": 0.21914714574813843
+    },
+    {
+      "path": "layers/1/yat_alpha",
+      "finite": true,
+      "absmax": 1.1047183275222778,
+      "minimum": 1.1047183275222778,
+      "maximum": 1.1047183275222778
+    },
+    {
+      "path": "layers/1/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.02134714089334011,
+      "minimum": 0.02134714089334011,
+      "maximum": 0.02134714089334011
+    },
+    {
+      "path": "layers/2/attn_norm/scale",
+      "finite": true,
+      "absmax": 0.9722827672958374,
+      "minimum": 0.8753073811531067,
+      "maximum": 0.9722827672958374
+    },
+    {
+      "path": "layers/2/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.099827840924263,
+      "minimum": -0.099827840924263,
+      "maximum": 0.08954598009586334
+    },
+    {
+      "path": "layers/2/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.1440074443817139,
+      "minimum": 0.8749735355377197,
+      "maximum": 1.1440074443817139
+    },
+    {
+      "path": "layers/2/v/kernel",
+      "finite": true,
+      "absmax": 0.10057516396045685,
+      "minimum": -0.09362369030714035,
+      "maximum": 0.10057516396045685
+    },
+    {
+      "path": "layers/2/wi/kernel",
+      "finite": true,
+      "absmax": 0.20458605885505676,
+      "minimum": -0.20458605885505676,
+      "maximum": 0.1835242062807083
+    },
+    {
+      "path": "layers/2/wo/kernel",
+      "finite": true,
+      "absmax": 0.21148602664470673,
+      "minimum": -0.21148602664470673,
+      "maximum": 0.18596065044403076
+    },
+    {
+      "path": "layers/2/yat_alpha",
+      "finite": true,
+      "absmax": 1.1480051279067993,
+      "minimum": 1.1480051279067993,
+      "maximum": 1.1480051279067993
+    },
+    {
+      "path": "layers/2/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.006818756926804781,
+      "minimum": -0.006818756926804781,
+      "maximum": -0.006818756926804781
+    },
+    {
+      "path": "layers/3/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.1665940284729004,
+      "minimum": 0.6938550472259521,
+      "maximum": 1.1665940284729004
+    },
+    {
+      "path": "layers/3/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.1219298392534256,
+      "minimum": -0.1219298392534256,
+      "maximum": 0.10861702263355255
+    },
+    {
+      "path": "layers/3/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.1583236455917358,
+      "minimum": 0.8429802060127258,
+      "maximum": 1.1583236455917358
+    },
+    {
+      "path": "layers/3/v/kernel",
+      "finite": true,
+      "absmax": 0.10663475841283798,
+      "minimum": -0.10636811703443527,
+      "maximum": 0.10663475841283798
+    },
+    {
+      "path": "layers/3/wi/kernel",
+      "finite": true,
+      "absmax": 0.20600534975528717,
+      "minimum": -0.1915043145418167,
+      "maximum": 0.20600534975528717
+    },
+    {
+      "path": "layers/3/wo/kernel",
+      "finite": true,
+      "absmax": 0.17354093492031097,
+      "minimum": -0.17354093492031097,
+      "maximum": 0.16792042553424835
+    },
+    {
+      "path": "layers/3/yat_alpha",
+      "finite": true,
+      "absmax": 1.1907039880752563,
+      "minimum": 1.1907039880752563,
+      "maximum": 1.1907039880752563
+    },
+    {
+      "path": "layers/3/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.21235539019107819,
+      "minimum": 0.21235539019107819,
+      "maximum": 0.21235539019107819
+    },
+    {
+      "path": "layers/4/attn_norm/scale",
+      "finite": true,
+      "absmax": 0.9780267477035522,
+      "minimum": 0.8719814419746399,
+      "maximum": 0.9780267477035522
+    },
+    {
+      "path": "layers/4/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.10675746202468872,
+      "minimum": -0.10048725455999374,
+      "maximum": 0.10675746202468872
+    },
+    {
+      "path": "layers/4/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.1554511785507202,
+      "minimum": 0.8607251644134521,
+      "maximum": 1.1554511785507202
+    },
+    {
+      "path": "layers/4/v/kernel",
+      "finite": true,
+      "absmax": 0.10262960195541382,
+      "minimum": -0.10262960195541382,
+      "maximum": 0.09651567786931992
+    },
+    {
+      "path": "layers/4/wi/kernel",
+      "finite": true,
+      "absmax": 0.20730945467948914,
+      "minimum": -0.2055017650127411,
+      "maximum": 0.20730945467948914
+    },
+    {
+      "path": "layers/4/wo/kernel",
+      "finite": true,
+      "absmax": 0.21632903814315796,
+      "minimum": -0.19823333621025085,
+      "maximum": 0.21632903814315796
+    },
+    {
+      "path": "layers/4/yat_alpha",
+      "finite": true,
+      "absmax": 1.2090479135513306,
+      "minimum": 1.2090479135513306,
+      "maximum": 1.2090479135513306
+    },
+    {
+      "path": "layers/4/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.003619470400735736,
+      "minimum": -0.003619470400735736,
+      "maximum": -0.003619470400735736
+    },
+    {
+      "path": "layers/5/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.0560051202774048,
+      "minimum": 0.870459258556366,
+      "maximum": 1.0560051202774048
+    },
+    {
+      "path": "layers/5/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.11202435940504074,
+      "minimum": -0.11202435940504074,
+      "maximum": 0.09725447744131088
+    },
+    {
+      "path": "layers/5/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.1363791227340698,
+      "minimum": 0.8930392265319824,
+      "maximum": 1.1363791227340698
+    },
+    {
+      "path": "layers/5/v/kernel",
+      "finite": true,
+      "absmax": 0.09161084145307541,
+      "minimum": -0.09107263386249542,
+      "maximum": 0.09161084145307541
+    },
+    {
+      "path": "layers/5/wi/kernel",
+      "finite": true,
+      "absmax": 0.24139082431793213,
+      "minimum": -0.24139082431793213,
+      "maximum": 0.21366459131240845
+    },
+    {
+      "path": "layers/5/wo/kernel",
+      "finite": true,
+      "absmax": 0.20030562579631805,
+      "minimum": -0.20030562579631805,
+      "maximum": 0.1890295445919037
+    },
+    {
+      "path": "layers/5/yat_alpha",
+      "finite": true,
+      "absmax": 1.2507449388504028,
+      "minimum": 1.2507449388504028,
+      "maximum": 1.2507449388504028
+    },
+    {
+      "path": "layers/5/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.0066215647384524345,
+      "minimum": 0.0066215647384524345,
+      "maximum": 0.0066215647384524345
+    },
+    {
+      "path": "layers/6/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.122261881828308,
+      "minimum": 0.6773406267166138,
+      "maximum": 1.122261881828308
+    },
+    {
+      "path": "layers/6/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.1613130420446396,
+      "minimum": -0.11591386795043945,
+      "maximum": 0.1613130420446396
+    },
+    {
+      "path": "layers/6/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.2356743812561035,
+      "minimum": 0.8695866465568542,
+      "maximum": 1.2356743812561035
+    },
+    {
+      "path": "layers/6/v/kernel",
+      "finite": true,
+      "absmax": 0.0995008572936058,
+      "minimum": -0.0959043800830841,
+      "maximum": 0.0995008572936058
+    },
+    {
+      "path": "layers/6/wi/kernel",
+      "finite": true,
+      "absmax": 0.24261929094791412,
+      "minimum": -0.24261929094791412,
+      "maximum": 0.22505176067352295
+    },
+    {
+      "path": "layers/6/wo/kernel",
+      "finite": true,
+      "absmax": 0.192805215716362,
+      "minimum": -0.188622385263443,
+      "maximum": 0.192805215716362
+    },
+    {
+      "path": "layers/6/yat_alpha",
+      "finite": true,
+      "absmax": 1.2707085609436035,
+      "minimum": 1.2707085609436035,
+      "maximum": 1.2707085609436035
+    },
+    {
+      "path": "layers/6/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.10445606708526611,
+      "minimum": 0.10445606708526611,
+      "maximum": 0.10445606708526611
+    },
+    {
+      "path": "layers/7/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.154013991355896,
+      "minimum": 0.832438051700592,
+      "maximum": 1.154013991355896
+    },
+    {
+      "path": "layers/7/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.1478567123413086,
+      "minimum": -0.13701055943965912,
+      "maximum": 0.1478567123413086
+    },
+    {
+      "path": "layers/7/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.2031164169311523,
+      "minimum": 0.8177733421325684,
+      "maximum": 1.2031164169311523
+    },
+    {
+      "path": "layers/7/v/kernel",
+      "finite": true,
+      "absmax": 0.10927161574363708,
+      "minimum": -0.09298393875360489,
+      "maximum": 0.10927161574363708
+    },
+    {
+      "path": "layers/7/wi/kernel",
+      "finite": true,
+      "absmax": 0.27431023120880127,
+      "minimum": -0.2582615911960602,
+      "maximum": 0.27431023120880127
+    },
+    {
+      "path": "layers/7/wo/kernel",
+      "finite": true,
+      "absmax": 0.2531589865684509,
+      "minimum": -0.21172025799751282,
+      "maximum": 0.2531589865684509
+    },
+    {
+      "path": "layers/7/yat_alpha",
+      "finite": true,
+      "absmax": 1.3139768838882446,
+      "minimum": 1.3139768838882446,
+      "maximum": 1.3139768838882446
+    },
+    {
+      "path": "layers/7/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.03644973784685135,
+      "minimum": 0.03644973784685135,
+      "maximum": 0.03644973784685135
+    },
+    {
+      "path": "layers/8/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.1548854112625122,
+      "minimum": 0.8272832632064819,
+      "maximum": 1.1548854112625122
+    },
+    {
+      "path": "layers/8/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.13586589694023132,
+      "minimum": -0.1267339438199997,
+      "maximum": 0.13586589694023132
+    },
+    {
+      "path": "layers/8/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.1854522228240967,
+      "minimum": 0.8042029142379761,
+      "maximum": 1.1854522228240967
+    },
+    {
+      "path": "layers/8/v/kernel",
+      "finite": true,
+      "absmax": 0.11388227343559265,
+      "minimum": -0.11124788969755173,
+      "maximum": 0.11388227343559265
+    },
+    {
+      "path": "layers/8/wi/kernel",
+      "finite": true,
+      "absmax": 0.2728208899497986,
+      "minimum": -0.2728208899497986,
+      "maximum": 0.23021423816680908
+    },
+    {
+      "path": "layers/8/wo/kernel",
+      "finite": true,
+      "absmax": 0.20951814949512482,
+      "minimum": -0.20951814949512482,
+      "maximum": 0.20106473565101624
+    },
+    {
+      "path": "layers/8/yat_alpha",
+      "finite": true,
+      "absmax": 1.3562763929367065,
+      "minimum": 1.3562763929367065,
+      "maximum": 1.3562763929367065
+    },
+    {
+      "path": "layers/8/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.051731470972299576,
+      "minimum": 0.051731470972299576,
+      "maximum": 0.051731470972299576
+    },
+    {
+      "path": "layers/9/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.1350213289260864,
+      "minimum": 0.8055416345596313,
+      "maximum": 1.1350213289260864
+    },
+    {
+      "path": "layers/9/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.1464557647705078,
+      "minimum": -0.1464557647705078,
+      "maximum": 0.14500294625759125
+    },
+    {
+      "path": "layers/9/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.1861306428909302,
+      "minimum": 0.7977121472358704,
+      "maximum": 1.1861306428909302
+    },
+    {
+      "path": "layers/9/v/kernel",
+      "finite": true,
+      "absmax": 0.11749494820833206,
+      "minimum": -0.11749494820833206,
+      "maximum": 0.10799890011548996
+    },
+    {
+      "path": "layers/9/wi/kernel",
+      "finite": true,
+      "absmax": 0.2766207158565521,
+      "minimum": -0.2766207158565521,
+      "maximum": 0.21739958226680756
+    },
+    {
+      "path": "layers/9/wo/kernel",
+      "finite": true,
+      "absmax": 0.18311670422554016,
+      "minimum": -0.18311670422554016,
+      "maximum": 0.1800292730331421
+    },
+    {
+      "path": "layers/9/yat_alpha",
+      "finite": true,
+      "absmax": 1.3601548671722412,
+      "minimum": 1.3601548671722412,
+      "maximum": 1.3601548671722412
+    },
+    {
+      "path": "layers/9/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.07488635182380676,
+      "minimum": 0.07488635182380676,
+      "maximum": 0.07488635182380676
+    },
+    {
+      "path": "layers/10/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.176809310913086,
+      "minimum": 0.8256869316101074,
+      "maximum": 1.176809310913086
+    },
+    {
+      "path": "layers/10/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.15181203186511993,
+      "minimum": -0.15181203186511993,
+      "maximum": 0.1432141214609146
+    },
+    {
+      "path": "layers/10/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.2220157384872437,
+      "minimum": 0.77183598279953,
+      "maximum": 1.2220157384872437
+    },
+    {
+      "path": "layers/10/v/kernel",
+      "finite": true,
+      "absmax": 0.12992684543132782,
+      "minimum": -0.1176813468337059,
+      "maximum": 0.12992684543132782
+    },
+    {
+      "path": "layers/10/wi/kernel",
+      "finite": true,
+      "absmax": 0.27460777759552,
+      "minimum": -0.2489256113767624,
+      "maximum": 0.27460777759552
+    },
+    {
+      "path": "layers/10/wo/kernel",
+      "finite": true,
+      "absmax": 0.20182032883167267,
+      "minimum": -0.20182032883167267,
+      "maximum": 0.18363691866397858
+    },
+    {
+      "path": "layers/10/yat_alpha",
+      "finite": true,
+      "absmax": 1.3882676362991333,
+      "minimum": 1.3882676362991333,
+      "maximum": 1.3882676362991333
+    },
+    {
+      "path": "layers/10/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.07476788014173508,
+      "minimum": 0.07476788014173508,
+      "maximum": 0.07476788014173508
+    },
+    {
+      "path": "layers/11/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.143656611442566,
+      "minimum": 0.7664408087730408,
+      "maximum": 1.143656611442566
+    },
+    {
+      "path": "layers/11/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.18316151201725006,
+      "minimum": -0.1589655876159668,
+      "maximum": 0.18316151201725006
+    },
+    {
+      "path": "layers/11/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.200726866722107,
+      "minimum": 0.7467113137245178,
+      "maximum": 1.200726866722107
+    },
+    {
+      "path": "layers/11/v/kernel",
+      "finite": true,
+      "absmax": 0.12530605494976044,
+      "minimum": -0.12530605494976044,
+      "maximum": 0.12332053482532501
+    },
+    {
+      "path": "layers/11/wi/kernel",
+      "finite": true,
+      "absmax": 0.2391057014465332,
+      "minimum": -0.2391057014465332,
+      "maximum": 0.22826369106769562
+    },
+    {
+      "path": "layers/11/wo/kernel",
+      "finite": true,
+      "absmax": 0.22426432371139526,
+      "minimum": -0.20338495075702667,
+      "maximum": 0.22426432371139526
+    },
+    {
+      "path": "layers/11/yat_alpha",
+      "finite": true,
+      "absmax": 1.427566409111023,
+      "minimum": 1.427566409111023,
+      "maximum": 1.427566409111023
+    },
+    {
+      "path": "layers/11/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.09042897075414658,
+      "minimum": 0.09042897075414658,
+      "maximum": 0.09042897075414658
+    },
+    {
+      "path": "layers/12/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.2229610681533813,
+      "minimum": 0.7429895401000977,
+      "maximum": 1.2229610681533813
+    },
+    {
+      "path": "layers/12/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.16667526960372925,
+      "minimum": -0.13478919863700867,
+      "maximum": 0.16667526960372925
+    },
+    {
+      "path": "layers/12/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.2011394500732422,
+      "minimum": 0.7664822936058044,
+      "maximum": 1.2011394500732422
+    },
+    {
+      "path": "layers/12/v/kernel",
+      "finite": true,
+      "absmax": 0.1539229303598404,
+      "minimum": -0.14367622137069702,
+      "maximum": 0.1539229303598404
+    },
+    {
+      "path": "layers/12/wi/kernel",
+      "finite": true,
+      "absmax": 0.23187929391860962,
+      "minimum": -0.23187929391860962,
+      "maximum": 0.23085561394691467
+    },
+    {
+      "path": "layers/12/wo/kernel",
+      "finite": true,
+      "absmax": 0.20756979286670685,
+      "minimum": -0.20756979286670685,
+      "maximum": 0.20106735825538635
+    },
+    {
+      "path": "layers/12/yat_alpha",
+      "finite": true,
+      "absmax": 1.4238539934158325,
+      "minimum": 1.4238539934158325,
+      "maximum": 1.4238539934158325
+    },
+    {
+      "path": "layers/12/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.16849768161773682,
+      "minimum": 0.16849768161773682,
+      "maximum": 0.16849768161773682
+    },
+    {
+      "path": "layers/13/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.191713571548462,
+      "minimum": 0.8082495927810669,
+      "maximum": 1.191713571548462
+    },
+    {
+      "path": "layers/13/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.17939405143260956,
+      "minimum": -0.17939405143260956,
+      "maximum": 0.17554433643817902
+    },
+    {
+      "path": "layers/13/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.24611234664917,
+      "minimum": 0.7628157734870911,
+      "maximum": 1.24611234664917
+    },
+    {
+      "path": "layers/13/v/kernel",
+      "finite": true,
+      "absmax": 0.13141284883022308,
+      "minimum": -0.13141284883022308,
+      "maximum": 0.11426371335983276
+    },
+    {
+      "path": "layers/13/wi/kernel",
+      "finite": true,
+      "absmax": 0.2453976422548294,
+      "minimum": -0.23989349603652954,
+      "maximum": 0.2453976422548294
+    },
+    {
+      "path": "layers/13/wo/kernel",
+      "finite": true,
+      "absmax": 0.21747419238090515,
+      "minimum": -0.21747419238090515,
+      "maximum": 0.19598126411437988
+    },
+    {
+      "path": "layers/13/yat_alpha",
+      "finite": true,
+      "absmax": 1.428773283958435,
+      "minimum": 1.428773283958435,
+      "maximum": 1.428773283958435
+    },
+    {
+      "path": "layers/13/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.11960265040397644,
+      "minimum": 0.11960265040397644,
+      "maximum": 0.11960265040397644
+    },
+    {
+      "path": "layers/14/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.111854910850525,
+      "minimum": 0.8160901665687561,
+      "maximum": 1.111854910850525
+    },
+    {
+      "path": "layers/14/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.21403488516807556,
+      "minimum": -0.15760987997055054,
+      "maximum": 0.21403488516807556
+    },
+    {
+      "path": "layers/14/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.2839126586914062,
+      "minimum": 0.7290639281272888,
+      "maximum": 1.2839126586914062
+    },
+    {
+      "path": "layers/14/v/kernel",
+      "finite": true,
+      "absmax": 0.14168274402618408,
+      "minimum": -0.1316673904657364,
+      "maximum": 0.14168274402618408
+    },
+    {
+      "path": "layers/14/wi/kernel",
+      "finite": true,
+      "absmax": 0.24778875708580017,
+      "minimum": -0.24045315384864807,
+      "maximum": 0.24778875708580017
+    },
+    {
+      "path": "layers/14/wo/kernel",
+      "finite": true,
+      "absmax": 0.2776842415332794,
+      "minimum": -0.2776842415332794,
+      "maximum": 0.20911961793899536
+    },
+    {
+      "path": "layers/14/yat_alpha",
+      "finite": true,
+      "absmax": 1.4283170700073242,
+      "minimum": 1.4283170700073242,
+      "maximum": 1.4283170700073242
+    },
+    {
+      "path": "layers/14/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.10112687200307846,
+      "minimum": 0.10112687200307846,
+      "maximum": 0.10112687200307846
+    },
+    {
+      "path": "layers/15/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.2119693756103516,
+      "minimum": 0.7055842876434326,
+      "maximum": 1.2119693756103516
+    },
+    {
+      "path": "layers/15/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.17791807651519775,
+      "minimum": -0.16942337155342102,
+      "maximum": 0.17791807651519775
+    },
+    {
+      "path": "layers/15/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.2580307722091675,
+      "minimum": 0.694233238697052,
+      "maximum": 1.2580307722091675
+    },
+    {
+      "path": "layers/15/v/kernel",
+      "finite": true,
+      "absmax": 0.20525041222572327,
+      "minimum": -0.20525041222572327,
+      "maximum": 0.17789345979690552
+    },
+    {
+      "path": "layers/15/wi/kernel",
+      "finite": true,
+      "absmax": 0.26011037826538086,
+      "minimum": -0.2405151128768921,
+      "maximum": 0.26011037826538086
+    },
+    {
+      "path": "layers/15/wo/kernel",
+      "finite": true,
+      "absmax": 0.24828164279460907,
+      "minimum": -0.23171773552894592,
+      "maximum": 0.24828164279460907
+    },
+    {
+      "path": "layers/15/yat_alpha",
+      "finite": true,
+      "absmax": 1.358579158782959,
+      "minimum": 1.358579158782959,
+      "maximum": 1.358579158782959
+    },
+    {
+      "path": "layers/15/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.07734934240579605,
+      "minimum": 0.07734934240579605,
+      "maximum": 0.07734934240579605
+    },
+    {
+      "path": "layers/16/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.192328929901123,
+      "minimum": 0.8196942806243896,
+      "maximum": 1.192328929901123
+    },
+    {
+      "path": "layers/16/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.16312813758850098,
+      "minimum": -0.16312813758850098,
+      "maximum": 0.157274529337883
+    },
+    {
+      "path": "layers/16/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.270926833152771,
+      "minimum": 0.7076013684272766,
+      "maximum": 1.270926833152771
+    },
+    {
+      "path": "layers/16/v/kernel",
+      "finite": true,
+      "absmax": 0.12750039994716644,
+      "minimum": -0.12750039994716644,
+      "maximum": 0.11980713158845901
+    },
+    {
+      "path": "layers/16/wi/kernel",
+      "finite": true,
+      "absmax": 0.27319100499153137,
+      "minimum": -0.27319100499153137,
+      "maximum": 0.2396935671567917
+    },
+    {
+      "path": "layers/16/wo/kernel",
+      "finite": true,
+      "absmax": 0.21399502456188202,
+      "minimum": -0.19967271387577057,
+      "maximum": 0.21399502456188202
+    },
+    {
+      "path": "layers/16/yat_alpha",
+      "finite": true,
+      "absmax": 1.3563066720962524,
+      "minimum": 1.3563066720962524,
+      "maximum": 1.3563066720962524
+    },
+    {
+      "path": "layers/16/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.1512097716331482,
+      "minimum": 0.1512097716331482,
+      "maximum": 0.1512097716331482
+    },
+    {
+      "path": "layers/17/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.143965721130371,
+      "minimum": 0.8238992691040039,
+      "maximum": 1.143965721130371
+    },
+    {
+      "path": "layers/17/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.16014713048934937,
+      "minimum": -0.16014713048934937,
+      "maximum": 0.13109833002090454
+    },
+    {
+      "path": "layers/17/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.3324490785598755,
+      "minimum": 0.672648012638092,
+      "maximum": 1.3324490785598755
+    },
+    {
+      "path": "layers/17/v/kernel",
+      "finite": true,
+      "absmax": 0.13723523914813995,
+      "minimum": -0.13723523914813995,
+      "maximum": 0.12195273488759995
+    },
+    {
+      "path": "layers/17/wi/kernel",
+      "finite": true,
+      "absmax": 0.289432555437088,
+      "minimum": -0.289432555437088,
+      "maximum": 0.24967631697654724
+    },
+    {
+      "path": "layers/17/wo/kernel",
+      "finite": true,
+      "absmax": 0.3114650547504425,
+      "minimum": -0.3114650547504425,
+      "maximum": 0.2607780694961548
+    },
+    {
+      "path": "layers/17/yat_alpha",
+      "finite": true,
+      "absmax": 1.3843483924865723,
+      "minimum": 1.3843483924865723,
+      "maximum": 1.3843483924865723
+    },
+    {
+      "path": "layers/17/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.1092703565955162,
+      "minimum": 0.1092703565955162,
+      "maximum": 0.1092703565955162
+    },
+    {
+      "path": "layers/18/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.2667224407196045,
+      "minimum": 0.5972459316253662,
+      "maximum": 1.2667224407196045
+    },
+    {
+      "path": "layers/18/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.21710021793842316,
+      "minimum": -0.21710021793842316,
+      "maximum": 0.1898876279592514
+    },
+    {
+      "path": "layers/18/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.293622374534607,
+      "minimum": 0.700749397277832,
+      "maximum": 1.293622374534607
+    },
+    {
+      "path": "layers/18/v/kernel",
+      "finite": true,
+      "absmax": 0.24431593716144562,
+      "minimum": -0.22538548707962036,
+      "maximum": 0.24431593716144562
+    },
+    {
+      "path": "layers/18/wi/kernel",
+      "finite": true,
+      "absmax": 0.3409530222415924,
+      "minimum": -0.3409530222415924,
+      "maximum": 0.26700395345687866
+    },
+    {
+      "path": "layers/18/wo/kernel",
+      "finite": true,
+      "absmax": 0.22534602880477905,
+      "minimum": -0.22534602880477905,
+      "maximum": 0.21531620621681213
+    },
+    {
+      "path": "layers/18/yat_alpha",
+      "finite": true,
+      "absmax": 1.3513386249542236,
+      "minimum": 1.3513386249542236,
+      "maximum": 1.3513386249542236
+    },
+    {
+      "path": "layers/18/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.045611556619405746,
+      "minimum": 0.045611556619405746,
+      "maximum": 0.045611556619405746
+    },
+    {
+      "path": "layers/19/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.1851167678833008,
+      "minimum": 0.7829434275627136,
+      "maximum": 1.1851167678833008
+    },
+    {
+      "path": "layers/19/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.13393652439117432,
+      "minimum": -0.13162216544151306,
+      "maximum": 0.13393652439117432
+    },
+    {
+      "path": "layers/19/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.2646533250808716,
+      "minimum": 0.6536086797714233,
+      "maximum": 1.2646533250808716
+    },
+    {
+      "path": "layers/19/v/kernel",
+      "finite": true,
+      "absmax": 0.1491488218307495,
+      "minimum": -0.1491488218307495,
+      "maximum": 0.13128942251205444
+    },
+    {
+      "path": "layers/19/wi/kernel",
+      "finite": true,
+      "absmax": 0.3277381360530853,
+      "minimum": -0.3277381360530853,
+      "maximum": 0.2909894287586212
+    },
+    {
+      "path": "layers/19/wo/kernel",
+      "finite": true,
+      "absmax": 0.2027730792760849,
+      "minimum": -0.17703531682491302,
+      "maximum": 0.2027730792760849
+    },
+    {
+      "path": "layers/19/yat_alpha",
+      "finite": true,
+      "absmax": 1.3057217597961426,
+      "minimum": 1.3057217597961426,
+      "maximum": 1.3057217597961426
+    },
+    {
+      "path": "layers/19/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.11521942168474197,
+      "minimum": 0.11521942168474197,
+      "maximum": 0.11521942168474197
+    },
+    {
+      "path": "layers/20/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.2142287492752075,
+      "minimum": 0.7518031597137451,
+      "maximum": 1.2142287492752075
+    },
+    {
+      "path": "layers/20/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.13010242581367493,
+      "minimum": -0.12613719701766968,
+      "maximum": 0.13010242581367493
+    },
+    {
+      "path": "layers/20/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.2122572660446167,
+      "minimum": 0.5869886875152588,
+      "maximum": 1.2122572660446167
+    },
+    {
+      "path": "layers/20/v/kernel",
+      "finite": true,
+      "absmax": 0.1534312516450882,
+      "minimum": -0.1315421164035797,
+      "maximum": 0.1534312516450882
+    },
+    {
+      "path": "layers/20/wi/kernel",
+      "finite": true,
+      "absmax": 0.37126031517982483,
+      "minimum": -0.37126031517982483,
+      "maximum": 0.27856963872909546
+    },
+    {
+      "path": "layers/20/wo/kernel",
+      "finite": true,
+      "absmax": 0.18952275812625885,
+      "minimum": -0.1815922111272812,
+      "maximum": 0.18952275812625885
+    },
+    {
+      "path": "layers/20/yat_alpha",
+      "finite": true,
+      "absmax": 1.285416603088379,
+      "minimum": 1.285416603088379,
+      "maximum": 1.285416603088379
+    },
+    {
+      "path": "layers/20/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.10726699233055115,
+      "minimum": 0.10726699233055115,
+      "maximum": 0.10726699233055115
+    },
+    {
+      "path": "layers/21/attn_norm/scale",
+      "finite": true,
+      "absmax": 1.2087188959121704,
+      "minimum": 0.6065633893013,
+      "maximum": 1.2087188959121704
+    },
+    {
+      "path": "layers/21/attn_out/kernel",
+      "finite": true,
+      "absmax": 0.19929824769496918,
+      "minimum": -0.19601260125637054,
+      "maximum": 0.19929824769496918
+    },
+    {
+      "path": "layers/21/mlp_norm/scale",
+      "finite": true,
+      "absmax": 1.2137013673782349,
+      "minimum": 0.5983943939208984,
+      "maximum": 1.2137013673782349
+    },
+    {
+      "path": "layers/21/v/kernel",
+      "finite": true,
+      "absmax": 0.23294031620025635,
+      "minimum": -0.23294031620025635,
+      "maximum": 0.22278018295764923
+    },
+    {
+      "path": "layers/21/wi/kernel",
+      "finite": true,
+      "absmax": 0.3810203969478607,
+      "minimum": -0.3810203969478607,
+      "maximum": 0.2797898054122925
+    },
+    {
+      "path": "layers/21/wo/kernel",
+      "finite": true,
+      "absmax": 0.3596377670764923,
+      "minimum": -0.3596377670764923,
+      "maximum": 0.3241298496723175
+    },
+    {
+      "path": "layers/21/yat_alpha",
+      "finite": true,
+      "absmax": 1.246923804283142,
+      "minimum": 1.246923804283142,
+      "maximum": 1.246923804283142
+    },
+    {
+      "path": "layers/21/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.05757596716284752,
+      "minimum": 0.05757596716284752,
+      "maximum": 0.05757596716284752
+    }
+  ],
+  "losses": [
+    {
+      "batch_start": 0,
+      "batch_size": 8,
+      "loss": "nan",
+      "masked_tokens": 536
+    },
+    {
+      "batch_size": 16,
+      "repeated_failing_batch": true,
+      "loss": 2.4878549575805664
+    },
+    {
+      "batch_size": 64,
+      "repeated_failing_batch": true,
+      "loss": 2.487743854522705
+    }
+  ],
+  "layers": [
+    {
+      "layer": "embedding_norm",
+      "finite": true,
+      "absmax": 11.086003303527832,
+      "minimum": -5.814389228820801,
+      "maximum": 11.086003303527832
+    },
+    {
+      "layer": 0,
+      "finite": false,
+      "absmax": "nan",
+      "minimum": "nan",
+      "maximum": "nan"
+    }
+  ],
+  "selected_rows_sha256": "dd0690942b889817c61ea9d5050d886362da0c1916a496876bc8dc800ea20b65",
+  "reference_evaluation_sha256": "6669c60447e9831e1e63e9740334269907f324412d95e4c5e6f6b169a4af3250",
+  "parameters_finite": true,
+  "alphas": [
+    {
+      "path": "layers/0/yat_alpha",
+      "finite": true,
+      "absmax": 1.0696499347686768,
+      "minimum": 1.0696499347686768,
+      "maximum": 1.0696499347686768
+    },
+    {
+      "path": "layers/0/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.1696292608976364,
+      "minimum": 0.1696292608976364,
+      "maximum": 0.1696292608976364
+    },
+    {
+      "path": "layers/1/yat_alpha",
+      "finite": true,
+      "absmax": 1.1047183275222778,
+      "minimum": 1.1047183275222778,
+      "maximum": 1.1047183275222778
+    },
+    {
+      "path": "layers/1/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.02134714089334011,
+      "minimum": 0.02134714089334011,
+      "maximum": 0.02134714089334011
+    },
+    {
+      "path": "layers/2/yat_alpha",
+      "finite": true,
+      "absmax": 1.1480051279067993,
+      "minimum": 1.1480051279067993,
+      "maximum": 1.1480051279067993
+    },
+    {
+      "path": "layers/2/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.006818756926804781,
+      "minimum": -0.006818756926804781,
+      "maximum": -0.006818756926804781
+    },
+    {
+      "path": "layers/3/yat_alpha",
+      "finite": true,
+      "absmax": 1.1907039880752563,
+      "minimum": 1.1907039880752563,
+      "maximum": 1.1907039880752563
+    },
+    {
+      "path": "layers/3/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.21235539019107819,
+      "minimum": 0.21235539019107819,
+      "maximum": 0.21235539019107819
+    },
+    {
+      "path": "layers/4/yat_alpha",
+      "finite": true,
+      "absmax": 1.2090479135513306,
+      "minimum": 1.2090479135513306,
+      "maximum": 1.2090479135513306
+    },
+    {
+      "path": "layers/4/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.003619470400735736,
+      "minimum": -0.003619470400735736,
+      "maximum": -0.003619470400735736
+    },
+    {
+      "path": "layers/5/yat_alpha",
+      "finite": true,
+      "absmax": 1.2507449388504028,
+      "minimum": 1.2507449388504028,
+      "maximum": 1.2507449388504028
+    },
+    {
+      "path": "layers/5/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.0066215647384524345,
+      "minimum": 0.0066215647384524345,
+      "maximum": 0.0066215647384524345
+    },
+    {
+      "path": "layers/6/yat_alpha",
+      "finite": true,
+      "absmax": 1.2707085609436035,
+      "minimum": 1.2707085609436035,
+      "maximum": 1.2707085609436035
+    },
+    {
+      "path": "layers/6/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.10445606708526611,
+      "minimum": 0.10445606708526611,
+      "maximum": 0.10445606708526611
+    },
+    {
+      "path": "layers/7/yat_alpha",
+      "finite": true,
+      "absmax": 1.3139768838882446,
+      "minimum": 1.3139768838882446,
+      "maximum": 1.3139768838882446
+    },
+    {
+      "path": "layers/7/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.03644973784685135,
+      "minimum": 0.03644973784685135,
+      "maximum": 0.03644973784685135
+    },
+    {
+      "path": "layers/8/yat_alpha",
+      "finite": true,
+      "absmax": 1.3562763929367065,
+      "minimum": 1.3562763929367065,
+      "maximum": 1.3562763929367065
+    },
+    {
+      "path": "layers/8/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.051731470972299576,
+      "minimum": 0.051731470972299576,
+      "maximum": 0.051731470972299576
+    },
+    {
+      "path": "layers/9/yat_alpha",
+      "finite": true,
+      "absmax": 1.3601548671722412,
+      "minimum": 1.3601548671722412,
+      "maximum": 1.3601548671722412
+    },
+    {
+      "path": "layers/9/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.07488635182380676,
+      "minimum": 0.07488635182380676,
+      "maximum": 0.07488635182380676
+    },
+    {
+      "path": "layers/10/yat_alpha",
+      "finite": true,
+      "absmax": 1.3882676362991333,
+      "minimum": 1.3882676362991333,
+      "maximum": 1.3882676362991333
+    },
+    {
+      "path": "layers/10/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.07476788014173508,
+      "minimum": 0.07476788014173508,
+      "maximum": 0.07476788014173508
+    },
+    {
+      "path": "layers/11/yat_alpha",
+      "finite": true,
+      "absmax": 1.427566409111023,
+      "minimum": 1.427566409111023,
+      "maximum": 1.427566409111023
+    },
+    {
+      "path": "layers/11/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.09042897075414658,
+      "minimum": 0.09042897075414658,
+      "maximum": 0.09042897075414658
+    },
+    {
+      "path": "layers/12/yat_alpha",
+      "finite": true,
+      "absmax": 1.4238539934158325,
+      "minimum": 1.4238539934158325,
+      "maximum": 1.4238539934158325
+    },
+    {
+      "path": "layers/12/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.16849768161773682,
+      "minimum": 0.16849768161773682,
+      "maximum": 0.16849768161773682
+    },
+    {
+      "path": "layers/13/yat_alpha",
+      "finite": true,
+      "absmax": 1.428773283958435,
+      "minimum": 1.428773283958435,
+      "maximum": 1.428773283958435
+    },
+    {
+      "path": "layers/13/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.11960265040397644,
+      "minimum": 0.11960265040397644,
+      "maximum": 0.11960265040397644
+    },
+    {
+      "path": "layers/14/yat_alpha",
+      "finite": true,
+      "absmax": 1.4283170700073242,
+      "minimum": 1.4283170700073242,
+      "maximum": 1.4283170700073242
+    },
+    {
+      "path": "layers/14/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.10112687200307846,
+      "minimum": 0.10112687200307846,
+      "maximum": 0.10112687200307846
+    },
+    {
+      "path": "layers/15/yat_alpha",
+      "finite": true,
+      "absmax": 1.358579158782959,
+      "minimum": 1.358579158782959,
+      "maximum": 1.358579158782959
+    },
+    {
+      "path": "layers/15/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.07734934240579605,
+      "minimum": 0.07734934240579605,
+      "maximum": 0.07734934240579605
+    },
+    {
+      "path": "layers/16/yat_alpha",
+      "finite": true,
+      "absmax": 1.3563066720962524,
+      "minimum": 1.3563066720962524,
+      "maximum": 1.3563066720962524
+    },
+    {
+      "path": "layers/16/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.1512097716331482,
+      "minimum": 0.1512097716331482,
+      "maximum": 0.1512097716331482
+    },
+    {
+      "path": "layers/17/yat_alpha",
+      "finite": true,
+      "absmax": 1.3843483924865723,
+      "minimum": 1.3843483924865723,
+      "maximum": 1.3843483924865723
+    },
+    {
+      "path": "layers/17/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.1092703565955162,
+      "minimum": 0.1092703565955162,
+      "maximum": 0.1092703565955162
+    },
+    {
+      "path": "layers/18/yat_alpha",
+      "finite": true,
+      "absmax": 1.3513386249542236,
+      "minimum": 1.3513386249542236,
+      "maximum": 1.3513386249542236
+    },
+    {
+      "path": "layers/18/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.045611556619405746,
+      "minimum": 0.045611556619405746,
+      "maximum": 0.045611556619405746
+    },
+    {
+      "path": "layers/19/yat_alpha",
+      "finite": true,
+      "absmax": 1.3057217597961426,
+      "minimum": 1.3057217597961426,
+      "maximum": 1.3057217597961426
+    },
+    {
+      "path": "layers/19/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.11521942168474197,
+      "minimum": 0.11521942168474197,
+      "maximum": 0.11521942168474197
+    },
+    {
+      "path": "layers/20/yat_alpha",
+      "finite": true,
+      "absmax": 1.285416603088379,
+      "minimum": 1.285416603088379,
+      "maximum": 1.285416603088379
+    },
+    {
+      "path": "layers/20/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.10726699233055115,
+      "minimum": 0.10726699233055115,
+      "maximum": 0.10726699233055115
+    },
+    {
+      "path": "layers/21/yat_alpha",
+      "finite": true,
+      "absmax": 1.246923804283142,
+      "minimum": 1.246923804283142,
+      "maximum": 1.246923804283142
+    },
+    {
+      "path": "layers/21/yat_attention_alpha",
+      "finite": true,
+      "absmax": 0.05757596716284752,
+      "minimum": 0.05757596716284752,
+      "maximum": 0.05757596716284752
+    }
+  ],
+  "evaluation_loss": "nan",
+  "failing_example_ids": [
+    893,
+    2255,
+    1115,
+    225,
+    1296,
+    2017,
+    43,
+    2018
+  ]
+}

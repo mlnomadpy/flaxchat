@@ -1,0 +1,20 @@
+{
+  "observed_at": "2026-10-07T08:07:24.959337+00:00",
+  "reason": "User explicitly stopped value-scored GOAT and requested input-scored YAT attention with separate V projection",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "controller": "yat-goat-1006e",
+  "resource": "flaxchat-validation-yat-embed-torch-goat-100-0-8de21932c7fd4503",
+  "signal": "SIGTERM to independently observed MLM supervisor27534",
+  "queue_absent_verified": true,
+  "node_absent_verified": true,
+  "controller_absent_verified": true,
+  "last_saved_checkpoint": 47000,
+  "last_heldout_evaluation_step": 46000,
+  "last_heldout_loss": 1.910618486626257,
+  "replacement_attention_score": "goat_input",
+  "replacement_training_started": false,
+  "metadata_checks_passed": 33,
+  "physical_input_attention_status": "not_run",
+  "checkpoint_policy": "retained; no storage deletion"
+}

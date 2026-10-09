@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "observed_unix": 1791547222.866039,
+  "controller": "yat-goat-input-1009b",
+  "version": "588.0.0",
+  "bootstrap_sha256": "0d7386d39952310a1df9ff2c1c27672556ed8296d33e644f6cb62e3d995d65cf",
+  "gcs_checkpoint_metadata_read": true,
+  "source": "Observed detached CLI-only Linux smoke; no model computation",
+  "model_execution": false
+}

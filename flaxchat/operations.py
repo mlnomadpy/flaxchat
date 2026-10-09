@@ -5,6 +5,7 @@ resource absence. Estimates and posted billing are deliberately separate.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -80,6 +81,144 @@ class RunLedger:
             # Reconciliation can increase obligations but never release a safety reserve.
             item['reservation_usd'] = max(item['reservation_usd'], usage_usd)
             self._write(state)
+
+    def reconcile_completed_reservation(self, attempt_id, *, campaign, observation, apply=False):
+        """Reduce unused reservation after independently verified terminal cleanup.
+
+        This is an elapsed-time upper-bound estimate, never provider billing.
+        Original events, posted amounts and the budget cap are not modified.
+        Only terminal passed/failed TPU campaigns with complete cleanup evidence are eligible.
+        """
+        def digest(value):
+            return hashlib.sha256(json.dumps(value, sort_keys=True,
+                separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+
+        def timestamp(value):
+            if (type(value) not in (int, float) or not math.isfinite(value)
+                    or not 0 < value <= time.time() + 5):
+                raise ValueError('Valid completed timestamps required')
+            return value
+
+        terminal = ((campaign.get('status') == 'failed' and campaign.get('passed') is False)
+                    or (campaign.get('status') == 'passed' and campaign.get('passed') is True))
+        if (not terminal or campaign.get('cleanup_verified') is not True
+                or campaign.get('cleanup_required') is not True):
+            raise ValueError('Only consistent terminal campaigns with verified cleanup can be reconciled')
+        started = timestamp(campaign.get('started_unix'))
+        finished = timestamp(campaign.get('finished_unix'))
+        if finished < started:
+            raise ValueError('Campaign finished before it started')
+        attempts = campaign.get('attempts')
+        if not isinstance(attempts, list) or not attempts:
+            raise ValueError('Completed campaign attempt evidence required')
+        matched = []
+        ids = set()
+        for attempt in attempts:
+            key = attempt.get('attempt_id')
+            if not isinstance(key, str) or not key or key in ids:
+                raise ValueError('Ambiguous campaign attempt identity')
+            ids.add(key)
+            cleanup = attempt.get('cleanup', {})
+            if (cleanup.get('state') != 'resource_absent'
+                    or cleanup.get('queue_absent') is not True
+                    or cleanup.get('node_absent') is not True
+                    or cleanup.get('queue_state') is not None
+                    or cleanup.get('node_state') is not None):
+                raise ValueError('Active or unverified campaign resource')
+            observed = timestamp(cleanup.get('observed_unix'))
+            cleaned = timestamp(cleanup.get('finished_unix'))
+            if not started <= observed <= cleaned <= finished:
+                raise ValueError('Contradictory cleanup timestamps')
+            if key == attempt_id:
+                matched.append(attempt)
+        if len(matched) != 1:
+            raise ValueError('Requested attempt is not uniquely identified in campaign')
+        attempt = matched[0]
+        project, zone, name = (campaign.get('project'), campaign.get('zone'), attempt.get('resource_name'))
+        if any(not isinstance(x, str) or not x or '/' in x for x in (project, zone, name)):
+            raise ValueError('Complete project, zone and resource identity required')
+        resource = f'projects/{project}/locations/{zone}/queuedResources/{name}'
+        scope = attempt.get('cleanup_scope', {}).get('resources')
+        if scope is not None and scope != {
+                'queuedResources': resource,
+                'nodes': f'projects/{project}/locations/{zone}/nodes/{name}'}:
+            raise ValueError('Cleanup scope contradicts campaign resource identity')
+        expected_observation = dict(schema='flaxchat-independent-tpu-absence-v1',
+            project=project, zone=zone, attempt_id=attempt_id, resource_name=name,
+            queue_absent=True, node_absent=True)
+        if any(observation.get(key) != value for key, value in expected_observation.items()):
+            raise ValueError('Independent absence observation identity differs')
+        if observation.get('queue_absent') is not True or observation.get('node_absent') is not True:
+            raise ValueError('Explicit independent resource absence required')
+        independent_time = timestamp(observation.get('observed_unix'))
+        if independent_time < finished or not isinstance(observation.get('source'), str) or not observation['source']:
+            raise ValueError('Independent observation must follow final campaign receipt')
+        for key in ('queue_read_sha256', 'node_read_sha256'):
+            value = observation.get(key)
+            if (not isinstance(value, str) or len(value) != 64
+                    or any(c not in '0123456789abcdef' for c in value)):
+                raise ValueError('Independently retained raw read evidence hashes required')
+        receipt_hash, observation_hash = digest(campaign), digest(observation)
+        with self.lock:
+            state = self._read()
+            item = state['attempts'][attempt_id]
+            retry_terminal = item['status'] == 'preempted_retry_eligible'
+            if item['resource'] != resource or item['status'] not in ('resource_absent', 'preempted_retry_eligible'):
+                raise ValueError('Ledger resource identity or terminal state differs')
+            events = item.get('events', [])
+            if retry_terminal:
+                tail = events[-3:]
+                codes = (campaign.get('returncode'), attempt.get('returncode'),
+                         tail[0].get('returncode') if tail else None)
+                if (campaign.get('status') != 'failed' or campaign.get('passed') is not False
+                        or any(type(code) is not int or code != 75 for code in codes)
+                        or [event.get('event') for event in tail] !=
+                        ['work_finished', 'resource_absent', 'preempted_retry_eligible']):
+                    raise ValueError('Retry eligibility lacks finalized code75 cleanup evidence')
+                times = [timestamp(event.get('time_unix')) for event in tail]
+                if times != sorted(times) or times[1] < attempt['cleanup']['finished_unix']:
+                    raise ValueError('Retry eligibility contradicts verified cleanup timing')
+            if item.get('posted_usage_usd') is not None or item.get('promotional_credits_usd') is not None:
+                raise ValueError('Use posted billing reconciliation for an already billed attempt')
+            previous = item.get('completed_reservation_reconciliation')
+            if previous is not None:
+                if (previous['campaign_sha256'] != receipt_hash
+                        or previous['independent_observation_sha256'] != observation_hash):
+                    raise ValueError('Completed reservation already reconciled with different evidence')
+                return previous
+            rate, ancillary = item['whole_slice_hourly_usd'], item['ancillary_reserve_usd']
+            original = item['reservation_usd']
+            if item.get('original_reservation_usd', original) != original:
+                raise ValueError('Original reservation differs without a completed reconciliation')
+            if (not all(type(x) in (int, float) and math.isfinite(x) and x >= 0
+                        for x in (rate, ancillary, original))
+                    or original <= 0 or ancillary > original
+                    or campaign.get('whole_slice_hourly_usd') != rate):
+                raise ValueError('Original reservation and campaign pricing differ')
+            if (not events or (not retry_terminal and events[-1].get('event') != 'resource_absent')
+                    or any(not started <= timestamp(event.get('time_unix')) <= finished
+                           for event in events)):
+                raise ValueError('Ledger events contradict terminal campaign timing')
+            # Include all campaign overhead through final verified cleanup. For
+            # multi-attempt campaigns this deliberately overcounts earlier time.
+            bound = rate * (finished - started) / 3600 + ancillary
+            retained = min(original, math.ceil(bound * 100) / 100)
+            record = dict(schema='flaxchat-terminal-reservation-bound-v1',
+                attempt_id=attempt_id, resource=resource,
+                original_reservation_usd=original, retained_reservation_usd=retained,
+                released_reservation_usd=original - retained,
+                whole_slice_hourly_usd=rate, ancillary_reserve_usd=ancillary,
+                campaign_started_unix=started, cleanup_verified_unix=finished,
+                independently_observed_unix=independent_time,
+                campaign_sha256=receipt_hash, independent_observation_sha256=observation_hash,
+                recorded_unix=time.time(), posted_usage_usd=None,
+                accounting_basis='conservative_elapsed_time_bound_not_posted_charges')
+            if apply:
+                item['original_reservation_usd'] = original
+                item['reservation_usd'] = retained
+                item['completed_reservation_reconciliation'] = record
+                self._write(state)
+            return record
 
     def summary(self):
         with self.lock:

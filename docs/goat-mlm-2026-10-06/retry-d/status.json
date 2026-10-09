@@ -1,0 +1,14 @@
+{
+  "objective": "masked_language_modeling",
+  "status": "failed",
+  "completed_step": 4,
+  "parent_step": 48236,
+  "evaluations": [],
+  "goat_physical_tests_passed": true,
+  "parent_masked_token_loss": 1.2216591398182044,
+  "error": "RuntimeError: Heldout MLM loss exceeded15% parent regression or row identity changed",
+  "cleanup_verified": true,
+  "independent_queue_absent": true,
+  "independent_node_absent": true,
+  "independent_controller_absent": true
+}

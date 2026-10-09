@@ -1,0 +1,20 @@
+{
+  "status": "failed_pretraining_checkpoint_admission",
+  "objective": "masked_language_modeling",
+  "controller": "yat-goat-input-1009a",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "resource_name": "flaxchat-validation-yat-embed-torch-goat-inp-0-1ad9837a369048f5",
+  "parent_checkpoint_step": 35750,
+  "new_updates_verified": false,
+  "cleanup_deadline_utc": "2026-10-09T23:21:38.606056+00:00",
+  "cleanup_workflow_execution": "b2952e8f-36a4-4474-9664-f0561abd0f9c",
+  "manifest_sha256": "e0273dd652858f6626f86105af363af1468ac9e9d25e28681964ea56d6d5de39",
+  "prior_reserved_usd": 763.74,
+  "new_reserved_usd": 130.0,
+  "campaign_reserved_bound_usd": 893.74,
+  "posted_charges_usd": null,
+  "actual_latest_committed_step": 35500,
+  "reason": "35750 directory had no commit_success marker; corrected attempt1009b uses committed35500",
+  "cleanup_verified": true
+}

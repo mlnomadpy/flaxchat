@@ -1,0 +1,2092 @@
+[
+  {
+    "containerType": "PROJECT",
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "global"
+        ],
+        "details": {
+          "value": "91"
+        }
+      }
+    ],
+    "metric": "tpu.googleapis.com/qps/create",
+    "metricDisplayName": "Create requests for the Cloud TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/CreateRequestsPerMinute",
+    "quotaDisplayName": "Maximum number of CreateNode requests per minute.",
+    "quotaId": "CreateRequestsPerMinute",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "refreshInterval": "minute",
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "global"
+        ],
+        "details": {
+          "value": "91"
+        }
+      }
+    ],
+    "metric": "tpu.googleapis.com/qps/delete",
+    "metricDisplayName": "Delete requests for the Cloud TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/DeleteRequestsPerMinute",
+    "quotaDisplayName": "Maximum number of DeleteNode requests per minute.",
+    "quotaId": "DeleteRequestsPerMinute",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "refreshInterval": "minute",
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "global"
+        ],
+        "details": {
+          "value": "10000"
+        }
+      }
+    ],
+    "metric": "tpu.googleapis.com/qps/get",
+    "metricDisplayName": "Get requests for the Cloud TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/GetRequestsPerMinute",
+    "quotaDisplayName": "Maximum number of get requests on Cloud TPU resources per minute.",
+    "quotaId": "GetRequestsPerMinute",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "refreshInterval": "minute",
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "global"
+        ],
+        "details": {
+          "value": "1000"
+        }
+      }
+    ],
+    "metric": "tpu.googleapis.com/qps/list",
+    "metricDisplayName": "List requests for the Cloud TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/ListRequestsPerMinute",
+    "quotaDisplayName": "Maximum number of list requests on Cloud TPU resources per minute.",
+    "quotaId": "ListRequestsPerMinute",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "refreshInterval": "minute",
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "global"
+        ],
+        "details": {
+          "value": "100"
+        }
+      }
+    ],
+    "metric": "tpu.googleapis.com/qps/mutate",
+    "metricDisplayName": "Mutate requests for the Cloud TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/MutateRequestsPerMinute",
+    "quotaDisplayName": "Maximum number of mutations on Cloud TPU Nodes per minute.",
+    "quotaId": "MutateRequestsPerMinute",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "refreshInterval": "minute",
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "africa-south1",
+          "asia-east1",
+          "asia-east2",
+          "asia-northeast1",
+          "asia-northeast2",
+          "asia-northeast3",
+          "asia-south1",
+          "asia-south2",
+          "asia-southeast1",
+          "asia-southeast2",
+          "asia-southeast3",
+          "australia-southeast1",
+          "australia-southeast2",
+          "europe-central2",
+          "europe-north1",
+          "europe-north2",
+          "europe-southwest1",
+          "europe-west1",
+          "europe-west10",
+          "europe-west12",
+          "europe-west2",
+          "europe-west3",
+          "europe-west4",
+          "europe-west6",
+          "europe-west8",
+          "europe-west9",
+          "me-central1",
+          "me-central2",
+          "me-west1",
+          "northamerica-northeast1",
+          "northamerica-northeast2",
+          "northamerica-south1",
+          "southamerica-east1",
+          "southamerica-west1",
+          "us-central1",
+          "us-east1",
+          "us-east4",
+          "us-east5",
+          "us-south1",
+          "us-west1",
+          "us-west2",
+          "us-west3",
+          "us-west4"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/queuedResources",
+    "metricDisplayName": "Accepted QueuedResource requests",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/QueuedResourcePerProjectPerRegion",
+    "quotaDisplayName": "QueuedResources per project per region.",
+    "quotaId": "QueuedResourcePerProjectPerRegion",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "africa-south1-a",
+          "africa-south1-b",
+          "africa-south1-c",
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "asia-east2-a",
+          "asia-east2-b",
+          "asia-east2-c",
+          "asia-northeast1-a",
+          "asia-northeast1-b",
+          "asia-northeast1-c",
+          "asia-northeast2-a",
+          "asia-northeast2-b",
+          "asia-northeast2-c",
+          "asia-northeast3-a",
+          "asia-northeast3-b",
+          "asia-northeast3-c",
+          "asia-south1-a",
+          "asia-south1-b",
+          "asia-south1-c",
+          "asia-south2-a",
+          "asia-south2-b",
+          "asia-south2-c",
+          "asia-southeast1-a",
+          "asia-southeast1-b",
+          "asia-southeast1-c",
+          "asia-southeast2-a",
+          "asia-southeast2-b",
+          "asia-southeast2-c",
+          "asia-southeast3-a",
+          "asia-southeast3-b",
+          "asia-southeast3-c",
+          "australia-southeast1-a",
+          "australia-southeast1-b",
+          "australia-southeast1-c",
+          "australia-southeast2-a",
+          "australia-southeast2-b",
+          "australia-southeast2-c",
+          "europe-central2-a",
+          "europe-central2-b",
+          "europe-central2-c",
+          "europe-north1-a",
+          "europe-north1-b",
+          "europe-north1-c",
+          "europe-north2-a",
+          "europe-north2-b",
+          "europe-north2-c",
+          "europe-southwest1-a",
+          "europe-southwest1-b",
+          "europe-southwest1-c",
+          "europe-west1-b",
+          "europe-west1-c",
+          "europe-west1-d",
+          "europe-west10-a",
+          "europe-west10-b",
+          "europe-west10-c",
+          "europe-west12-a",
+          "europe-west12-b",
+          "europe-west12-c",
+          "europe-west2-a",
+          "europe-west2-b",
+          "europe-west2-c",
+          "europe-west3-a",
+          "europe-west3-b",
+          "europe-west3-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "europe-west6-a",
+          "europe-west6-b",
+          "europe-west6-c",
+          "europe-west8-a",
+          "europe-west8-b",
+          "europe-west8-c",
+          "europe-west9-a",
+          "europe-west9-b",
+          "europe-west9-c",
+          "me-central1-a",
+          "me-central1-b",
+          "me-central1-c",
+          "me-central2-a",
+          "me-central2-b",
+          "me-central2-c",
+          "me-west1-a",
+          "me-west1-b",
+          "me-west1-c",
+          "northamerica-northeast1-a",
+          "northamerica-northeast1-b",
+          "northamerica-northeast1-c",
+          "northamerica-northeast2-a",
+          "northamerica-northeast2-b",
+          "northamerica-northeast2-c",
+          "northamerica-south1-a",
+          "northamerica-south1-b",
+          "northamerica-south1-c",
+          "southamerica-east1-a",
+          "southamerica-east1-b",
+          "southamerica-east1-c",
+          "southamerica-west1-a",
+          "southamerica-west1-b",
+          "southamerica-west1-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d",
+          "us-east4-a",
+          "us-east4-b",
+          "us-east4-c",
+          "us-east5-a",
+          "us-east5-b",
+          "us-east5-c",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c",
+          "us-west1-a",
+          "us-west1-b",
+          "us-west1-c",
+          "us-west2-a",
+          "us-west2-b",
+          "us-west2-c",
+          "us-west3-a",
+          "us-west3-b",
+          "us-west3-c",
+          "us-west4-a",
+          "us-west4-b",
+          "us-west4-c"
+        ],
+        "details": {
+          "value": "20"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/queuedResources",
+    "metricDisplayName": "Accepted QueuedResource requests",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/QueuedResourcePerProjectPerZone",
+    "quotaDisplayName": "QueuedResources per project per zone.",
+    "quotaId": "QueuedResourcePerProjectPerZone",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1",
+          "europe-west4",
+          "us-central1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v2s",
+    "metricDisplayName": "TPU-V2 cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV2sPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "TPU v2 cores per project per region",
+    "quotaId": "TPUV2sPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f"
+        ],
+        "details": {
+          "value": "160"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v2s",
+    "metricDisplayName": "TPU-V2 cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV2sPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "TPU v2 cores per project per zone",
+    "quotaId": "TPUV2sPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4",
+          "us-central1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v2s-pod",
+    "metricDisplayName": "TPU-V2 pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV2sPodPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "TPU v2 pod cores per project per region",
+    "quotaId": "TPUV2sPodPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f"
+        ],
+        "details": {
+          "value": "64"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v2s-pod",
+    "metricDisplayName": "TPU-V2 pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV2sPodPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "TPU v2 pod cores per project per zone",
+    "quotaId": "TPUV2sPodPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1",
+          "europe-west4",
+          "us-central1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v2s-preemptible",
+    "metricDisplayName": "Preemptible TPU-V2 cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV2sPreemptiblePerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v2 cores per project per region",
+    "quotaId": "TPUV2sPreemptiblePerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f"
+        ],
+        "details": {
+          "value": "480"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v2s-preemptible",
+    "metricDisplayName": "Preemptible TPU-V2 cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV2sPreemptiblePerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v2 cores per project per zone",
+    "quotaId": "TPUV2sPreemptiblePerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4",
+          "us-central1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v2s-pod-preemptible",
+    "metricDisplayName": "Preemptible TPU-V2 pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV2sPreemptiblePodPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v2 pod cores per project per region",
+    "quotaId": "TPUV2sPreemptiblePodPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f"
+        ],
+        "details": {
+          "value": "64"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v2s-pod-preemptible",
+    "metricDisplayName": "Preemptible TPU-V2 pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV2sPreemptiblePodPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v2 pod cores per project per zone",
+    "quotaId": "TPUV2sPreemptiblePodPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4",
+          "us-central1",
+          "us-east1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v3s",
+    "metricDisplayName": "TPU-V3 cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV3sPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "TPU v3 cores per project per region",
+    "quotaId": "TPUV3sPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d"
+        ],
+        "details": {
+          "value": "80"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v3s",
+    "metricDisplayName": "TPU-V3 cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV3sPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "TPU v3 cores per project per zone",
+    "quotaId": "TPUV3sPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4",
+          "us-east1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v3s-pod",
+    "metricDisplayName": "TPU-V3 pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV3sPodPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "TPU v3 pod cores per project per region",
+    "quotaId": "TPUV3sPodPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d"
+        ],
+        "details": {
+          "value": "64"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v3s-pod",
+    "metricDisplayName": "TPU-V3 pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV3sPodPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "TPU v3 pod cores per project per zone",
+    "quotaId": "TPUV3sPodPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4",
+          "us-central1",
+          "us-east1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v3s-preemptible",
+    "metricDisplayName": "Preemptible TPU-V3 cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV3sPreemptiblePerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v3 cores per project per region",
+    "quotaId": "TPUV3sPreemptiblePerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d"
+        ],
+        "details": {
+          "value": "240"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v3s-preemptible",
+    "metricDisplayName": "Preemptible TPU-V3 cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV3sPreemptiblePerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v3 cores per project per zone",
+    "quotaId": "TPUV3sPreemptiblePerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4",
+          "us-east1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v3s-pod-preemptible",
+    "metricDisplayName": "Preemptible TPU-V3 pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV3sPreemptiblePodPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v3 pod cores per project per region",
+    "quotaId": "TPUV3sPreemptiblePodPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d"
+        ],
+        "details": {
+          "value": "64"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v3s-pod-preemptible",
+    "metricDisplayName": "Preemptible TPU-V3 pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV3sPreemptiblePodPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v3 pod cores per project per zone",
+    "quotaId": "TPUV3sPreemptiblePodPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west1",
+          "europe-west4",
+          "us-central1",
+          "us-east1",
+          "us-east5",
+          "us-south1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5p",
+    "metricDisplayName": "TPU-V5P cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5PPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "TPU v5p cores per project per region",
+    "quotaId": "TPUV5PPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west1-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "europe-west1-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "europe-west1-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "europe-west1-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "europe-west1-d"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "europe-west1-d"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east1-d"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east1-d"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-south1-a"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-south1-a"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-south1-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-south1-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-south1-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-south1-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east5-a"
+        ],
+        "details": {
+          "value": "384"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5p",
+    "metricDisplayName": "TPU-V5P cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5PPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "TPU v5p cores per project per zone",
+    "quotaId": "TPUV5PPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west1",
+          "europe-west4",
+          "us-central1",
+          "us-east1",
+          "us-east5",
+          "us-south1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5p-preemptible",
+    "metricDisplayName": "Preemptible TPU-V5P cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5PPreemptiblePerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v5p cores per project per region",
+    "quotaId": "TPUV5PPreemptiblePerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west1-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "europe-west1-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "europe-west1-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "europe-west1-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "europe-west1-d"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "europe-west1-d"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east1-d"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east1-d"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-south1-a"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-south1-a"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-south1-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-south1-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-south1-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-south1-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east5-a"
+        ],
+        "details": {
+          "value": "1024"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5p-preemptible",
+    "metricDisplayName": "Preemptible TPU-V5P cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5PPreemptiblePerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v5p cores per project per zone",
+    "quotaId": "TPUV5PPreemptiblePerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west1",
+          "europe-west4",
+          "us-central1",
+          "us-east1",
+          "us-east5",
+          "us-south1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5p-reserved",
+    "metricDisplayName": "Reserved TPU-V5P cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5PReservedPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Reserved TPU v5p cores per project per region",
+    "quotaId": "TPUV5PReservedPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "europe-west1-b",
+          "europe-west1-c",
+          "europe-west1-d",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d",
+          "us-east5-a",
+          "us-east5-b",
+          "us-east5-c",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5p-reserved",
+    "metricDisplayName": "Reserved TPU-V5P cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5PReservedPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Reserved TPU v5p cores per project per zone",
+    "quotaId": "TPUV5PReservedPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1",
+          "asia-northeast1",
+          "asia-southeast1",
+          "europe-north1",
+          "europe-west1",
+          "europe-west3",
+          "europe-west4",
+          "northamerica-northeast1",
+          "southamerica-west1",
+          "us-central1",
+          "us-east1",
+          "us-east4",
+          "us-east5",
+          "us-south1",
+          "us-west1",
+          "us-west4"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5s-litepod",
+    "metricDisplayName": "TPU-V5 lite pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5sLitepodPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "TPU v5 lite pod cores per project per region",
+    "quotaId": "TPUV5sLitepodPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "us-east1-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east1-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-a"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-a"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-west4-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-west4-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "asia-northeast1-a",
+          "asia-northeast1-b",
+          "asia-northeast1-c",
+          "asia-southeast1-a",
+          "asia-southeast1-b",
+          "asia-southeast1-c",
+          "europe-north1-a",
+          "europe-north1-b",
+          "europe-north1-c",
+          "europe-west1-b",
+          "europe-west1-c",
+          "europe-west1-d",
+          "europe-west3-a",
+          "europe-west3-b",
+          "europe-west3-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "northamerica-northeast1-a",
+          "northamerica-northeast1-b",
+          "northamerica-northeast1-c",
+          "southamerica-west1-a",
+          "southamerica-west1-b",
+          "southamerica-west1-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-d",
+          "us-east4-a",
+          "us-east4-b",
+          "us-east4-c",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c",
+          "us-west1-a",
+          "us-west1-b",
+          "us-west1-c",
+          "us-west4-a",
+          "us-west4-c"
+        ],
+        "details": {
+          "value": "512"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5s-litepod",
+    "metricDisplayName": "TPU-V5 lite pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5sLitepodPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "TPU v5 lite pod cores per project per zone",
+    "quotaId": "TPUV5sLitepodPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1",
+          "asia-northeast1",
+          "asia-southeast1",
+          "europe-north1",
+          "europe-west1",
+          "europe-west3",
+          "europe-west4",
+          "northamerica-northeast1",
+          "southamerica-west1",
+          "us-central1",
+          "us-east1",
+          "us-east4",
+          "us-east5",
+          "us-south1",
+          "us-west1",
+          "us-west4"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5s-litepod-serving",
+    "metricDisplayName": "TPU-V5 lite pod cores for serving workload in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5sLitepodServingPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "TPU v5 lite pod cores for serving per project per region",
+    "quotaId": "TPUV5sLitepodServingPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "asia-northeast1-a",
+          "asia-northeast1-b",
+          "asia-northeast1-c",
+          "asia-southeast1-a",
+          "asia-southeast1-b",
+          "asia-southeast1-c",
+          "europe-north1-a",
+          "europe-north1-b",
+          "europe-north1-c",
+          "europe-west1-b",
+          "europe-west1-c",
+          "europe-west1-d",
+          "europe-west3-a",
+          "europe-west3-b",
+          "europe-west3-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "northamerica-northeast1-a",
+          "northamerica-northeast1-b",
+          "northamerica-northeast1-c",
+          "southamerica-west1-a",
+          "southamerica-west1-b",
+          "southamerica-west1-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d",
+          "us-east4-a",
+          "us-east4-b",
+          "us-east4-c",
+          "us-east5-a",
+          "us-east5-b",
+          "us-east5-c",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c",
+          "us-west1-a",
+          "us-west1-b",
+          "us-west1-c",
+          "us-west4-a",
+          "us-west4-b",
+          "us-west4-c"
+        ],
+        "details": {
+          "value": "8"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5s-litepod-serving",
+    "metricDisplayName": "TPU-V5 lite pod cores for serving workload in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5sLitepodServingPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "TPU v5 lite pod cores for serving per project per zone",
+    "quotaId": "TPUV5sLitepodServingPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1",
+          "asia-northeast1",
+          "asia-southeast1",
+          "europe-north1",
+          "europe-west1",
+          "europe-west3",
+          "europe-west4",
+          "northamerica-northeast1",
+          "southamerica-west1",
+          "us-central1",
+          "us-east1",
+          "us-east4",
+          "us-east5",
+          "us-south1",
+          "us-west1",
+          "us-west4"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5s-litepod-preemptible",
+    "metricDisplayName": "Preemptible TPU-V5 lite pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5sPreemptibleLitepodPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v5 lite pod cores per project per region",
+    "quotaId": "TPUV5sPreemptibleLitepodPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "us-east1-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east1-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-a"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-a"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-west4-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-west4-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "asia-northeast1-a",
+          "asia-northeast1-b",
+          "asia-northeast1-c",
+          "asia-southeast1-a",
+          "asia-southeast1-b",
+          "asia-southeast1-c",
+          "europe-north1-a",
+          "europe-north1-b",
+          "europe-north1-c",
+          "europe-west1-b",
+          "europe-west1-c",
+          "europe-west1-d",
+          "europe-west3-a",
+          "europe-west3-b",
+          "europe-west3-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "northamerica-northeast1-a",
+          "northamerica-northeast1-b",
+          "northamerica-northeast1-c",
+          "southamerica-west1-a",
+          "southamerica-west1-b",
+          "southamerica-west1-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-d",
+          "us-east4-a",
+          "us-east4-b",
+          "us-east4-c",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c",
+          "us-west1-a",
+          "us-west1-b",
+          "us-west1-c",
+          "us-west4-a",
+          "us-west4-c"
+        ],
+        "details": {
+          "value": "1536"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5s-litepod-preemptible",
+    "metricDisplayName": "Preemptible TPU-V5 lite pod cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5sPreemptibleLitepodPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v5 lite pod cores per project per zone",
+    "quotaId": "TPUV5sPreemptibleLitepodPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1",
+          "asia-northeast1",
+          "asia-southeast1",
+          "europe-north1",
+          "europe-west1",
+          "europe-west3",
+          "europe-west4",
+          "northamerica-northeast1",
+          "southamerica-west1",
+          "us-central1",
+          "us-east1",
+          "us-east4",
+          "us-east5",
+          "us-south1",
+          "us-west1",
+          "us-west4"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5s-litepod-serving-preemptible",
+    "metricDisplayName": "Preemptible TPU-V5 lite pod cores for serving workload in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5sPreemptibleLitepodServingPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v5 lite pod cores for serving per project per region",
+    "quotaId": "TPUV5sPreemptibleLitepodServingPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "asia-northeast1-a",
+          "asia-northeast1-b",
+          "asia-northeast1-c",
+          "asia-southeast1-a",
+          "asia-southeast1-b",
+          "asia-southeast1-c",
+          "europe-north1-a",
+          "europe-north1-b",
+          "europe-north1-c",
+          "europe-west1-b",
+          "europe-west1-c",
+          "europe-west1-d",
+          "europe-west3-a",
+          "europe-west3-b",
+          "europe-west3-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "northamerica-northeast1-a",
+          "northamerica-northeast1-b",
+          "northamerica-northeast1-c",
+          "southamerica-west1-a",
+          "southamerica-west1-b",
+          "southamerica-west1-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d",
+          "us-east4-a",
+          "us-east4-b",
+          "us-east4-c",
+          "us-east5-a",
+          "us-east5-b",
+          "us-east5-c",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c",
+          "us-west1-a",
+          "us-west1-b",
+          "us-west1-c",
+          "us-west4-a",
+          "us-west4-b",
+          "us-west4-c"
+        ],
+        "details": {
+          "value": "32"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v5s-litepod-serving-preemptible",
+    "metricDisplayName": "Preemptible TPU-V5 lite pod cores for serving workload in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV5sPreemptibleLitepodServingPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v5 lite pod cores for serving per project per zone",
+    "quotaId": "TPUV5sPreemptibleLitepodServingPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1",
+          "asia-northeast1",
+          "asia-south1",
+          "asia-southeast1",
+          "europe-west4",
+          "southamerica-east1",
+          "southamerica-west1",
+          "us-central1",
+          "us-east1",
+          "us-east4",
+          "us-east5",
+          "us-south1",
+          "us-west1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v6e",
+    "metricDisplayName": "TPU-V6E cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV6EPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "TPU v6e cores per project per region",
+    "quotaId": "TPUV6EPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "us-east4-a"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east4-a"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east4-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east4-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "asia-northeast1-a",
+          "asia-northeast1-b",
+          "asia-northeast1-c",
+          "asia-south1-a",
+          "asia-south1-b",
+          "asia-south1-c",
+          "asia-southeast1-a",
+          "asia-southeast1-b",
+          "asia-southeast1-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "southamerica-east1-a",
+          "southamerica-east1-b",
+          "southamerica-east1-c",
+          "southamerica-west1-a",
+          "southamerica-west1-b",
+          "southamerica-west1-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d",
+          "us-east4-c",
+          "us-east5-a",
+          "us-east5-b",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c",
+          "us-west1-a",
+          "us-west1-b",
+          "us-west1-c"
+        ],
+        "details": {
+          "value": "512"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v6e",
+    "metricDisplayName": "TPU-V6E cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV6EPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "TPU v6e cores per project per zone",
+    "quotaId": "TPUV6EPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1",
+          "asia-northeast1",
+          "asia-south1",
+          "asia-southeast1",
+          "europe-west4",
+          "southamerica-east1",
+          "southamerica-west1",
+          "us-central1",
+          "us-east1",
+          "us-east4",
+          "us-east5",
+          "us-south1",
+          "us-west1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v6e-preemptible",
+    "metricDisplayName": "Preemptible TPU-V6E cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV6EPreemptiblePerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v6e cores per project per region",
+    "quotaId": "TPUV6EPreemptiblePerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "us-east4-a"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east4-a"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east4-b"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east4-b"
+        }
+      },
+      {
+        "applicableLocations": [
+          "us-east5-c"
+        ],
+        "details": {},
+        "dimensions": {
+          "zone": "us-east5-c"
+        }
+      },
+      {
+        "applicableLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "asia-northeast1-a",
+          "asia-northeast1-b",
+          "asia-northeast1-c",
+          "asia-south1-a",
+          "asia-south1-b",
+          "asia-south1-c",
+          "asia-southeast1-a",
+          "asia-southeast1-b",
+          "asia-southeast1-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "southamerica-east1-a",
+          "southamerica-east1-b",
+          "southamerica-east1-c",
+          "southamerica-west1-a",
+          "southamerica-west1-b",
+          "southamerica-west1-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d",
+          "us-east4-c",
+          "us-east5-a",
+          "us-east5-b",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c",
+          "us-west1-a",
+          "us-west1-b",
+          "us-west1-c"
+        ],
+        "details": {
+          "value": "1536"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v6e-preemptible",
+    "metricDisplayName": "Preemptible TPU-V6E cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV6EPreemptiblePerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Preemptible TPU v6e cores per project per zone",
+    "quotaId": "TPUV6EPreemptiblePerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "region"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1",
+          "asia-northeast1",
+          "asia-south1",
+          "asia-southeast1",
+          "europe-west4",
+          "southamerica-east1",
+          "southamerica-west1",
+          "us-central1",
+          "us-east1",
+          "us-east4",
+          "us-east5",
+          "us-south1",
+          "us-west1"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v6e-reserved",
+    "metricDisplayName": "Reserved TPU-V6E cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV6EReservedPerProjectPerRegionForTPUAPI",
+    "quotaDisplayName": "Reserved TPU v6e cores per project per region",
+    "quotaId": "TPUV6EReservedPerProjectPerRegionForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  },
+  {
+    "containerType": "PROJECT",
+    "dimensions": [
+      "zone"
+    ],
+    "dimensionsInfos": [
+      {
+        "applicableLocations": [
+          "asia-east1-a",
+          "asia-east1-b",
+          "asia-east1-c",
+          "asia-northeast1-a",
+          "asia-northeast1-b",
+          "asia-northeast1-c",
+          "asia-south1-a",
+          "asia-south1-b",
+          "asia-south1-c",
+          "asia-southeast1-a",
+          "asia-southeast1-b",
+          "asia-southeast1-c",
+          "europe-west4-a",
+          "europe-west4-b",
+          "europe-west4-c",
+          "southamerica-east1-a",
+          "southamerica-east1-b",
+          "southamerica-east1-c",
+          "southamerica-west1-a",
+          "southamerica-west1-b",
+          "southamerica-west1-c",
+          "us-central1-a",
+          "us-central1-b",
+          "us-central1-c",
+          "us-central1-f",
+          "us-east1-b",
+          "us-east1-c",
+          "us-east1-d",
+          "us-east4-a",
+          "us-east4-b",
+          "us-east4-c",
+          "us-east5-a",
+          "us-east5-b",
+          "us-east5-c",
+          "us-south1-a",
+          "us-south1-b",
+          "us-south1-c",
+          "us-west1-a",
+          "us-west1-b",
+          "us-west1-c"
+        ],
+        "details": {
+          "value": "-1"
+        }
+      }
+    ],
+    "isPrecise": true,
+    "metric": "tpu.googleapis.com/tpu-v6e-reserved",
+    "metricDisplayName": "Reserved TPU-V6E cores in use by TPU API",
+    "name": "projects/525030193900/locations/global/services/tpu.googleapis.com/quotaInfos/TPUV6EReservedPerProjectPerZoneForTPUAPI",
+    "quotaDisplayName": "Reserved TPU v6e cores per project per zone",
+    "quotaId": "TPUV6EReservedPerProjectPerZoneForTPUAPI",
+    "quotaIncreaseEligibility": {
+      "isEligible": true
+    },
+    "service": "tpu.googleapis.com"
+  }
+]

@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="14" time="15.315" timestamp="2026-10-06T21:35:47.549834+00:00" hostname="t1v-n-d9a8b474-w-0"><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[mixed-standard-None]" time="1.831"><failure message="AssertionError: &#10;Not equal to tolerance rtol=2e-05, atol=2e-05&#10;&#10;Mismatched elements: 12 / 56 (21.4%)&#10;First 5 mismatches are at indices:&#10; [0, 0, 1, 0]: -0.08592700958251953 (ACTUAL), -0.0857534408569336 (DESIRED)&#10; [0, 0, 1, 1]: 0.22069168090820312 (ACTUAL), 0.22136688232421875 (DESIRED)&#10; [0, 0, 1, 2]: 0.18952274322509766 (ACTUAL), 0.18966293334960938 (DESIRED)&#10; [0, 0, 1, 3]: -0.0343017578125 (ACTUAL), -0.034626007080078125 (DESIRED)&#10; [0, 1, 0, 0]: -0.1103672981262207 (ACTUAL), -0.11063814163208008 (DESIRED)&#10;Max absolute difference among violations: 0.0006752&#10;Max relative difference among violations: 0.03756797&#10; ACTUAL: array([[[[ 0.055737, -0.075689,  0.099638,  0.383026],&#10;         [-0.085927,  0.220692,  0.189523, -0.034302]],&#10;...&#10; DESIRED: array([[[[ 0.055737, -0.075689,  0.099638,  0.383026],&#10;         [-0.085753,  0.221367,  0.189663, -0.034626]],&#10;...">radius = None, mode = 'mixed', implementation = 'standard'
+
+    @pytest.mark.parametrize('radius', [None, 0, 1, 3])
+    @pytest.mark.parametrize('mode,implementation', [('mixed', 'standard'), ('bf16', 'standard'),
+                                                   ('bf16', 'centered_fp32_scores')])
+    def test_shared_v_forward_backward_and_empty_rows(radius, mode, implementation):
+        import jax
+        import jax.numpy as jnp
+        from flaxchat.encoder import bidirectional_attention, _rope
+        assert jax.default_backend() == 'tpu'
+        dtype = jnp.float32 if mode == 'mixed' else jnp.bfloat16
+        v = (jax.random.normal(jax.random.key(19), (1, 7, 2, 4)) * .2).astype(dtype)
+        segments = jnp.array([[0, 0, 0, 0, 1, -1, -1]])
+        positions = jnp.arange(7)[None]
+        def actual(v, alpha):
+            z = _rope(v, positions, 160000.)
+            return bidirectional_attention(z, z, v, segments, radius=radius, score='goat',
+                                           alpha=alpha, yat_compute_mode=mode, yat_attention_block_size=3,
+                                           yat_attention_implementation=implementation)
+        def reference(v, alpha):
+            z = _rope(v, positions, 160000.).astype(jnp.float32).transpose(0, 2, 1, 3)
+            dot = jnp.einsum('bhid,bhjd-&gt;bhij', z, z)
+            distance = ((z[:, :, :, None] - z[:, :, None, :]) ** 2).sum(-1)
+            idx = jnp.arange(7)
+            mask = (segments[:, :, None] == segments[:, None, :]) &amp; (segments[:, :, None] &gt;= 0)
+            mask &amp;= (idx[:, None] != idx[None, :])[None]
+            if radius is not None:
+                mask &amp;= (abs(idx[:, None] - idx[None, :]) &lt;= radius)[None]
+            live = mask.any(-1)
+            logits = alpha * (dot + 1)**2 / (distance + .01)
+            logits = jnp.where(mask[:, None], logits, -jnp.inf)
+            logits = jnp.where(live[:, None, :, None], logits, 0.)
+            weights = jnp.where(live[:, None, :, None], jax.nn.softmax(logits, -1), 0.)
+            return jnp.einsum('bhij,bjhd-&gt;bihd', weights, v.astype(jnp.float32))
+        alpha = jnp.float32(.1)
+        output = jax.jit(actual)(v, alpha)
+        assert np.isfinite(output.astype(jnp.float32)).all()
+        np.testing.assert_array_equal(np.asarray(output[:, 4:], dtype=np.float32), 0)
+        tolerance = .04 if mode == 'bf16' else 2e-5
+&gt;       np.testing.assert_allclose(output.astype(jnp.float32), reference(v, alpha), atol=tolerance, rtol=tolerance)
+E       AssertionError: 
+E       Not equal to tolerance rtol=2e-05, atol=2e-05
+E       
+E       Mismatched elements: 12 / 56 (21.4%)
+E       First 5 mismatches are at indices:
+E        [0, 0, 1, 0]: -0.08592700958251953 (ACTUAL), -0.0857534408569336 (DESIRED)
+E        [0, 0, 1, 1]: 0.22069168090820312 (ACTUAL), 0.22136688232421875 (DESIRED)
+E        [0, 0, 1, 2]: 0.18952274322509766 (ACTUAL), 0.18966293334960938 (DESIRED)
+E        [0, 0, 1, 3]: -0.0343017578125 (ACTUAL), -0.034626007080078125 (DESIRED)
+E        [0, 1, 0, 0]: -0.1103672981262207 (ACTUAL), -0.11063814163208008 (DESIRED)
+E       Max absolute difference among violations: 0.0006752
+E       Max relative difference among violations: 0.03756797
+E        ACTUAL: array([[[[ 0.055737, -0.075689,  0.099638,  0.383026],
+E                [-0.085927,  0.220692,  0.189523, -0.034302]],
+E       ...
+E        DESIRED: array([[[[ 0.055737, -0.075689,  0.099638,  0.383026],
+E                [-0.085753,  0.221367,  0.189663, -0.034626]],
+E       ...
+
+tests/test_goat_physical_tpu.py:48: AssertionError</failure></testcase><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[mixed-standard-0]" time="2.379" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[mixed-standard-1]" time="0.728"><failure message="AssertionError: &#10;Not equal to tolerance rtol=2e-05, atol=2e-05&#10;&#10;Mismatched elements: 19 / 56 (33.9%)&#10;First 5 mismatches are at indices:&#10; [0, 0, 0, 0]: -0.06393790990114212 (ACTUAL), -0.06398570537567139 (DESIRED)&#10; [0, 0, 0, 1]: 0.019289646297693253 (ACTUAL), 0.019517239183187485 (DESIRED)&#10; [0, 0, 0, 3]: 0.39518973231315613 (ACTUAL), 0.3950191140174866 (DESIRED)&#10; [0, 0, 1, 1]: 0.15460506081581116 (ACTUAL), 0.15440194308757782 (DESIRED)&#10; [0, 0, 1, 2]: -0.050668030977249146 (ACTUAL), -0.05068983882665634 (DESIRED)&#10;Max absolute difference among violations: 0.00030261&#10;Max relative difference among violations: 0.01166112&#10; ACTUAL: array([[[[-0.063938,  0.01929 ,  0.260158,  0.39519 ],&#10;         [-0.038091,  0.154605, -0.050668,  0.285053]],&#10;...&#10; DESIRED: array([[[[-0.063986,  0.019517,  0.260153,  0.395019],&#10;         [-0.038111,  0.154402, -0.05069 ,  0.285013]],&#10;...">radius = 1, mode = 'mixed', implementation = 'standard'
+
+    @pytest.mark.parametrize('radius', [None, 0, 1, 3])
+    @pytest.mark.parametrize('mode,implementation', [('mixed', 'standard'), ('bf16', 'standard'),
+                                                   ('bf16', 'centered_fp32_scores')])
+    def test_shared_v_forward_backward_and_empty_rows(radius, mode, implementation):
+        import jax
+        import jax.numpy as jnp
+        from flaxchat.encoder import bidirectional_attention, _rope
+        assert jax.default_backend() == 'tpu'
+        dtype = jnp.float32 if mode == 'mixed' else jnp.bfloat16
+        v = (jax.random.normal(jax.random.key(19), (1, 7, 2, 4)) * .2).astype(dtype)
+        segments = jnp.array([[0, 0, 0, 0, 1, -1, -1]])
+        positions = jnp.arange(7)[None]
+        def actual(v, alpha):
+            z = _rope(v, positions, 160000.)
+            return bidirectional_attention(z, z, v, segments, radius=radius, score='goat',
+                                           alpha=alpha, yat_compute_mode=mode, yat_attention_block_size=3,
+                                           yat_attention_implementation=implementation)
+        def reference(v, alpha):
+            z = _rope(v, positions, 160000.).astype(jnp.float32).transpose(0, 2, 1, 3)
+            dot = jnp.einsum('bhid,bhjd-&gt;bhij', z, z)
+            distance = ((z[:, :, :, None] - z[:, :, None, :]) ** 2).sum(-1)
+            idx = jnp.arange(7)
+            mask = (segments[:, :, None] == segments[:, None, :]) &amp; (segments[:, :, None] &gt;= 0)
+            mask &amp;= (idx[:, None] != idx[None, :])[None]
+            if radius is not None:
+                mask &amp;= (abs(idx[:, None] - idx[None, :]) &lt;= radius)[None]
+            live = mask.any(-1)
+            logits = alpha * (dot + 1)**2 / (distance + .01)
+            logits = jnp.where(mask[:, None], logits, -jnp.inf)
+            logits = jnp.where(live[:, None, :, None], logits, 0.)
+            weights = jnp.where(live[:, None, :, None], jax.nn.softmax(logits, -1), 0.)
+            return jnp.einsum('bhij,bjhd-&gt;bihd', weights, v.astype(jnp.float32))
+        alpha = jnp.float32(.1)
+        output = jax.jit(actual)(v, alpha)
+        assert np.isfinite(output.astype(jnp.float32)).all()
+        np.testing.assert_array_equal(np.asarray(output[:, 4:], dtype=np.float32), 0)
+        tolerance = .04 if mode == 'bf16' else 2e-5
+        np.testing.assert_allclose(output.astype(jnp.float32), reference(v, alpha), atol=tolerance, rtol=tolerance)
+        actual_grads = jax.jit(jax.grad(lambda v, a: (actual(v, a).astype(jnp.float32)**2).sum(), (0, 1)))(v, alpha)
+        ref_grads = jax.grad(lambda v, a: (reference(v, a)**2).sum(), (0, 1))(v, alpha)
+        for a, b in zip(actual_grads, ref_grads, strict=True):
+            assert np.isfinite(a.astype(jnp.float32)).all()
+&gt;           np.testing.assert_allclose(a.astype(jnp.float32), b.astype(jnp.float32), atol=tolerance, rtol=tolerance)
+E           AssertionError: 
+E           Not equal to tolerance rtol=2e-05, atol=2e-05
+E           
+E           Mismatched elements: 19 / 56 (33.9%)
+E           First 5 mismatches are at indices:
+E            [0, 0, 0, 0]: -0.06393790990114212 (ACTUAL), -0.06398570537567139 (DESIRED)
+E            [0, 0, 0, 1]: 0.019289646297693253 (ACTUAL), 0.019517239183187485 (DESIRED)
+E            [0, 0, 0, 3]: 0.39518973231315613 (ACTUAL), 0.3950191140174866 (DESIRED)
+E            [0, 0, 1, 1]: 0.15460506081581116 (ACTUAL), 0.15440194308757782 (DESIRED)
+E            [0, 0, 1, 2]: -0.050668030977249146 (ACTUAL), -0.05068983882665634 (DESIRED)
+E           Max absolute difference among violations: 0.00030261
+E           Max relative difference among violations: 0.01166112
+E            ACTUAL: array([[[[-0.063938,  0.01929 ,  0.260158,  0.39519 ],
+E                    [-0.038091,  0.154605, -0.050668,  0.285053]],
+E           ...
+E            DESIRED: array([[[[-0.063986,  0.019517,  0.260153,  0.395019],
+E                    [-0.038111,  0.154402, -0.05069 ,  0.285013]],
+E           ...
+
+tests/test_goat_physical_tpu.py:53: AssertionError</failure></testcase><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[mixed-standard-3]" time="0.217"><failure message="AssertionError: &#10;Not equal to tolerance rtol=2e-05, atol=2e-05&#10;&#10;Mismatched elements: 12 / 56 (21.4%)&#10;First 5 mismatches are at indices:&#10; [0, 0, 1, 0]: -0.08592700958251953 (ACTUAL), -0.0857534408569336 (DESIRED)&#10; [0, 0, 1, 1]: 0.22069168090820312 (ACTUAL), 0.22136688232421875 (DESIRED)&#10; [0, 0, 1, 2]: 0.18952274322509766 (ACTUAL), 0.18966293334960938 (DESIRED)&#10; [0, 0, 1, 3]: -0.0343017578125 (ACTUAL), -0.034626007080078125 (DESIRED)&#10; [0, 1, 0, 0]: -0.1103672981262207 (ACTUAL), -0.11063814163208008 (DESIRED)&#10;Max absolute difference among violations: 0.0006752&#10;Max relative difference among violations: 0.03756797&#10; ACTUAL: array([[[[ 0.055737, -0.075689,  0.099638,  0.383026],&#10;         [-0.085927,  0.220692,  0.189523, -0.034302]],&#10;...&#10; DESIRED: array([[[[ 0.055737, -0.075689,  0.099638,  0.383026],&#10;         [-0.085753,  0.221367,  0.189663, -0.034626]],&#10;...">radius = 3, mode = 'mixed', implementation = 'standard'
+
+    @pytest.mark.parametrize('radius', [None, 0, 1, 3])
+    @pytest.mark.parametrize('mode,implementation', [('mixed', 'standard'), ('bf16', 'standard'),
+                                                   ('bf16', 'centered_fp32_scores')])
+    def test_shared_v_forward_backward_and_empty_rows(radius, mode, implementation):
+        import jax
+        import jax.numpy as jnp
+        from flaxchat.encoder import bidirectional_attention, _rope
+        assert jax.default_backend() == 'tpu'
+        dtype = jnp.float32 if mode == 'mixed' else jnp.bfloat16
+        v = (jax.random.normal(jax.random.key(19), (1, 7, 2, 4)) * .2).astype(dtype)
+        segments = jnp.array([[0, 0, 0, 0, 1, -1, -1]])
+        positions = jnp.arange(7)[None]
+        def actual(v, alpha):
+            z = _rope(v, positions, 160000.)
+            return bidirectional_attention(z, z, v, segments, radius=radius, score='goat',
+                                           alpha=alpha, yat_compute_mode=mode, yat_attention_block_size=3,
+                                           yat_attention_implementation=implementation)
+        def reference(v, alpha):
+            z = _rope(v, positions, 160000.).astype(jnp.float32).transpose(0, 2, 1, 3)
+            dot = jnp.einsum('bhid,bhjd-&gt;bhij', z, z)
+            distance = ((z[:, :, :, None] - z[:, :, None, :]) ** 2).sum(-1)
+            idx = jnp.arange(7)
+            mask = (segments[:, :, None] == segments[:, None, :]) &amp; (segments[:, :, None] &gt;= 0)
+            mask &amp;= (idx[:, None] != idx[None, :])[None]
+            if radius is not None:
+                mask &amp;= (abs(idx[:, None] - idx[None, :]) &lt;= radius)[None]
+            live = mask.any(-1)
+            logits = alpha * (dot + 1)**2 / (distance + .01)
+            logits = jnp.where(mask[:, None], logits, -jnp.inf)
+            logits = jnp.where(live[:, None, :, None], logits, 0.)
+            weights = jnp.where(live[:, None, :, None], jax.nn.softmax(logits, -1), 0.)
+            return jnp.einsum('bhij,bjhd-&gt;bihd', weights, v.astype(jnp.float32))
+        alpha = jnp.float32(.1)
+        output = jax.jit(actual)(v, alpha)
+        assert np.isfinite(output.astype(jnp.float32)).all()
+        np.testing.assert_array_equal(np.asarray(output[:, 4:], dtype=np.float32), 0)
+        tolerance = .04 if mode == 'bf16' else 2e-5
+&gt;       np.testing.assert_allclose(output.astype(jnp.float32), reference(v, alpha), atol=tolerance, rtol=tolerance)
+E       AssertionError: 
+E       Not equal to tolerance rtol=2e-05, atol=2e-05
+E       
+E       Mismatched elements: 12 / 56 (21.4%)
+E       First 5 mismatches are at indices:
+E        [0, 0, 1, 0]: -0.08592700958251953 (ACTUAL), -0.0857534408569336 (DESIRED)
+E        [0, 0, 1, 1]: 0.22069168090820312 (ACTUAL), 0.22136688232421875 (DESIRED)
+E        [0, 0, 1, 2]: 0.18952274322509766 (ACTUAL), 0.18966293334960938 (DESIRED)
+E        [0, 0, 1, 3]: -0.0343017578125 (ACTUAL), -0.034626007080078125 (DESIRED)
+E        [0, 1, 0, 0]: -0.1103672981262207 (ACTUAL), -0.11063814163208008 (DESIRED)
+E       Max absolute difference among violations: 0.0006752
+E       Max relative difference among violations: 0.03756797
+E        ACTUAL: array([[[[ 0.055737, -0.075689,  0.099638,  0.383026],
+E                [-0.085927,  0.220692,  0.189523, -0.034302]],
+E       ...
+E        DESIRED: array([[[[ 0.055737, -0.075689,  0.099638,  0.383026],
+E                [-0.085753,  0.221367,  0.189663, -0.034626]],
+E       ...
+
+tests/test_goat_physical_tpu.py:48: AssertionError</failure></testcase><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-standard-None]" time="1.316" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-standard-0]" time="0.735" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-standard-1]" time="0.808" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-standard-3]" time="0.882" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-centered_fp32_scores-None]" time="0.759" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-centered_fp32_scores-0]" time="0.743" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-centered_fp32_scores-1]" time="0.893" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-centered_fp32_scores-3]" time="0.804" /><testcase classname="tests.test_goat_physical_tpu" name="test_projection_removal_and_explicit_migration" time="1.095" /><testcase classname="tests.test_goat_physical_tpu" name="test_migrated_bf16_mlm_update_checkpoint_exact_resume" time="1.788"><failure message="ValueError: Fused loss batch must divide across all data devices&#10;--------------------&#10;For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.">tmp_path = PosixPath('/tmp/pytest-of-root/pytest-0/test_migrated_bf16_mlm_update_0')
+
+    def test_migrated_bf16_mlm_update_checkpoint_exact_resume(tmp_path):
+        """Exercise the actual parent precision policy and persistent Adam state."""
+        from dataclasses import asdict
+        import jax
+        import jax.numpy as jnp
+        import optax
+        from flax import nnx
+        from flaxchat.encoder import EncoderConfig, ModernBert
+        from flaxchat.goat import migrate_yat_to_goat
+        from flaxchat.checkpoint import (create_checkpoint_manager, save_checkpoint,
+                                        restore_model_from_checkpoint)
+        assert jax.default_backend() == 'tpu'
+        parent_config = EncoderConfig(
+            vocab_size=32, hidden_size=16, intermediate_size=24, num_hidden_layers=2,
+            num_attention_heads=2, global_attn_every_n_layers=2, local_attention=4,
+            ffn_type='yat_glu', attention_score='yat_softmax', compute_dtype='bfloat16',
+            yat_compute_mode='bf16', yat_ffn_compute_mode='bf16_adaptive',
+            yat_attention_implementation='centered_fp32_scores',
+            yat_attention_block_size=4, yat_global_attention_block_size=4,
+            mlm_projection='masked', mlm_loss_backend='xla_full', loss_chunk_size=4,
+            yat_attention_alpha=.1)
+        config = replace(parent_config, attention_score='goat')
+        parent = ModernBert(parent_config, rngs=nnx.Rngs(42))
+        model = ModernBert(config, rngs=nnx.Rngs(43))
+        migrate_yat_to_goat(parent, model)
+        optimizer = nnx.Optimizer(model, optax.adamw(2e-5), wrt=nnx.Param)
+        ids = jnp.array([[1, 4, 7, 8, 4, 9, 2, 0], [1, 4, 5, 6, 4, 7, 2, 0]])
+        labels = jnp.array([[-1, 6, -1, -1, 5, -1, -1, -1], [-1, 8, -1, -1, 9, -1, -1, -1]])
+        @nnx.jit
+        def update(model, optimizer):
+            loss, grads = nnx.value_and_grad(lambda m: m(ids, labels))(model)
+            optimizer.update(model, grads)
+            return loss, grads
+&gt;       loss, grads = update(model, optimizer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_goat_physical_tpu.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../venv/lib/python3.12/site-packages/flax/nnx/transforms/compilation.py:1023: in __call__
+    pure_args_out, pure_kwargs_out, pure_out = self.jitted_fn(
+../venv/lib/python3.12/site-packages/flax/nnx/transforms/compilation.py:138: in __call__
+    out = self.f(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_goat_physical_tpu.py:105: in update
+    loss, grads = nnx.value_and_grad(lambda m: m(ids, labels))(model)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.12/site-packages/flax/nnx/graphlib.py:2114: in update_context_manager_wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.12/site-packages/flax/nnx/transforms/autodiff.py:250: in grad_wrapper
+    fn_out = gradded_fn(*pure_args)
+             ^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.12/site-packages/flax/nnx/transforms/autodiff.py:122: in __call__
+    out = self.f(*args)
+          ^^^^^^^^^^^^^
+tests/test_goat_physical_tpu.py:105: in &lt;lambda&gt;
+    loss, grads = nnx.value_and_grad(lambda m: m(ids, labels))(model)
+                                               ^^^^^^^^^^^^^^
+flaxchat/encoder.py:542: in __call__
+    return nnx.cond(jnp.any((targets &gt;= 0).sum(axis=1) &gt; capacity),
+../venv/lib/python3.12/site-packages/flax/nnx/transforms/transforms.py:643: in cond
+    return _cond(pred, true_fun, false_fun, *operands)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.12/site-packages/flax/nnx/graphlib.py:2114: in update_context_manager_wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+../venv/lib/python3.12/site-packages/flax/nnx/transforms/general.py:153: in split_inputs_wrapper
+    pure_args_out, pure_out = f(*pure_args)
+                              ^^^^^^^^^^^^^
+../venv/lib/python3.12/site-packages/flax/nnx/transforms/transforms.py:636: in _cond
+    return jax.lax.cond(
+../venv/lib/python3.12/site-packages/flax/nnx/transforms/general.py:198: in merge_inputs_wrapper
+    out = f(*args)
+          ^^^^^^^^
+flaxchat/encoder.py:543: in &lt;lambda&gt;
+    lambda model, h, y: model._projection_loss(h, y, reduction=loss_reduction),
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flaxchat/encoder.py:557: in _projection_loss
+    return sharded_fused_loss(hidden if local_xla else hidden.astype(dtype),
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+hidden = JitTracer(bfloat16[2,8,16]), weight = JitTracer(bfloat16[32,16])
+bias = JitTracer(float32[32]), labels = JitTracer(int32[2,8]), tile = 1024
+interpret = False, backend = 'xla_full', chunk_size = 4
+compute_dtype = &lt;class 'jax.numpy.bfloat16'&gt;, local_only = False
+reduction = 'mean'
+
+    def sharded_fused_loss(hidden, weight, bias, labels, *, tile=1024, interpret=False, backend='pallas', chunk_size=128, compute_dtype=None, local_only=False, reduction='mean'):
+        """Data-parallel loss with explicit local kernels and global token weighting.
+    
+        local_only is for an enclosing device-local accumulation map: return the
+        local mean without mapping or collectives. Its caller owns global weighting.
+        """
+        if reduction not in ('mean', 'sum'):
+            raise ValueError('reduction must be mean or sum')
+        if backend not in ('pallas', 'xla_full', 'xla_local'):
+            raise ValueError('Unknown sharded projection backend')
+        if chunk_size &lt;= 0:
+            raise ValueError('chunk_size must be positive')
+        import numpy as np
+        from jax.sharding import Mesh, PartitionSpec as P
+        mesh = Mesh(np.asarray(jax.devices()), ('data',))
+        if not local_only and hidden.shape[0] % mesh.size:
+&gt;           raise ValueError('Fused loss batch must divide across all data devices')
+E           ValueError: Fused loss batch must divide across all data devices
+E           --------------------
+E           For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+
+flaxchat/fused_cross_entropy.py:147: ValueError</failure></testcase></testsuite></testsuites>

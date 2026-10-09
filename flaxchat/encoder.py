@@ -59,6 +59,8 @@ class EncoderConfig:
     weight_quantization: str = 'none'
 
     def __post_init__(self):
+        if self.attention_score in ('goat', 'goat_input') and self.yat_local_shards:
+            raise ValueError('GOAT uses automatic data sharding; disable yat_local_shards')
         if self.weight_quantization not in ('none', 'int8_per_channel_ste'):
             raise ValueError('Unknown weight_quantization')
         if self.weight_quantization != 'none' and (
@@ -84,7 +86,7 @@ class EncoderConfig:
         if self.yat_attention_implementation not in ('standard', 'centered_fp32_scores'):
             raise ValueError('Unknown yat_attention_implementation')
         if self.yat_attention_implementation == 'centered_fp32_scores' and (
-                self.attention_score != 'yat_softmax' or self.yat_compute_mode != 'bf16'
+                self.attention_score not in ('yat_softmax', 'goat', 'goat_input') or self.yat_compute_mode != 'bf16'
                 or self.yat_softmax_backward != 'factored'
                 or type(self.yat_attention_block_size) is not int
                 or type(self.yat_global_attention_block_size) is not int
@@ -93,7 +95,7 @@ class EncoderConfig:
         if self.yat_softmax_backward not in ('factored', 'max_centered'):
             raise ValueError('Unknown yat_softmax_backward')
         if self.yat_softmax_backward == 'max_centered' and (
-                self.attention_score != 'yat_softmax' or self.yat_compute_mode == 'mixed'):
+                self.attention_score not in ('yat_softmax', 'goat', 'goat_input') or self.yat_compute_mode == 'mixed'):
             raise ValueError('max_centered requires BF16 YAT attention')
         for name in ("yat_attention_block_size", "yat_global_attention_block_size"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 0:
@@ -102,13 +104,13 @@ class EncoderConfig:
             raise ValueError('yat_compute_mode must be mixed, bf16 or bf16_adaptive')
         if self.yat_compute_mode in ('bf16', 'bf16_adaptive') and self.compute_dtype != 'bfloat16':
             raise ValueError('BF16 YAT requires bfloat16 compute dtype')
-        if self.attention_score not in ('dot_product', 'yat_softmax'):
-            raise ValueError('attention_score must be dot_product or yat_softmax')
-        if self.attention_score == 'yat_softmax' and self.attention_backend != 'xla':
+        if self.attention_score not in ('dot_product', 'yat_softmax', 'goat', 'goat_input'):
+            raise ValueError('attention_score must be dot_product, yat_softmax, goat or goat_input')
+        if self.attention_score in ('yat_softmax', 'goat', 'goat_input') and self.attention_backend != 'xla':
             raise ValueError('YAT attention currently requires the exact XLA reference backend')
         if self.ffn_type not in ('geglu', 'yat_glu'):
             raise ValueError('ffn_type must be geglu or yat_glu')
-        if (self.ffn_type == 'yat_glu' or self.attention_score == 'yat_softmax') and (self.yat_epsilon != .01 or self.yat_bias != 1.0 or self.yat_alpha_trainable is not True):
+        if (self.ffn_type == 'yat_glu' or self.attention_score in ('yat_softmax', 'goat', 'goat_input')) and (self.yat_epsilon != .01 or self.yat_bias != 1.0 or self.yat_alpha_trainable is not True):
             raise ValueError('YAT GLU requires fixed bias 1, fixed epsilon 0.01 and trainable alpha')
         if not all(math.isfinite(v) and v > 0 for v in (self.yat_epsilon, self.yat_alpha)):
             raise ValueError('YAT epsilon and alpha must be finite and positive')
@@ -192,6 +194,22 @@ def bidirectional_attention(q, k, v, segments, *, radius=None, backend='xla', pa
                             yat_local_shards=False, yat_attention_block_size=0,
                             yat_softmax_backward='factored', yat_attention_implementation='standard'):
     """Symmetric attention with document isolation and zero padded outputs."""
+    if yat_attention_implementation not in ('standard', 'centered_fp32_scores'):
+        raise ValueError('Unknown yat_attention_implementation')
+    if score in ('goat', 'goat_input'):
+        if backend != 'xla' or yat_local_shards:
+            raise ValueError('GOAT requires XLA with automatic data sharding')
+        if yat_attention_implementation == 'centered_fp32_scores' and (
+                yat_compute_mode != 'bf16' or yat_attention_block_size < 1
+                or yat_softmax_backward != 'factored'):
+            raise ValueError('GOAT centered scores require tiled direct BF16 and factored softmax')
+        from flaxchat.yat_attention import windowed_yat_attention
+        local_segments = segments if packed else jnp.where(segments >= 0, 0, -1)
+        return windowed_yat_attention(
+            q, k, v, local_segments, radius=radius, alpha=alpha,
+            compute_mode=yat_compute_mode, block_size=yat_attention_block_size or 64,
+            softmax_backward_mode=yat_softmax_backward, exclude_diagonal=True,
+            precision='fp32_scores' if yat_attention_implementation == 'centered_fp32_scores' else 'native')
     if yat_attention_implementation not in ('standard', 'centered_fp32_scores'):
         raise ValueError('Unknown yat_attention_implementation')
     if yat_attention_implementation == 'centered_fp32_scores' and (
@@ -375,13 +393,16 @@ class EncoderBlock(nnx.Module):
                                  use_bias=False, dtype=getattr(jnp, config.residual_dtype), rngs=rngs)
         self.attn_norm = norm() if index else None
         self.mlp_norm = norm()
-        self.qkv = linear(config.hidden_size, 3 * config.hidden_size)
+        if config.attention_score in ('goat', 'goat_input'):
+            self.v = linear(config.hidden_size, config.hidden_size)
+        else:
+            self.qkv = linear(config.hidden_size, 3 * config.hidden_size)
         self.attn_out = linear(config.hidden_size, config.hidden_size)
         self.wi = linear(config.hidden_size, 2 * config.intermediate_size)
         self.wo = linear(config.intermediate_size, config.hidden_size)
         if config.ffn_type == 'yat_glu':
             self.yat_alpha = nnx.Param(jnp.array(config.yat_alpha, dtype=jnp.float32))
-        if config.attention_score == 'yat_softmax':
+        if config.attention_score in ('yat_softmax', 'goat', 'goat_input'):
             initial_alpha = (config.yat_alpha if config.yat_attention_alpha is None
                              else config.yat_attention_alpha)
             self.yat_attention_alpha = nnx.Param(jnp.array(initial_alpha, dtype=jnp.float32))
@@ -390,11 +411,22 @@ class EncoderBlock(nnx.Module):
         c = self.config
         h = self.attn_norm(x) if self.attn_norm is not None else x
         from flaxchat.weight_qat import qat_linear, fake_quantize_int8
-        qkv = qat_linear(self.qkv, h, c).reshape(*x.shape[:2], 3, c.num_attention_heads, -1)
-        q, k, v = (qkv[:, :, i] for i in range(3))
+        if c.attention_score in ('goat', 'goat_input'):
+            v = qat_linear(self.v, h, c).reshape(*x.shape[:2], c.num_attention_heads, -1)
+            q = k = v
+        else:
+            qkv = qat_linear(self.qkv, h, c).reshape(*x.shape[:2], 3, c.num_attention_heads, -1)
+            q, k, v = (qkv[:, :, i] for i in range(3))
         local = self.index % c.global_attn_every_n_layers != 0
         base = c.local_rope_theta if local else c.global_rope_theta
-        q, k = _rope(q, positions, base), _rope(k, positions, base)
+        if c.attention_score in ('goat', 'goat_input'):
+            # Legacy GOAT derives geometry from V; input GOAT deliberately
+            # separates token geometry from its learned value projection.
+            score_input = (h.astype(getattr(jnp, c.compute_dtype)).reshape(v.shape)
+                           if c.attention_score == 'goat_input' else v)
+            q = k = _rope(score_input, positions, base)
+        else:
+            q, k = _rope(q, positions, base), _rope(k, positions, base)
         h = bidirectional_attention(q, k, v, segments,
                                     radius=c.local_attention // 2 if local else None,
                                     backend=c.attention_backend, packed=packed,
@@ -403,7 +435,7 @@ class EncoderBlock(nnx.Module):
                                     yat_softmax_backward=c.yat_softmax_backward,
                                     yat_attention_implementation=c.yat_attention_implementation,
                                     yat_attention_block_size=c.yat_attention_block_size if local else c.yat_global_attention_block_size,
-                                    alpha=self.yat_attention_alpha[...] if c.attention_score == 'yat_softmax' else 1.)
+                                    alpha=self.yat_attention_alpha[...] if c.attention_score in ('yat_softmax', 'goat', 'goat_input') else 1.)
         x = x + qat_linear(self.attn_out, h.reshape(x.shape), c)
         h = self.mlp_norm(x)
         if c.ffn_type == 'yat_glu':
@@ -551,6 +583,8 @@ class ModernBert(nnx.Module):
 
 def import_hf_weights(model, tensors):
     """Validate all names/shapes before mutation. Values are NumPy-like arrays."""
+    if model.config.attention_score in ('goat', 'goat_input'):
+        raise ValueError('GOAT requires explicit QKV-to-V migration; HF import is not an exact restore')
     mapping = {'model.embeddings.tok_embeddings.weight': (model.embedding.embedding, False),
                'model.embeddings.norm.weight': (model.embedding_norm.scale, False),
                'model.final_norm.weight': (model.final_norm.scale, False),

@@ -1,0 +1,19 @@
+{
+  "observed_at": "2026-10-08T07:36:13.043582+00:00",
+  "status": "capacity_wait_failed_no_training",
+  "controller": "yat-goat-input-1008a",
+  "resource": "flaxchat-validation-yat-embed-torch-goat-inp-0-5b85897e731e4bca",
+  "resume_step": 27750,
+  "checkpoint_namespace": "gs://azettaai-yat-eval-0929/goat-input-1007b/yat-embed-torch-goat-input-1007b/input-goat-scratch-base-mlm/checkpoints",
+  "cleanup_deadline_utc": "2026-10-08T17:33:47.325584+00:00",
+  "cleanup_execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/702fbe17-34eb-47ce-9286-06592153cdfc",
+  "cleanup_verified": true,
+  "workload_seconds": 32400,
+  "new_reservation_usd": 110.8,
+  "physical_status": "not_run",
+  "requires_laptop": false,
+  "cleanup_independently_verified": true,
+  "queue_absent": true,
+  "node_absent": true,
+  "controller_absent": true
+}

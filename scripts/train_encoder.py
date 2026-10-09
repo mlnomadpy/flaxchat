@@ -175,7 +175,115 @@ def initialization_metadata(directory, step, config, tokenizer_identity):
     return parent, receipt
 
 
+def public_initialization_metadata(directory, config, tokenizer_identity, metadata_sha256, manifest_sha256, *, migrate_to_goat=False):
+    """Authenticate an explicitly pinned MLM export without constructing a model."""
+    from scripts.release_contract import canonical_hash, checkpoint_identity
+    root = Path(directory)
+    files = ('config.json', 'tokenizer.json', 'checkpoint-metadata.json',
+             'checkpoint-manifest.json', 'model.safetensors')
+    if any(not (root / name).is_file() or (root / name).is_symlink() for name in files):
+        raise ValueError('Complete regular MLM public export required')
+    parent = json.loads((root / 'checkpoint-metadata.json').read_text())
+    committed = json.loads((root / 'checkpoint-manifest.json').read_text())
+    if (canonical_hash(parent) != metadata_sha256 or canonical_hash(committed) != manifest_sha256
+            or committed.get('metadata_sha256') != metadata_sha256
+            or committed.get('identity') != checkpoint_identity(parent)
+            or canonical_hash(committed.get('identity')) != committed.get('identity_sha256')
+            or type(committed.get('step')) is not int or committed['step'] < 1
+            or parent.get('model_family') != 'modernbert'
+            or parent.get('resolved_config', {}).get('contrastive_objective') is not None):
+        raise ValueError('Pinned MLM public checkpoint identity differs')
+    source_config = parent.get('resolved_config', {}).get('encoder')
+    if json.loads((root / 'config.json').read_text()) != source_config:
+        raise ValueError('Public encoder configuration differs from checkpoint')
+    parent_config = EncoderConfig(**source_config)
+    execution_fields = ('yat_local_shards', 'yat_attention_block_size', 'yat_global_attention_block_size')
+    overrides = {name: getattr(config, name) for name in execution_fields}
+    architecture_overrides = {}
+    if migrate_to_goat:
+        if parent_config.attention_score != 'yat_softmax' or config.attention_score != 'goat':
+            raise ValueError('GOAT migration requires yat_softmax source and goat target')
+        architecture_overrides = {'attention_score': 'goat'}
+    if replace(parent_config, **overrides, **architecture_overrides) != config:
+        raise ValueError('Initialization public encoder configuration differs')
+    if parent.get('tokenizer_identity') != tokenizer_identity or file_hash(root / 'tokenizer.json') != tokenizer_identity:
+        raise ValueError('Initialization public tokenizer differs')
+    receipt = dict(public_export=str(root), step=committed['step'],
+                   metadata_sha256=metadata_sha256, manifest_sha256=manifest_sha256,
+                   weights_sha256=file_hash(root / 'model.safetensors'),
+                   policy='model_weights_only; fresh_optimizer_schedule_and_data_cursor',
+                   execution_overrides={name: dict(parent=getattr(parent_config, name), current=value)
+                                        for name, value in overrides.items() if getattr(parent_config, name) != value})
+    if migrate_to_goat:
+        receipt['architecture_migration'] = dict(
+            policy='yat_qkv_to_goat_v_third_v1', source_encoder=asdict(parent_config),
+            target_encoder=asdict(config), optimizer='fresh')
+    return committed, receipt
+
+
+def public_initialization_identity(receipt):
+    """Bind parent contents on both fresh and resumed stages, independent of path."""
+    identity = {name: receipt[name] for name in (
+        'step', 'metadata_sha256', 'manifest_sha256', 'weights_sha256',
+        'policy', 'execution_overrides')}
+    if 'architecture_migration' in receipt:
+        identity['architecture_migration'] = receipt['architecture_migration']
+    return identity
+
+
+def restore_public_mlm(model, directory, committed, *, migrate_to_goat=False):
+    """Authenticate all host leaves before changing the live model state."""
+    from safetensors.numpy import load_file
+    from flaxchat.checkpoint import _canonical_manifest_paths
+    from flaxchat.public_encoder import _named_leaves
+    tensors = load_file(str(Path(directory) / 'model.safetensors'))
+    expected = _canonical_manifest_paths(committed['model_state'])
+    state = nnx.state(model)
+    pure = nnx.to_pure_dict(state)
+    live = _named_leaves(pure)
+    if set(tensors) != set(expected):
+        raise ValueError('Public MLM tensor inventory differs')
+    for name, array in tensors.items():
+        record = expected[name]
+        if (list(array.shape) != record['shape'] or str(array.dtype) != record['dtype']
+                or hashlib.sha256(array.tobytes(order='C')).hexdigest() != record['sha256']):
+            raise ValueError(f'Public MLM tensor integrity differs: {name}')
+    if migrate_to_goat:
+        if model.config.attention_score != 'goat':
+            raise ValueError('GOAT target required for migration')
+        migrated = {}
+        for name, array in tensors.items():
+            if name.startswith("['layers']") and name.endswith("['qkv']['kernel']"):
+                h = model.config.hidden_size
+                if array.shape != (h, 3 * h):
+                    raise ValueError('Unexpected public QKV layout')
+                name = name[:-len("['qkv']['kernel']")] + "['v']['kernel']"
+                array = array[:, 2 * h:]
+            migrated[name] = array
+        tensors = migrated
+    if set(tensors) != set(live):
+        raise ValueError('Public MLM target tensor inventory differs')
+    for name, array in tensors.items():
+        if array.shape != live[name].shape or array.dtype != np.dtype(live[name].dtype):
+            raise ValueError(f'Public MLM target tensor schema differs: {name}')
+    restored = jax.tree_util.tree_map_with_path(
+        lambda path, reference: jax.device_put(tensors[next(iter(_canonical_manifest_paths(
+            {jax.tree_util.keystr(path): None})))], reference.sharding), pure)
+    nnx.replace_by_pure_dict(state, restored)
+    nnx.update(model, state)
+
+
 def run(args):
+    public_parent = getattr(args, 'initialize_from_public', None)
+    migrate_to_goat = getattr(args, 'migrate_to_goat', False)
+    if migrate_to_goat and not public_parent:
+        raise ValueError('GOAT migration requires authenticated initialize-from-public')
+    if public_parent and (args.initialize_from_checkpoint or args.pretrained):
+        raise ValueError('Choose public MLM initialization, checkpoint initialization, or pretrained weights')
+    if public_parent and not all((args.initialize_public_metadata_sha256, args.initialize_public_manifest_sha256)):
+        raise ValueError('Public MLM initialization requires pinned metadata and manifest SHA256')
+    if not public_parent and any((getattr(args, 'initialize_public_metadata_sha256', None), getattr(args, 'initialize_public_manifest_sha256', None))):
+        raise ValueError('Public identity pins require initialize-from-public')
     jit_partial_mode = getattr(args, 'nnx_jit_partial', False)
     fsdp = getattr(args, 'fsdp', 1)
     manifest_chunk_mib = getattr(args, 'checkpoint_manifest_chunk_mib', None)
@@ -248,6 +356,12 @@ def run(args):
     parent, initialization = (initialization_metadata(args.initialize_from_checkpoint, args.initialize_step,
                                 config, manifest['tokenizer_sha256'])
                               if args.initialize_from_checkpoint else (None, None))
+    public_manifest = None
+    if public_parent:
+        public_manifest, initialization = public_initialization_metadata(
+            public_parent, config, manifest['tokenizer_sha256'],
+            args.initialize_public_metadata_sha256, args.initialize_public_manifest_sha256,
+            migrate_to_goat=migrate_to_goat)
     initial_weights = pretrained_inventory(args.pretrained, config) if args.pretrained and not args.resume and parent is None else None
     from flaxchat.runtime import runtime_identity
     identity = dict(runtime=runtime_identity(), encoder=asdict(config), steps=args.steps, batch_size=args.batch_size,
@@ -256,6 +370,8 @@ def run(args):
                     accumulation_steps=args.accumulation_steps, shuffle=args.shuffle,
                     language_exponent=args.language_exponent,
                     special_token_ids=manifest['special_token_ids'])
+    if public_parent:
+        identity['public_mlm_initialization'] = public_initialization_identity(initialization)
     if args.coverage_sampling:
         identity['coverage_sampling'] = 'pool_epoch_v1'
     if fsdp > 1:
@@ -275,7 +391,9 @@ def run(args):
         Path(__file__).parents[1] / 'flaxchat/training.py',
         Path(__file__).parents[1] / 'flaxchat/common.py',
         Path(__file__).parents[1] / 'flaxchat/checkpoint.py',
-        Path(__file__).parents[1] / 'flaxchat/fused_cross_entropy.py')).encode()).hexdigest()
+        Path(__file__).parents[1] / 'flaxchat/fused_cross_entropy.py',
+        Path(__file__).parents[1] / 'flaxchat/public_encoder.py',
+        Path(__file__).parents[1] / 'scripts/release_contract.py')).encode()).hexdigest()
     metadata = dict(source_python_sha256=source_digest, resolved_config=identity, tokenizer_identity=manifest['tokenizer_sha256'],
                     data_manifest_identity=file_hash(data_dir / 'manifest.json'), model_family='modernbert')
     expected = dict(resolved_config=identity, tokenizer=metadata['tokenizer_identity'],
@@ -325,6 +443,17 @@ def run(args):
                                                        tokenizer=parent['tokenizer_identity']))
         if not isinstance(restored_parent, dict) or dict(restored_parent, step=parent['step']) != parent:
             raise ValueError('Initialization checkpoint metadata changed during restore')
+        metadata['initialization'] = initialization
+    if public_parent and not args.resume:
+        checked_manifest, checked = public_initialization_metadata(
+            public_parent, config, manifest['tokenizer_sha256'],
+            args.initialize_public_metadata_sha256, args.initialize_public_manifest_sha256,
+            migrate_to_goat=migrate_to_goat)
+        if checked != initialization or checked_manifest != public_manifest:
+            raise ValueError('Public MLM initialization changed after preflight')
+        restore_public_mlm(model, public_parent, public_manifest, migrate_to_goat=migrate_to_goat)
+        if file_hash(Path(public_parent) / 'model.safetensors') != initialization['weights_sha256']:
+            raise ValueError('Public MLM weights changed during restore')
         metadata['initialization'] = initialization
     if fsdp == 1:
         optimizer = make_optimizer(model)
@@ -567,7 +696,7 @@ def parser():
     p.add_argument('--yat-global-attention-block-size', type=int, default=0, help='Experimental global YAT query tiling; zero retains dense reference')
     p.add_argument('--yat-attention-block-size', type=int, default=0, help='Opt-in local YAT query tiling; 64 is TPU-benchmarked; zero retains dense reference')
     p.add_argument('--yat-local-shards', action='store_true', help='Experimental chip-local YAT geometry and attention using explicit data shard_map')
-    p.add_argument('--attention-score', choices=['dot_product', 'yat_softmax'],
+    p.add_argument('--attention-score', choices=['dot_product', 'yat_softmax', 'goat', 'goat_input'],
                    help='Exact YAT scores followed by softmax; experimental dense reference')
     p.add_argument('--yat-epsilon', type=float, choices=[.01], help='Fixed YAT distance regularizer: 0.01')
     p.add_argument('--yat-alpha', type=float, help='Initial value of the trainable per-block YAT alpha')
@@ -601,6 +730,10 @@ def parser():
     p.add_argument('--distributed', action='store_true')
     p.add_argument('--preflight-only', action='store_true', help='Validate local config/tokenizer/data without training or creating checkpoints')
     p.add_argument('--resume', action='store_true')
+    p.add_argument('--migrate-to-goat', action='store_true', help='Explicit YAT QKV to V-only GOAT weights-only new stage; retains parent pins on resume')
+    p.add_argument('--initialize-from-public', help='Authenticated MLM public export; new optimizer, schedule and cursor')
+    p.add_argument('--initialize-public-metadata-sha256', help='Pinned canonical MLM checkpoint metadata SHA256')
+    p.add_argument('--initialize-public-manifest-sha256', help='Pinned canonical MLM checkpoint manifest SHA256')
     p.add_argument('--initialize-from-checkpoint', help='New stage from encoder model weights; fresh optimizer, schedule and cursor')
     p.add_argument('--initialize-step', type=int, help='Pin parent checkpoint step; otherwise latest is resolved once before preflight')
     p.add_argument('--shared-local-checkpoints', action='store_true',

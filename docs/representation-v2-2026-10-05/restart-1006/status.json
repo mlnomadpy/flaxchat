@@ -1,6 +1,6 @@
 {
-  "status": "training_running",
-  "observed_at": "2026-10-06T11:12:25.369393+00:00",
+  "status": "stopped_by_user_wrong_objective",
+  "observed_at": "2026-10-06T14:05:27.596597+00:00",
   "checkpoint_start": 500,
   "source_unchanged": true,
   "credit_usd": 876.63,
@@ -22,5 +22,8 @@
   "last_observed_step": 638,
   "last_durable_checkpoint": 600,
   "median_warm_step_seconds": 0.7721523230000003,
-  "guard_deadline_utc": "2026-10-06T22:37:11.567443+00:00"
+  "guard_deadline_utc": "2026-10-06T22:37:11.567443+00:00",
+  "previous_observed_at": "2026-10-06T11:12:25.369393+00:00",
+  "cleanup_receipt": "stop-request-1006.json",
+  "active_user_objective": "continued_base_MLM_pretraining_before_contrastive"
 }

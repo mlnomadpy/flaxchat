@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "run_id": "yat-embed-torch-goat-1006c",
+  "stage_id": "goat-base-mlm",
+  "parent_identity": {
+    "repo": "mlnomad/yat-mmbert-base-mlm-48236",
+    "revision": "1788a8f4235ff05f167158ae38aef8fe7292a706",
+    "step": 48236,
+    "objective": "masked_language_modeling",
+    "policy": "weights_only_QKV_V_third_GOAT_new_MLM_stage_fresh_optimizer"
+  },
+  "cleanup_owner": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup",
+  "expected_topology": "v5litepod-8",
+  "expected_device_count": 8,
+  "expected_process_count": 1,
+  "runtime_lock": {
+    "path": "infra/tpu/embedding-qualification-lock.txt",
+    "sha256": "c5328dcbc58c9b2f18b52131b7c5acff17c9a93bb180639395a3259c6ab56bd5",
+    "wheelhouse_target": "wheels",
+    "python_executable": "{root}/cpython/python/bin/python3.12"
+  },
+  "output_prefix": "gs://azettaai-yat-eval-0929/goat-mlm-1006c/yat-embed-torch-goat-1006c/goat-base-mlm",
+  "setup_checks": [
+    "{python}",
+    "-m",
+    "scripts.run_yat_mlm_continuation",
+    "--root",
+    "{root}",
+    "--output",
+    "{checkpoint_output}",
+    "--parent-metadata-sha256",
+    "35cff96b97c0a9d5ba401c39545dfeff62e1c73e527d5f5661ba0960042bf4f4",
+    "--parent-manifest-sha256",
+    "bf891c59974ec83f69349e08e704a99388fd8bdad6fd356ee2be9dfa1fb1b4d3",
+    "--qualify-only",
+    "--steps",
+    "100000",
+    "--batch-size",
+    "64",
+    "--accumulation-steps",
+    "4",
+    "--save-every",
+    "250",
+    "--migrate-to-goat"
+  ],
+  "workload": [
+    "{python}",
+    "-m",
+    "scripts.run_yat_mlm_continuation",
+    "--root",
+    "{root}",
+    "--output",
+    "{checkpoint_output}",
+    "--parent-metadata-sha256",
+    "35cff96b97c0a9d5ba401c39545dfeff62e1c73e527d5f5661ba0960042bf4f4",
+    "--parent-manifest-sha256",
+    "bf891c59974ec83f69349e08e704a99388fd8bdad6fd356ee2be9dfa1fb1b4d3",
+    "--steps",
+    "100000",
+    "--batch-size",
+    "64",
+    "--accumulation-steps",
+    "4",
+    "--max-seconds",
+    "36000",
+    "--save-every",
+    "250",
+    "--eval-every",
+    "2000",
+    "--continue-qualified",
+    "--migrate-to-goat"
+  ],
+  "download_timeout_seconds": 900,
+  "upload_timeout_seconds": 60,
+  "deployment": {
+    "project": "azettaai",
+    "zone": "us-west4-a",
+    "accelerator_type": "v5litepod-8",
+    "runtime_version": "v2-alpha-tpuv5-lite",
+    "provisioning_model": "spot",
+    "hourly_usd": 9.6,
+    "budget_usd": 900.0,
+    "attempt_seconds": 43200,
+    "capacity_wait_seconds": 900,
+    "campaign_ledger": "/opt/flaxchat-goat-1006c/campaign-ledger.json",
+    "pricing": {
+      "sku": "TPU v5e us-west4 on-demand list price conservative ceiling for Spot admission",
+      "region": "us-west4",
+      "accelerator_type": "v5litepod-8",
+      "provisioning_model": "spot",
+      "hourly_usd": 9.6,
+      "currency": "USD",
+      "unit": "whole_slice_hour",
+      "source": "https://cloud.google.com/tpu/pricing",
+      "observed_at": "2026-10-06T21:55:24.047303+00:00",
+      "rate_basis": "on_demand_upper_bound_for_spot_admission",
+      "reference_provisioning_model": "on_demand",
+      "actual_spot_rate_verified": false,
+      "chips": 8,
+      "reference_per_chip_hourly_usd": 1.2
+    },
+    "startup_wait_seconds": 600,
+    "allow_long_lease": true
+  },
+  "setup_checks_timeout_seconds": 1800,
+  "workload_kind": "training",
+  "checkpoint_output": "gs://azettaai-yat-eval-0929/goat-mlm-1006c/yat-embed-torch-goat-1006c/goat-base-mlm/checkpoints",
+  "artifacts": [
+    {
+      "uri": "gs://azettaai-yat-eval-0929/system-fixes-1001/runtime-build-02/wheelhouse.tar.gz#1790848299416576",
+      "sha256": "b5650b716f79cb05926d5993809fc3dfd5785563db896041d9d3faed1b3e7460",
+      "target": "wheels",
+      "archive": true
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/system-fixes-1001/physical-qualification-01/safetensors-wheelhouse.tar.gz",
+      "sha256": "5034b5bdaec9a690b9a9a833a81f934a64ee8023effe351d02909f356f86fe0d",
+      "target": "wheels",
+      "archive": true
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/system-fixes-1001/physical-qualification-02/python-headless.tar.gz",
+      "sha256": "7394e559d40b250b48d73989eeca9da69cb61b99e9f037a4d97b95eababfdfad",
+      "target": "cpython",
+      "archive": true,
+      "allow_internal_links": true,
+      "transformation_policy": "headless-exclude-terminfo-v1"
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/mlm-continuation-1006/parent/model.safetensors",
+      "sha256": "8afca9ad82a7f6e17d8bd6f1cb933c5002bb8aeb2cabc98baadc2ac2d1bba7c6",
+      "target": "parent/model.safetensors",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/mlm-continuation-1006/parent/config.json",
+      "sha256": "9f684e509813407633981e8c88fb9a8c2da574f2b28ba9d90cb8053fcc2c9d9e",
+      "target": "parent/config.json",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/mlm-continuation-1006/parent/tokenizer.json",
+      "sha256": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+      "target": "parent/tokenizer.json",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/mlm-continuation-1006/parent/checkpoint-metadata.json",
+      "sha256": "de095967ba4fc431515a50f01a18f881b33d22924305ed87898b788f0e02355c",
+      "target": "parent/checkpoint-metadata.json",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/mlm-continuation-1006/parent/checkpoint-manifest.json",
+      "sha256": "c2cafcaa3321179976e9844733f9833f72ca0d4261263d0c9a69f0e99fc9cbf0",
+      "target": "parent/checkpoint-manifest.json",
+      "archive": false
+    },
+    {
+      "uri": "gs://azettaai-yat-eval-0929/mlm-continuation-1006/corpus.tar.gz",
+      "sha256": "6ff240432685698b05f17864b76ca6e5bda88733eb3656f5dd4ca2c70235812e",
+      "target": "corpus",
+      "archive": true
+    }
+  ],
+  "qualification": {
+    "receipt": "mlm-qualification.json",
+    "format": "bound",
+    "required_tests": [
+      "mlm-parent-import-update",
+      "mlm-checkpoint-resume",
+      "mlm-heldout-parent-gate",
+      "goat-physical-forward-backward-migration"
+    ]
+  },
+  "source": {
+    "uri": "gs://azettaai-yat-eval-0929/goat-mlm-1006c/source.tar.gz",
+    "sha256": "8272fe97c73115dc5e18b951d6be2e95f0b73e6aca3c5015c3ce7216fe776b36",
+    "target": "source",
+    "archive": true
+  }
+}

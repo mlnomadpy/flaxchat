@@ -1,0 +1,24 @@
+{
+  "observed_at": "2026-10-08T13:52:02.259367+00:00",
+  "resume_checkpoint_step": 27750,
+  "objective": "masked_language_modeling",
+  "source_sha256": "efd98ee424a170d3c2cfa913a6a80603d6e2f6bb71d2d04ca31c5c0533136ab9",
+  "manifest_sha256": "2122fd99736fdcce9dfb53fa05acf85a54ccd34a941d69b738d530f067304293",
+  "recovery_driver_sha256": "2dbfc9c8884261ef219625be567b6e68631d0accf16946faba65bf0ea48593f1",
+  "prior_reserved_usd": 798.5,
+  "new_reservation_usd": 101.2,
+  "total_reserved_usd": 899.7,
+  "lease_seconds": 32400,
+  "workload_seconds": 28800,
+  "capacity_wait_seconds": 3600,
+  "physical_status": "not_run",
+  "credit_observation": {
+    "observed_at": "2026-10-08T13:52:02.259367+00:00",
+    "account": "tahabhs14@gmail.com",
+    "billing_account": "012CAE-712976-475489",
+    "active_remaining_usd": 789.99,
+    "expires": "2027-07-22",
+    "source": "Chrome Google Cloud issued credits UI; authuser=1",
+    "posted_run_charges": null
+  }
+}

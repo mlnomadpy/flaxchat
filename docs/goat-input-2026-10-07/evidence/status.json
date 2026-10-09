@@ -1,0 +1,28 @@
+{
+  "objective": "masked_language_modeling",
+  "status": "running",
+  "completed_step": 2000,
+  "parent_step": null,
+  "evaluations": [
+    {
+      "step": 4,
+      "loss": 12.494700929398437
+    },
+    {
+      "step": 8,
+      "loss": 12.35774825524032
+    },
+    {
+      "step": 2000,
+      "loss": 3.869532731642492
+    }
+  ],
+  "initialization": "random",
+  "initialization_seed": 1006,
+  "initialization_policy": "random_goat_fresh_optimizer_schedule_cursor_no_parent_weights",
+  "attention_score": "goat_input",
+  "architecture_reference_step": 48236,
+  "goat_physical_tests_passed": true,
+  "random_initializer_masked_token_loss": 12.533408711330228,
+  "physical_random_update_resume_qualified": true
+}
