@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-10-06T18:17:04.491235+00:00",
+  "status": "setup_failed_before_MLM_updates",
+  "controller": "yat-mlm-1006",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "service": "flaxchat-mlm-1006",
+  "service_active": false,
+  "objective": "masked_language_modeling",
+  "parent_step": 48236,
+  "prepared_train_tokens_last_observed": 14470584,
+  "target_nonpadding_tokens": 1000000000,
+  "physical_tpu_steps": 0,
+  "automatic_next_stage": "physical_MLM_import_update_resume_gate_then_MLM_continuation",
+  "requires_laptop": false,
+  "corpus_preparation_completed": true,
+  "cleanup_verified": true,
+  "failure": "Setup command did not expand {checkpoint_output}; literal placeholder rejected by MLM wrapper",
+  "local_fix": "scripts/representation_run.py expands setup output placeholders; regression tests added",
+  "relaunch_performed": false
+}

@@ -276,6 +276,11 @@ def qualify_setup_runtime(manifest, root, source_dir, identity, python, inventor
     check_environment = {**environment, 'FLAXCHAT_SETUP_QUALIFICATION': '1',
                          'FLAXCHAT_SOURCE_TREE_SHA256': source_tree_digest(tree)}
     check = [x.replace('{python}', python).replace('{root}', str(root)) for x in manifest['setup_checks']]
+    if any('{checkpoint_output}' in item or '{output_prefix}' in item for item in check):
+        prefix = manifest['output_prefix'].rstrip('/')
+        checkpoint_output = training_output(manifest) or prefix + '/checkpoints'
+        check = [item.replace('{output_prefix}', prefix).replace('{checkpoint_output}', checkpoint_output)
+                 for item in check]
     subprocess.run(check, cwd=source_dir, env=check_environment, check=True,
                    timeout=manifest.get('setup_checks_timeout_seconds', 300))
     if source_snapshot(source_dir) != tree:

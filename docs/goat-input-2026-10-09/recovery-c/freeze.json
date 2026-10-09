@@ -1,0 +1,22 @@
+{
+  "created_utc": "2026-10-09T11:59:23.008750+00:00",
+  "parent_checkpoint_step": 35500,
+  "source": {
+    "uri": "gs://azettaai-yat-eval-0929/goat-input-1007b/source.tar.gz",
+    "sha256": "efd98ee424a170d3c2cfa913a6a80603d6e2f6bb71d2d04ca31c5c0533136ab9",
+    "target": "source",
+    "archive": true
+  },
+  "sha256": {
+    "run.json": "c31cfd61c435905a051ab76bd2456d664b84f752e299eddb30ed535dbf229d97",
+    "recovery.py": "ad4f226f17b511f48d98e16844420c08ba5061ee490a2eaf7a8a4ebcf40a5fc5",
+    "pipeline.py": "41718fbb335e414cf3f964e6573d2347af57702310edb9928c927d4fc29ca425",
+    "bootstrap_runtime.py": "2d7b941de491534120849b74c946dceefd2037d3b8306850499272de313c5d97",
+    "startup.sh": "e5aad9f6bec4fe33af5a9b85c66f9fa66d05f478491125001d5d4fe209d0cc8c",
+    "campaign-ledger.json": "69c4c6dc7a309e6be7dd12e9ba13ad38f166b400a1dc8743de0eee2cf793bd2f",
+    "worker_cloud_cli.sh": "0d7386d39952310a1df9ff2c1c27672556ed8296d33e644f6cb62e3d995d65cf"
+  },
+  "prior_reserved_usd": 786.9499999999999,
+  "new_reservation_usd": 110.8,
+  "total_bound_usd": 897.7499999999999
+}

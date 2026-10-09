@@ -1,0 +1,18 @@
+{
+  "status": "failed_before_model_setup_missing_cloud_cli",
+  "parent_checkpoint_step": 35500,
+  "new_updates_verified": false,
+  "controller": "yat-goat-input-1009b",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "manifest_sha256": "73ddfb8f17bf7570176725a43b872655badac036261f02d7ffae95b078000245",
+  "prior_reserved_usd": 775.34,
+  "new_reserved_usd": 120.4,
+  "campaign_reserved_bound_usd": 895.74,
+  "posted_charges_usd": null,
+  "resource_name": "flaxchat-validation-yat-embed-torch-goat-inp-0-0f179004517e4aa6",
+  "cleanup_deadline_utc": "2026-10-09T22:42:12.737353+00:00",
+  "cleanup_workflow_execution": "5ab23534-e1e3-4753-a650-87777fe58511",
+  "reason": "Assigned TPU image lacked gcloud; setup exit127",
+  "cleanup_verified": true
+}

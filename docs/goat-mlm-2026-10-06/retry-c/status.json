@@ -1,0 +1,8 @@
+{
+  "status": "failed_cleaned",
+  "physical_passed": 13,
+  "physical_failed": 1,
+  "production_steps": 0,
+  "reason": "Checkpoint test targets single-device instead of production mesh; corrected for next freeze",
+  "cleanup_verified": true
+}

@@ -1,0 +1,49 @@
+{
+  "status": "training_updates_verified",
+  "observed_unix": 1791548451.537248,
+  "objective": "masked_language_modeling",
+  "attention_score": "goat_input",
+  "controller": "yat-goat-input-1009c",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "resource_name": "flaxchat-validation-yat-embed-torch-goat-inp-0-8e55f848c3084f38",
+  "parent_checkpoint_step": 35500,
+  "last_observed_training_step": 35544,
+  "last_verified_durable_checkpoint_step": 35500,
+  "new_updates_verified": true,
+  "observed_last_three_updates": [
+    {
+      "step": 35542,
+      "loss": 2.08268666267395,
+      "updated": true
+    },
+    {
+      "step": 35543,
+      "loss": 2.2616183757781982,
+      "updated": true
+    },
+    {
+      "step": 35544,
+      "loss": 2.3008668422698975,
+      "updated": true
+    }
+  ],
+  "physical_tests": {
+    "passed": 30,
+    "failed": 0,
+    "skipped": 0
+  },
+  "recovery_heldout_loss": 1.9821179338773598,
+  "evaluation_batch_size": 16,
+  "evaluation_rows": 512,
+  "cleanup_deadline_utc": "2026-10-09T22:08:02.594983+00:00",
+  "cleanup_workflow_execution": "projects/525030193900/locations/us-central1/workflows/flaxchat-validation-cleanup/executions/3c851cf5-deab-4174-8482-c4d682c780df",
+  "save_every": 250,
+  "keep_checkpoints": 3,
+  "maximum_workload_seconds": 32400,
+  "prior_reserved_usd": 786.95,
+  "new_reserved_usd": 110.8,
+  "campaign_reserved_bound_usd": 897.75,
+  "posted_charges_usd": null,
+  "source": "Independent read of active physical TPU train-36000.log after fresh qualification; raw ongoing logs retained by worker and uploaded at boundaries"
+}

@@ -1,0 +1,14 @@
+{
+  "observed_at": "2026-10-06T14:05:27.596295+00:00",
+  "reason": "User ordered incorrect contrastive stage stopped; active objective is continued base MLM pretraining",
+  "project": "azettaai",
+  "account": "tahabhs14@gmail.com",
+  "zone": "us-west4-a",
+  "controller": "yat-v2-restart-1006",
+  "controller_state": "deleted_verified",
+  "tpu": "flaxchat-validation-yat-embed-torch-v2-overn-0-03484310d47842df",
+  "tpu_state": "absent_verified",
+  "queue_state": "absent_verified",
+  "gcs_checkpoints": "retained; no storage deletion requested or performed",
+  "replacement_run_started": false
+}

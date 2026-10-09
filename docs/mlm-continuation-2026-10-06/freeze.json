@@ -1,0 +1,18 @@
+{
+  "source_sha256": "0557c1c95599bdc53623a225bcc0d99356311614042ef021cd0b8efbec92358d",
+  "objective": "masked_language_modeling",
+  "parent_step": 48236,
+  "source_shares": {
+    "hq": 0.45,
+    "english": 0.2,
+    "missing": 0.15,
+    "code": 0.2
+  },
+  "data_target_nonpadding_tokens": 1000000000,
+  "retained_prior_reservations_usd": 593.6,
+  "new_allocation_reservation_ceiling_usd": 130,
+  "campaign_ceiling_usd": 750,
+  "controller_max_seconds": 57600,
+  "tpu_lease_seconds": 43200,
+  "automatic_contrastive_transition": false
+}

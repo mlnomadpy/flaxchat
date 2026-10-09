@@ -1,0 +1,2 @@
+{"event": "train_step", "step": 130, "loss": 8.8029203414917, "masked_tokens": 3929, "updated": true, "tokens": 32768, "nonpadding_tokens": 26270, "nonpadding_tokens_per_second": 55677.23951305139, "learning_rate": 7.740000728517771e-05, "gradient_norm_before_clip": 1.0800905227661133, "gradient_clip_scale": 0.9258483052253723, 
+{"event": "train_step", "step": 130, "loss": 8.8029203414917, "masked_tokens": 3929, "updated": true, "tokens": 32768, "nonpadding_tokens": 26270, "nonpadding_tokens_per_second": 55677.23951305139, "learning_rate": 7.740

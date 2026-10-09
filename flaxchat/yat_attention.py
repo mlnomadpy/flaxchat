@@ -8,7 +8,7 @@ from flaxchat.yat import adaptive_squared_distance_bf16, squared_distance_bf16, 
 
 def windowed_yat_attention(q, k, v, segments, *, radius, alpha: float | jax.Array=1.,
                            compute_mode='bf16_adaptive', block_size=64,
-                           softmax_backward_mode='factored', precision='native'):
+                           softmax_backward_mode='factored', precision='native', exclude_diagonal=False):
     """Query tiles see only the keys in their local window's union.
 
     With radius=None each query tile sees all keys (global attention).
@@ -32,6 +32,10 @@ def windowed_yat_attention(q, k, v, segments, *, radius, alpha: float | jax.Arra
     if not strict and softmax_backward_mode != 'factored':
         raise ValueError('max_centered softmax backward requires BF16 YAT')
     dtype = jnp.bfloat16 if strict else jnp.float32
+    # On TPU, float32 output alone does not request float32 dot operands.
+    # Reduced-precision products break the norm-expansion distance identity in
+    # mixed mode. Keep both score and aggregation contractions at FP32 accuracy.
+    dot_precision = None if strict else jax.lax.Precision.HIGHEST
     if strict and any(a.dtype != jnp.bfloat16 for a in (q, k, v)):
         raise ValueError('BF16 YAT requires BF16 operands')
     batch, length, heads, width = q.shape
@@ -58,7 +62,8 @@ def windowed_yat_attention(q, k, v, segments, *, radius, alpha: float | jax.Arra
         vv = jax.lax.dynamic_slice_in_dim(vp, key_start, keys, axis=1)
         sq = jax.lax.dynamic_slice_in_dim(qs, start, tile, axis=1)
         sk = jax.lax.dynamic_slice_in_dim(ks, key_start, keys, axis=1)
-        dots = jnp.einsum('bqhd,bkhd->bhqk', qq, kk, preferred_element_type=dtype)
+        dots = jnp.einsum('bqhd,bkhd->bhqk', qq, kk, preferred_element_type=dtype,
+                          precision=dot_precision)
         a, b = qq.transpose(0, 2, 1, 3), kk.transpose(0, 2, 1, 3)
         if strict:
             distance = (adaptive_squared_distance_bf16(a, b, dots) if compute_mode == 'bf16_adaptive'
@@ -74,14 +79,21 @@ def windowed_yat_attention(q, k, v, segments, *, radius, alpha: float | jax.Arra
             logits = jnp.asarray(alpha, dtype) * jnp.square(dots + 1.) / (distance + .01)
         mask = (sq[:, :, None] == sk[:, None, :]) & (sq[:, :, None] >= 0) & (sk[:, None, :] >= 0)
         mask &= local_mask[None]
-        # Invalid queries use one dummy key solely to keep softmax finite.
-        mask |= (sq < 0)[:, :, None] & (jnp.arange(keys) == 0)[None, None, :]
+        if exclude_diagonal:
+            query_indices = start + jnp.arange(tile)
+            key_indices = key_start + jnp.arange(keys) - halo
+            mask &= (query_indices[:, None] != key_indices[None, :])[None]
+        has_keys = mask.any(axis=-1)
+        # Empty rows (including singleton documents) have exactly zero output.
+        # A constant dummy logit keeps both softmax and its gradient finite.
+        mask |= (~has_keys)[:, :, None] & (jnp.arange(keys) == 0)[None, None, :]
+        logits = jnp.where(has_keys[:, None, :, None], logits, 0.)
         logits = jnp.where(mask[:, None], logits, jnp.asarray(-jnp.inf, dtype))
         probs = (softmax_bf16(logits, backward_mode=softmax_backward_mode)
                  if strict and precision == 'native' else jax.nn.softmax(logits, axis=-1))
         result = jnp.einsum('bhqk,bkhd->bqhd', probs.astype(v.dtype), vv,
-                            preferred_element_type=dtype).astype(v.dtype)
-        result = jnp.where((sq >= 0)[:, :, None, None], result, 0)
+                            preferred_element_type=dtype, precision=dot_precision).astype(v.dtype)
+        result = jnp.where(has_keys[:, :, None, None], result, 0)
         return jax.lax.dynamic_update_slice_in_dim(output, result, start, axis=1)
 
     out = jax.lax.fori_loop(0, count, jax.checkpoint(block, prevent_cse=False),

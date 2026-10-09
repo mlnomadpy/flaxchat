@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="14" time="29.169" timestamp="2026-10-06T22:09:52.840702+00:00" hostname="t1v-n-b252a5b4-w-0"><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[mixed-standard-None]" time="3.927" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[mixed-standard-0]" time="0.737" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[mixed-standard-1]" time="0.736" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[mixed-standard-3]" time="0.808" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-standard-None]" time="1.233" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-standard-0]" time="0.735" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-standard-1]" time="0.882" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-standard-3]" time="0.812" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-centered_fp32_scores-None]" time="0.749" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-centered_fp32_scores-0]" time="0.831" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-centered_fp32_scores-1]" time="0.808" /><testcase classname="tests.test_goat_physical_tpu" name="test_shared_v_forward_backward_and_empty_rows[bf16-centered_fp32_scores-3]" time="0.807" /><testcase classname="tests.test_goat_physical_tpu" name="test_projection_removal_and_explicit_migration" time="1.106" /><testcase classname="tests.test_goat_physical_tpu" name="test_migrated_bf16_mlm_update_checkpoint_exact_resume" time="14.817"><failure message="ValueError: Received incompatible devices for jitted computation. Got argument model.states[0][0] of test_migrated_bf16_mlm_update_checkpoint_exact_resume.&lt;locals&gt;.update with shape float32[32] and with device ids [0] on platform TPU and shard_map inside jit with device ids [0, 1, 2, 3, 4, 5, 6, 7] on platform TPU at /tmp/flaxchat-representation-yat-embed-torch-goat-1006c-goat-base-mlm/source/flaxchat/fused_cross_entropy.py:181:11 (sharded_fused_loss)&#10;--------------------&#10;For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.">tmp_path = PosixPath('/tmp/pytest-of-root/pytest-0/test_migrated_bf16_mlm_update_0')
+
+    def test_migrated_bf16_mlm_update_checkpoint_exact_resume(tmp_path):
+        """Exercise the actual parent precision policy and persistent Adam state."""
+        from dataclasses import asdict
+        import jax
+        import jax.numpy as jnp
+        import optax
+        from flax import nnx
+        from flaxchat.encoder import EncoderConfig, ModernBert
+        from flaxchat.goat import migrate_yat_to_goat
+        from flaxchat.checkpoint import (create_checkpoint_manager, save_checkpoint,
+                                        restore_model_from_checkpoint)
+        assert jax.default_backend() == 'tpu'
+        parent_config = EncoderConfig(
+            vocab_size=32, hidden_size=16, intermediate_size=24, num_hidden_layers=2,
+            num_attention_heads=2, global_attn_every_n_layers=2, local_attention=4,
+            ffn_type='yat_glu', attention_score='yat_softmax', compute_dtype='bfloat16',
+            yat_compute_mode='bf16', yat_ffn_compute_mode='bf16_adaptive',
+            yat_attention_implementation='centered_fp32_scores',
+            yat_attention_block_size=4, yat_global_attention_block_size=4,
+            mlm_projection='masked', mlm_loss_backend='xla_full', loss_chunk_size=4,
+            yat_attention_alpha=.1)
+        config = replace(parent_config, attention_score='goat')
+        parent = ModernBert(parent_config, rngs=nnx.Rngs(42))
+        model = ModernBert(config, rngs=nnx.Rngs(43))
+        migrate_yat_to_goat(parent, model)
+        optimizer = nnx.Optimizer(model, optax.adamw(2e-5), wrt=nnx.Param)
+        ids = jnp.array([[1, 4, 7, 8, 4, 9, 2, 0], [1, 4, 5, 6, 4, 7, 2, 0]])
+        labels = jnp.array([[-1, 6, -1, -1, 5, -1, -1, -1], [-1, 8, -1, -1, 9, -1, -1, -1]])
+        # The production projection maps across every data device. Preserve both
+        # example patterns while satisfying that same global-batch contract.
+        repeats = jax.device_count() // math.gcd(2, jax.device_count())
+        ids, labels = jnp.tile(ids, (repeats, 1)), jnp.tile(labels, (repeats, 1))
+        @nnx.jit
+        def update(model, optimizer):
+            loss, grads = nnx.value_and_grad(lambda m: m(ids, labels))(model)
+            optimizer.update(model, grads)
+            return loss, grads
+        loss, grads = update(model, optimizer)
+        assert np.isfinite(float(loss))
+        assert all(np.isfinite(np.asarray(x, dtype=np.float32)).all() for x in jax.tree.leaves(grads))
+        for layer in grads['layers'].values():
+            assert np.any(np.asarray(layer['v']['kernel'][...], dtype=np.float32) != 0)
+            assert float(jnp.abs(layer['yat_attention_alpha'][...])) &gt; 0
+        path = str(tmp_path / 'goat-checkpoint')
+        manager = create_checkpoint_manager(path, async_checkpointing=False)
+        try:
+            assert save_checkpoint(manager, 1, model, optimizer,
+                                   {'model_family': 'modernbert', 'resolved_config': asdict(config)})
+            manager.wait_until_finished()
+        finally:
+            manager.close()
+        restored = ModernBert(config, rngs=nnx.Rngs(44))
+        restored_optimizer = nnx.Optimizer(restored, optax.adamw(2e-5), wrt=nnx.Param)
+        restore_model_from_checkpoint(restored, path, step=1, optimizer=restored_optimizer,
+                                      expected_identity={'resolved_config': asdict(config)})
+        loss_a, _ = update(model, optimizer)
+&gt;       loss_b, _ = update(restored, restored_optimizer)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_goat_physical_tpu.py:133: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;flax.nnx.transforms.compilation.JitWrapped object at 0x7f3ebbbd6fc0&gt;
+args = (ModernBert( # Param: 4,228 (16.9 KB)
+  config=EncoderConfig(vocab_size=32, hidden_size=16, intermediate_size=24, num_...e( # 1 (4 B)
+          value=Array(1.8860097e-10, dtype=float32)
+        )
+      }
+    }
+  })), (), ()),
+  wrt=Param
+))
+kwargs = {}
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -&gt; R:
+      # run dynamic_cache_context before update_context
+      with graphlib.update_context(self):
+        pure_args, pure_kwargs = self._get_pure_args_kwargs(args, kwargs)
+&gt;       pure_args_out, pure_kwargs_out, pure_out = self.jitted_fn(
+          *pure_args, **pure_kwargs
+        )
+E       ValueError: Received incompatible devices for jitted computation. Got argument model.states[0][0] of test_migrated_bf16_mlm_update_checkpoint_exact_resume.&lt;locals&gt;.update with shape float32[32] and with device ids [0] on platform TPU and shard_map inside jit with device ids [0, 1, 2, 3, 4, 5, 6, 7] on platform TPU at /tmp/flaxchat-representation-yat-embed-torch-goat-1006c-goat-base-mlm/source/flaxchat/fused_cross_entropy.py:181:11 (sharded_fused_loss)
+E       --------------------
+E       For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+
+../venv/lib/python3.12/site-packages/flax/nnx/transforms/compilation.py:1023: ValueError</failure></testcase></testsuite></testsuites>

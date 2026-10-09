@@ -1,0 +1,21 @@
+{
+  "applied": true,
+  "reconciliation": {
+    "schema": "flaxchat-terminal-reservation-bound-v1",
+    "attempt_id": "42ab2808ad8d41e0:0",
+    "resource": "projects/azettaai/locations/us-west4-a/queuedResources/flaxchat-validation-yat-embed-torch-goat-100-0-42ab2808ad8d41e0",
+    "original_reservation_usd": 41.6,
+    "retained_reservation_usd": 9.66,
+    "released_reservation_usd": 31.94,
+    "whole_slice_hourly_usd": 9.6,
+    "ancillary_reserve_usd": 8.0,
+    "campaign_started_unix": 1791322146.7150843,
+    "cleanup_verified_unix": 1791322768.186544,
+    "independently_observed_unix": 1791323682.6045592,
+    "campaign_sha256": "b3e88ab870d1a409a01063a8f482209b05f628dde1a1f70cb7d7bf44e1e0bba8",
+    "independent_observation_sha256": "a89b5038841295058bf71f796c88ba940cd406b782c9261af954e68257230811",
+    "recorded_unix": 1791323682.741587,
+    "posted_usage_usd": null,
+    "accounting_basis": "conservative_elapsed_time_bound_not_posted_charges"
+  }
+}

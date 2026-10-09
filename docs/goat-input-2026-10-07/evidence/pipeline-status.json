@@ -1,0 +1,15 @@
+{
+  "objective": "masked_language_modeling",
+  "architecture": "goat_input",
+  "initialization": "random_seed1006_fresh_optimizer",
+  "started_unix": 1791362469.2353244,
+  "status": "failed",
+  "corpus": {
+    "recipe_sha256": "f5b183d5b03353e4e184462d4a398571ff908d7863c6fc3963fca738757f6309",
+    "train_manifest_sha256": "22542d887efaf01618344d57b65c3977cbe2ebe9ff4168a92c9c7df216234421",
+    "validation_manifest_sha256": "3f0d892d20f68a0c526c786b8cc8daab50590cc36364ac83b22c315e3ded6773"
+  },
+  "manifest_sha256": "3e87cbe501a2b568f7028dc69661f1e7c013d4e50f4ef144df79abdae4b3dcfc",
+  "controller_exit": 75,
+  "error": "RuntimeError: TPU controller exited 75"
+}

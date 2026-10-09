@@ -87,3 +87,27 @@ def test_setup_provenance_rejects_wrong_manifest_or_false_acceptance(tmp_path):
         (tmp_path / 'runtime-setup-receipt.json').write_text(json.dumps({**record, **changed}))
         with patch.dict(os.environ, environment, clear=True), pytest.raises(ValueError, match='Invalid provisional'):
             provenance([], devices=[], batch_size=0)
+
+
+@pytest.mark.parametrize('explicit', [False, True])
+def test_setup_resolves_checkpoint_namespace_before_physical_qualification(tmp_path, explicit):
+    arguments = context(tmp_path)
+    manifest = arguments[0]
+    prefix = 'gs://bucket/run/base-mlm'
+    expected = prefix + ('/saved-model' if explicit else '/checkpoints')
+    manifest.update(output_prefix=prefix, workload_kind='training',
+        workload=['{python}', '-m', 'scripts.run_yat_mlm_continuation', '--output', '{checkpoint_output}'],
+        setup_checks=['{python}', '-m', 'scripts.run_yat_mlm_continuation', '--root', '{root}',
+                      '--output', '{checkpoint_output}', '--evidence={output_prefix}/evidence'])
+    if explicit:
+        manifest['checkpoint_output'] = expected
+    with patch.object(runner.platform, 'platform', return_value='metadata-test-platform'), \
+            patch.object(runner.subprocess, 'check_output', return_value='Python 3.12.12'), \
+            patch.object(runner.subprocess, 'run') as run, \
+            patch.object(runner, 'verify_qualification', return_value={'passed': True}):
+        runner.qualify_setup_runtime(*arguments)
+    command = run.call_args.args[0]
+    assert command[command.index('--output') + 1] == expected
+    assert command[command.index('--root') + 1] == str(tmp_path)
+    assert command[-1] == '--evidence=' + prefix + '/evidence'
+    assert not any('{' in item for item in command)

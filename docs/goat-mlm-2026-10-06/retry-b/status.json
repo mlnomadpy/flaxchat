@@ -1,0 +1,19 @@
+{
+  "observed_at": "2026-10-06T21:51:57.507853+00:00",
+  "status": "physical_gate_failed",
+  "training_steps_verified": 0,
+  "controller": "yat-goat-1006b",
+  "tpu": "flaxchat-validation-yat-embed-torch-goat-100-0-42ab2808ad8d41e0",
+  "project": "azettaai",
+  "zone": "us-west4-a",
+  "objective": "masked_language_modeling",
+  "architecture": "goat",
+  "corpus_preflight_passed": true,
+  "cleanup_guard_verified": true,
+  "cleanup_deadline_unix": 1791332953.264148,
+  "manifest_sha256": "75ff0e72bc0d83f8c9af932a68953928bb68e9bb5c3d06d44d77045c3398af9d",
+  "physical_tests_passed": 10,
+  "physical_tests_failed": 4,
+  "cleanup_verified": true,
+  "next_attempt": "retry-c/run.json"
+}

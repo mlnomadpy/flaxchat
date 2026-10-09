@@ -1,0 +1,31 @@
+{
+  "observed_at": "2026-10-07T11:39:23.770789+00:00",
+  "objective": "masked_language_modeling",
+  "architecture": "goat_input",
+  "initialization": "exact_resume",
+  "resume_checkpoint_step": 3000,
+  "source_sha256": "efd98ee424a170d3c2cfa913a6a80603d6e2f6bb71d2d04ca31c5c0533136ab9",
+  "recovery_driver_sha256": "99dce2756567a3ecd1faaed23406414798cda584a834c3ebab73514f15286f50",
+  "manifest_sha256": "6a8408c7c644ba93b8bb9d992cdf4ea42d3f408e64df7c146a73507564dd4526",
+  "controller_pipeline_sha256": "235f5db9207d23aa4a861da1bd6be1efd49bb6db25f42324a41d3e9b54f5324d",
+  "controller_bootstrap_sha256": "0739477447252e596cc0b6c10b91ccd47b6ad60b9d4d5fdfae1d2ac53825835e",
+  "prior_reserved_usd": 656.04,
+  "new_reservation_usd": 130.0,
+  "total_reserved_usd": 786.04,
+  "campaign_cap_usd": 900,
+  "lease_seconds": 43200,
+  "workload_seconds": 39600,
+  "cleanup_budget_seconds": 1800,
+  "controller": "yat-goat-input-1007d",
+  "physical_recovery_status": "not_run",
+  "credit_observation": {
+    "observed_unix": 1791370262.996353,
+    "available_usd": 831.01,
+    "expiry": "2027-07-22",
+    "billing_account": "012CAE-712976-475489",
+    "account": "tahabhs14@gmail.com",
+    "source": "Google Cloud Credits page in Chrome authuser1",
+    "billing_enabled": true,
+    "not_per_run_spend": true
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "yat-goat-input-1007b",
+  "id": "1388852728447089178",
+  "creationTimestamp": "2026-10-07T01:38:13.622-07:00",
+  "status": "RUNNING",
+  "scheduling": {
+    "automaticRestart": true,
+    "instanceTerminationAction": "DELETE",
+    "maxRunDuration": {
+      "nanos": 0,
+      "seconds": "21600"
+    },
+    "onHostMaintenance": "MIGRATE",
+    "preemptible": false,
+    "provisioningModel": "STANDARD"
+  },
+  "labels": {
+    "flaxchat-run": "yat-embed-torch-goat-input-1007b",
+    "flaxchat-stage": "input-goat-scratch-base-mlm"
+  }
+}

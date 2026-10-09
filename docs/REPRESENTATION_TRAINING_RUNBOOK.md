@@ -1,6 +1,22 @@
-# Continuing YAT embedding representation training
+# YAT training runbook
 
-Current October 6 continuation: [overnight run and receipts](representation-v2-2026-10-05/overnight-1006/README.md).
+**Latest requested MLM continuation — October 9:** [GOAT-input recovery from
+committed checkpoint35,500](goat-input-2026-10-09/README.md). The source, optimizer, schedule,
+cursor and multilingual/code recipe remain frozen. Consult its latest physical
+status receipt before claiming training is active. This supersedes the historical
+October6 failed launcher below; do not restart the contrastive stage.
+
+> **Active user objective — October 6, 2026:** Continue **MLM pretraining of the
+> YAT-mmBERT base**, from the last verified MLM checkpoint, on multilingual text
+> and code. Only after that base stage is evaluated/published should embedding
+> contrastive training resume. The user explicitly ordered the October 6
+> contrastive run stopped because it was the wrong stage. Do not restart it or
+> substitute cosine/YAT InfoNCE or QAT for MLM. Preserve existing contrastive
+> artifacts separately. Locate and authenticate the MLM parent and its training
+> state before preparing one bounded TPU MLM continuation. See
+> [the correction record](TRAINING_OBJECTIVE.md).
+
+Historical October 6 contrastive continuation (stop requested): [overnight run and receipts](representation-v2-2026-10-05/overnight-1006/README.md).
 The prior physical run trained through step500. This continuation preserves its
 optimizer, sampler and20,000-step schedule while extending the execution horizon
 to60,000 under a12-hour TPU lease. The explicit pinned
@@ -196,3 +212,31 @@ boot disk were removed after retaining verified artifacts.
 records the single replacement training controller, immutable source/data and
 provider deadline. Its physical TPU qualification and training state must be
 read from the live campaign; the data pass alone does not establish model execution.
+
+## GOAT base MLM continuation (October 6)
+
+The user requested V-only YAT attention, diagonal exclusion, then training if validated. The [GOAT launch record](goat-mlm-2026-10-06/README.md) tracks a distinct weights-only MLM stage from parent48236. `--migrate-to-goat` is explicit and authenticated; QKV V-thirds and all remaining compatible parameters are retained, with fresh optimizer state. No contrastive objective is admitted. The supervising worker must remain JAX-free: run metadata admission in a reaped CPU-only child before physical TPU tests/training, since even backend discovery in the supervisor retains libtpu ownership. Never infer a running trainer from a controller being active.
+
+### Random GOAT initialization — October 6
+
+The user explicitly selected random initialization after the direct V-third conversion failed its parent-loss gate. `scripts.run_yat_mlm_continuation --random-init` defines a distinct GOAT MLM stage with seed1006, fresh Adam/schedule/cursor, peak learning rate3e-4, warmup500, and no imported parent tensors. The pinned reference config/tokenizer determine architecture and token IDs only; the deployment omits model.safetensors. Bias1/epsilon0.01/trainable alpha remain fixed policy. Physical qualification requires all14 GOAT cases, full-model updates/checkpoint4, paired evaluation against the identical seed1006 random initializer, resume through checkpoint8, and evaluation. The scratch instability bound is finite loss no more than5% above the random baseline; this is an initialization sanity check, not production quality acceptance. Source/runtime/stage identities bind continuation.
+
+### Input-scored GOAT correction — October7
+
+The user explicitly stopped the value-scored run. Its queue/node/controller are independently absent; checkpoint47,000 is retained, with last heldout loss1.910618 at46,000. The requested replacement is `attention_score='goat_input'`: compute scores from the existing attention input h, head reshape/RoPE, then `softmax(alpha*YAT(h,h)) @ (h W_V)`. No learned Q/K projections or V-derived score geometry. The new bounded wrapper invocation adds `--random-init --goat-score-source input`; mode propagates to children, random baseline, stage identity and qualification requirements. Existing `goat` checkpoints retain old semantics.
+
+Thirty physical TPU cases passed with zero skips, including W_V-independent score inputs at block0/1 and input-scored MLM update/save/exact resume. Thirty-three metadata checks pass. Full-model random-init qualification passed and real MLM training reached durable checkpoint3000; heldout loss3.869533 at2000 versus12.533409 at initialization. The Spot TPU was preempted; the controller, queue and node are independently absent. Training is stopped, with recovery checkpoint retained. See [current launch](goat-input-2026-10-07/README.md). See [architecture](GOAT_ATTENTION.md) and the [stop receipt](goat-mlm-2026-10-06/random-init/stop-request-1007.json).
+
+### Full GOAT-input recovery atbatch16 — October7
+
+Checkpoint3000 full-model batch8 inference producedNaN despite finiteparameters. Exactsame8examples repeatedto16/64 werefinite(2.487855/2.487744), firstbatch8 nonfinite wholelayer0. Failure retained; no math/precision changes. RecoveryD preservesfrozenmodelsource/optimizer/schedule/cursor, physicallypassesfull512heldout evaluation batch16(loss3.381013), fresh30attentioncases, and resumesactual finiteupdate3333 withcheckpoint3250 saved. Trainingmicrobatch16 andeval16 are separatelyqualified; batch8 remainsa portable-release blocker. Cloud-owned11hworkload under12hguard; save250/eval2000. See [full recovery](goat-input-2026-10-07/recovery-d/README.md).
+
+
+## October 8 exact GOAT-input continuation
+
+[Recovery-a launch](goat-input-2026-10-08/recovery-a/README.md) resumes retained27750 on unchanged B model source and optimizer/cursor. One9-hour Spotv5e8 workload,10-hour independently guarded TPUlease, bounded reservation110.80USD within900cap. Physical qualification and resumed updates require current durable receipts. Known batch8 full-model numerical defect remains unresolved; qualified evaluation uses batch16.
+
+
+## October 8 capacity retry
+
+[Recovery-b](goat-input-2026-10-08/recovery-b/README.md) retries exactcheckpoint27750 after capacity-only1008a timedout and independently cleaned. OneSpotv5e8 request,60min capacitybudget,9hgloballease and up-to8hworkload (capacity/setup reduceavailabletraining). Priorunusedreservationreconciledwithoriginaleventsretained; total899.70 under900cap. FrozenmodelsourceandMLMrecipeunchanged.

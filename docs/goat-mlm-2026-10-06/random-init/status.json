@@ -1,0 +1,31 @@
+{
+  "objective": "masked_language_modeling",
+  "status": "stopped_by_user_resources_absent",
+  "completed_step": 46000,
+  "parent_step": null,
+  "evaluations": [
+    {
+      "step": 4,
+      "loss": 12.508398264512179
+    },
+    {
+      "step": 8,
+      "loss": 12.378466423232434
+    }
+  ],
+  "initialization": "random",
+  "initialization_seed": 1006,
+  "initialization_policy": "random_goat_fresh_optimizer_schedule_cursor_no_parent_weights",
+  "architecture_reference_step": 48236,
+  "goat_physical_tests_passed": true,
+  "random_initializer_masked_token_loss": 12.544424530840843,
+  "physical_random_update_resume_qualified": true,
+  "observed_at": "2026-10-07T08:07:24.960245+00:00",
+  "last_committed_checkpoint": 47000,
+  "controller": "yat-goat-1006e",
+  "resource": "flaxchat-validation-yat-embed-torch-goat-100-0-8de21932c7fd4503",
+  "cleanup_deadline_utc": "2026-10-07T10:50:20.182983+00:00",
+  "measurement_scope": "Single warmed training step130; training loss uses a different batch from heldout evaluation",
+  "last_evaluated_step": 46000,
+  "last_evaluated_loss": 1.910618486626257
+}

@@ -1,0 +1,21 @@
+{
+  "created_utc": "2026-10-09T11:14:21.331888+00:00",
+  "parent_checkpoint_step": 35750,
+  "source": {
+    "uri": "gs://azettaai-yat-eval-0929/goat-input-1007b/source.tar.gz",
+    "sha256": "efd98ee424a170d3c2cfa913a6a80603d6e2f6bb71d2d04ca31c5c0533136ab9",
+    "target": "source",
+    "archive": true
+  },
+  "sha256": {
+    "run.json": "e0273dd652858f6626f86105af363af1468ac9e9d25e28681964ea56d6d5de39",
+    "recovery.py": "3a8f596288f4bb8a49c5adfa71a4ceb535efdb474f75566bb7be2aae8b1d71bc",
+    "pipeline.py": "93c08a7290ffae9f0eeca30717af2917c78900dce6d15a002c7b0ff22cee5602",
+    "bootstrap_runtime.py": "d59de9cb06db8a2e751e7503baa6b51ee9aa7f5d54f23b157a7e174c959ac2fa",
+    "startup.sh": "c00f3361037745e9e3a02bee3c6e655e1663dd3b1a1e9625ac5ae0a9dd7ea852",
+    "campaign-ledger.json": "2b439d0c4cb71a688af84dd8b8c6eded8e9300c05a695e1a39c1d742b83fc1ca"
+  },
+  "prior_reserved_usd": 763.74,
+  "new_reservation_usd": 130.0,
+  "total_bound_usd": 893.74
+}
