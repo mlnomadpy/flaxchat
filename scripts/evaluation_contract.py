@@ -134,7 +134,8 @@ def provenance(source_paths: list[Path], *, devices: list[dict], batch_size: int
     for path in source_paths:
         module_name = ".".join(path.with_suffix("").parts) if not path.is_absolute() else None
         module = sys.modules.get(module_name) if module_name else None
-        actual_path = Path(module.__file__) if module and getattr(module, "__file__", None) else path
+        module_file = getattr(module, "__file__", None)
+        actual_path = Path(module_file) if module_file else path
         sources[str(path)] = digest(actual_path)
     numeric_environment = {key: value for key, value in sorted(os.environ.items())
                            if key.startswith(("JAX_", "XLA_", "LIBTPU_", "PJRT_", "TORCH_", "PT_XLA_"))

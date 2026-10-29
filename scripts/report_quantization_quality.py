@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Model-free reporting of frozen physical-TPU quantization output receipts."""
+from typing import Any
 
 import argparse
 import hashlib
@@ -229,7 +230,7 @@ def summarize(plan, rows, receipt, original, quantized):
     diagnostic_rows = rows[: plan["diagnostic_rows"]]
     if len(diagnostic_rows) == 88:
         # Small generated fixture, explicitly separate from independent public benchmarks.
-        diag = {"scope": "88 handcrafted diagnostic texts, not an official benchmark"}
+        diag: dict[str, Any] = {"scope": "88 handcrafted diagnostic texts, not an official benchmark"}
         for label, values in [("original", a[:88]), ("quantized", b[:88])]:
             english = [
                 i for i, r in enumerate(diagnostic_rows) if r.get("domain") == "english"

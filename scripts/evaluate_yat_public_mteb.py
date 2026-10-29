@@ -7,6 +7,7 @@ MS MARCO training stage.
 """
 
 from __future__ import annotations
+from importlib import import_module
 
 import argparse
 import json
@@ -39,7 +40,7 @@ def _install_arrow_query_fast_path() -> None:
     column preserves the exact values and buffers without that conversion.
     Instruction-bearing tasks retain MTEB's original transformation.
     """
-    import mteb._create_dataloaders as dataloaders
+    dataloaders = import_module("mteb._create_dataloaders")
 
     original = dataloaders._combine_queries_with_instruction_text
 
@@ -54,7 +55,7 @@ def _install_arrow_query_fast_path() -> None:
             return original(dataset)
         return dataset.add_column("query", dataset.data.column("text"))
 
-    dataloaders._combine_queries_with_instruction_text = combine
+    vars(dataloaders)["_combine_queries_with_instruction_text"] = combine
 
 
 def _identity(model_dir: Path, benchmark: str, length: int, model_id: str, batch_size: int = 16) -> dict:
@@ -121,9 +122,11 @@ class AdaptiveMtebEncoder(MtebEncoder):
                 if not np.isfinite(vectors).all():
                     raise ValueError("Nonfinite MTEB embedding")
                 if output is None:
+                    assert fallback is not None
                     fallback.append(vectors)
                 else:
                     end = offset + len(vectors)
+                    assert expected is not None
                     if end > expected:
                         raise ValueError("MTEB yielded more rows than its dataset length")
                     output[offset:end] = vectors
@@ -144,8 +147,8 @@ class AdaptiveMtebEncoder(MtebEncoder):
 def evaluate(model_dir: Path, benchmark: str, output: Path, *, length: int,
              batch_size: int, only: set[str], stop_after: int | None,
              model_id: str = "mlnomad/yat-mmbert-base-contrastive-12000") -> dict:
-    import mteb
-    from mteb.models.abs_encoder import AbsEncoder
+    mteb = import_module("mteb")
+    AbsEncoder = import_module("mteb.models.abs_encoder").AbsEncoder
 
     if mteb.__version__ != MTEB_VERSION:
         raise ValueError(f"Requires MTEB {MTEB_VERSION}, got {mteb.__version__}")

@@ -2,6 +2,7 @@
 
 Run through bounded_data_job on an independently leased VM. Never starts training.
 """
+from typing import cast
 
 import argparse
 import gzip
@@ -428,7 +429,7 @@ def main(args):
                 digest = hashlib.sha256()
                 with gzip.open(remote, "rb") as stream:
                     for block in iter(lambda: stream.read(8 * 1024 * 1024), b""):
-                        digest.update(block)
+                        digest.update(cast(bytes, block))
                 expected = json.loads((old / split / "manifest.json").read_text())[
                     "documents_sha256"
                 ]

@@ -5,6 +5,7 @@ schedule, dataset cursor and exact-resume checkpoint identity. It expects a
 verified prepared contrastive dataset with explicit train/dev isolation.
 """
 from __future__ import annotations
+from typing import Any
 
 import argparse
 import hashlib
@@ -216,7 +217,7 @@ def run(args):
         continuation_receipt = contrastive_parent_receipt(
             prior, args.contrastive_parent_checkpoint, args.contrastive_parent_step,
             tokenizer_hash, parent["resolved_config"]["encoder"])
-    recipe = dict(encoder=parent["resolved_config"]["encoder"], parent=parent_receipt,
+    recipe: dict[str, Any] = dict(encoder=parent["resolved_config"]["encoder"], parent=parent_receipt,
         data_manifest_sha256=data_manifest_sha, seed=args.seed, steps=args.steps,
         global_batch_size=args.batch_size, sequence_length=args.sequence_length,
         learning_rate=args.learning_rate, final_lr_ratio=args.final_lr_ratio,

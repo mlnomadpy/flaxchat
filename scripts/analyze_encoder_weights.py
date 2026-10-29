@@ -143,6 +143,7 @@ def analyze(path, expected_sha):
             cosine = np.sum(
                 proto[:, i].astype(np.float64) * proto[:, j], axis=0
             ) / np.maximum(pn[i] * pn[j], 1e-30)
+            assert layer is not None
             layer.update(
                 prototype_norm_quantiles=quantiles(pn),
                 gate_norm_quantiles=quantiles(gn),
@@ -156,6 +157,7 @@ def analyze(path, expected_sha):
             if width != 768 or a.shape[1] != 3 * width:
                 raise ValueError("Unexpected projection geometry")
             qkv = a.reshape(width, 3, heads, width // heads).astype(np.float64)
+            assert layer is not None
             layer["qkv_per_head_frobenius_norms"] = {
                 name: np.sqrt((qkv[:, index] ** 2).sum(axis=(0, 2))).tolist()
                 for index, name in enumerate(["q", "k", "v"])

@@ -56,7 +56,8 @@ def _describe(uri):
     if not generation.isdecimal() or int(generation) <= 0:
         raise ValueError("Missing GCS metadata object generation")
     if (
-        isinstance(size, bool)
+        not isinstance(size, (int, str))
+        or isinstance(size, bool)
         or not str(size).isdecimal()
         or not 0 <= int(size) <= MAX_JSON_BYTES
     ):

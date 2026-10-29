@@ -184,7 +184,8 @@ def admit_data(args, parent):
         arrays.append(tokens)
         manifests.append(manifest)
     selected, languages, overlap = balanced_selection(
-        *arrays,
+        arrays[0],
+        arrays[1],
         corpus / "validation/documents.jsonl",
         pad=encoder["pad_token_id"],
         seed=2026,

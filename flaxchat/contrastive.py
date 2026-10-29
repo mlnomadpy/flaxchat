@@ -4,6 +4,7 @@ The caller must place the entire paired batch as global JAX arrays, sharded on
 the leading data axis. Passing one host's local batch would silently reduce the
 negative pool; ``expected_global_batch`` catches that integration mistake.
 """
+from typing import cast
 
 import math
 
@@ -25,11 +26,11 @@ def _yat_unit(vectors):
     """
     vectors = vectors.astype(jnp.float32)
     finite = jnp.all(jnp.isfinite(vectors), axis=-1)
-    safe = jnp.where(jnp.isfinite(vectors), vectors, 0.0)
+    safe = cast(jax.Array, jnp.where(jnp.isfinite(vectors), vectors, 0.0))
     scale = jnp.max(jnp.abs(safe), axis=-1, keepdims=True)
-    scaled = safe / jnp.where(scale > 0, scale, 1.0)
+    scaled = safe / cast(jax.Array, jnp.where(scale > 0, scale, 1.0))
     squared_norm = jnp.sum(jnp.square(scaled), axis=-1, keepdims=True)
-    norm = jnp.sqrt(jnp.where(squared_norm > 0, squared_norm, 1.0))
+    norm = jnp.sqrt(cast(jax.Array, jnp.where(squared_norm > 0, squared_norm, 1.0)))
     valid = finite & (scale[..., 0] > 1e-12 / norm[..., 0])
     return scaled / norm, valid
 
@@ -47,18 +48,18 @@ def spherical_yat_logits(similarities, *, yat_alpha=1.0, temperature=0.05):
     alpha = jnp.asarray(yat_alpha, dtype=jnp.float32)
     if alpha.ndim != 0:
         raise ValueError("YAT alpha must be a scalar")
-    alpha = jnp.where(jnp.isfinite(alpha) & (alpha > 0), alpha, jnp.nan)
+    alpha = cast(jax.Array, jnp.where(jnp.isfinite(alpha) & (alpha > 0), alpha, jnp.nan))
     similarities = jnp.asarray(similarities, dtype=jnp.float32)
     score = jnp.clip(similarities, -1.0, 1.0)
     logits = (alpha / temperature) * jnp.square(1.0 + score) / (2.0 * (1.0 - score) + 0.01)
-    return jnp.where(jnp.isfinite(similarities), logits, jnp.nan)
+    return cast(jax.Array, jnp.where(jnp.isfinite(similarities), logits, jnp.nan))
 
 
 def _yat_metrics(logits, allowed, alpha):
     return {
         "yat_alpha": jnp.asarray(alpha, dtype=jnp.float32),
-        "yat_logit_min": jnp.min(jnp.where(allowed, logits, jnp.inf)),
-        "yat_logit_max": jnp.max(jnp.where(allowed, logits, -jnp.inf)),
+        "yat_logit_min": jnp.min(cast(jax.Array, jnp.where(allowed, logits, jnp.inf))),
+        "yat_logit_max": jnp.max(cast(jax.Array, jnp.where(allowed, logits, -jnp.inf))),
         "yat_logits_finite": jnp.all(~allowed | jnp.isfinite(logits)),
     }
 
@@ -130,13 +131,13 @@ def symmetric_infonce(
     known_positive = same_query | same_document | query_is_document | same_positive_group
     allowed = ~known_positive | jnp.eye(batch, dtype=bool)
     labels = jnp.arange(batch)
-    query_to_document = jax.nn.log_softmax(jnp.where(allowed, logits, -jnp.inf), axis=1)
-    document_to_query = jax.nn.log_softmax(jnp.where(allowed, logits, -jnp.inf), axis=0)
+    query_to_document = jax.nn.log_softmax(cast(jax.Array, jnp.where(allowed, logits, -jnp.inf)), axis=1)
+    document_to_query = jax.nn.log_softmax(cast(jax.Array, jnp.where(allowed, logits, -jnp.inf)), axis=0)
     loss_q = -query_to_document[labels, labels].mean()
     loss_d = -document_to_query[labels, labels].mean()
     loss = (loss_q + loss_d) * 0.5
     if similarity == "yat":
-        loss = jnp.where(embeddings_valid, loss, jnp.nan)
+        loss = cast(jax.Array, jnp.where(embeddings_valid, loss, jnp.nan))
     if return_metrics:
         metrics = _yat_metrics(logits, allowed, yat_alpha) if similarity == "yat" else {}
         return loss, metrics
@@ -244,16 +245,16 @@ def hard_negative_infonce(
         known_candidate = membership(positive_text_ids)
     allowed_negative &= ~known_negative
     allowed_positive &= ~known_candidate | jnp.eye(batch, dtype=bool)
-    logits = jnp.concatenate((jnp.where(allowed_positive, positive_logits, -jnp.inf),
-                              jnp.where(allowed_negative, negative_logits, -jnp.inf)), axis=1)
+    logits = jnp.concatenate((cast(jax.Array, jnp.where(allowed_positive, positive_logits, -jnp.inf)),
+                              cast(jax.Array, jnp.where(allowed_negative, negative_logits, -jnp.inf))), axis=1)
     labels = jnp.arange(batch)
     query_loss = -jax.nn.log_softmax(logits, axis=1)[labels, labels].mean()
     reverse_loss = -jax.nn.log_softmax(
-        jnp.where(allowed_positive, positive_logits, -jnp.inf), axis=0
+        cast(jax.Array, jnp.where(allowed_positive, positive_logits, -jnp.inf)), axis=0
     )[labels, labels].mean()
     loss = 0.5 * (query_loss + reverse_loss)
     if similarity == "yat":
-        loss = jnp.where(embeddings_valid, loss, jnp.nan)
+        loss = cast(jax.Array, jnp.where(embeddings_valid, loss, jnp.nan))
     if return_metrics:
         metrics = {"masked_known_positive_negatives": jnp.sum(known_negative & negative_valid[None, :]),
                    "valid_explicit_candidates": jnp.sum(allowed_negative)}

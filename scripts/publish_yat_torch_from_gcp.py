@@ -60,10 +60,12 @@ def publish(args) -> None:
             commit_message=f"Publish TPU-validated PyTorch conversion of YAT step {source_identity[1]}",
         )
         info = api.model_info(args.repo, files_metadata=True)
-        files = {s.rfilename: s for s in info.siblings}
+        files = {s.rfilename: s for s in (info.siblings or [])}
         if not expected <= set(files):
             raise RuntimeError("Hub release is missing files")
         weight = files["model.safetensors"]
+        if weight.lfs is None:
+            raise ValueError("Published weights lack LFS integrity metadata")
         if weight.size != receipt["bytes"] or weight.lfs.sha256 != receipt["torch_weights_sha256"]:
             raise RuntimeError("Hub weight size or SHA-256 differs from verified conversion")
         for name in expected:

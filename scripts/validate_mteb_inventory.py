@@ -1,6 +1,7 @@
 """Inspect actual pinned MTEB task metadata without data loading or model work."""
 
 from __future__ import annotations
+from importlib import import_module
 import argparse
 import inspect
 from pathlib import Path
@@ -8,7 +9,7 @@ from scripts.evaluation_contract import digest, task_inventory, write_atomic
 
 
 def inspect_inventory(task_names):
-    import mteb
+    mteb = import_module("mteb")
 
     if mteb.__version__ != "2.21.8":
         raise ValueError("Requires pinned MTEB2.21.8")

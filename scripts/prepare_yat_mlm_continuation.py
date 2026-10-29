@@ -4,6 +4,7 @@ No models are loaded. One tokenizer pass per selected shard, complete documents,
 exact normalized document deduplication, and a hash-assigned held-out split.
 Benchmark/semantic decontamination is NOT established by this preparation.
 """
+from typing import Any
 import argparse
 import hashlib
 import gzip
@@ -277,7 +278,7 @@ def run(args):
     write_status(root, state='seeding-historical-dedup')
     prior_receipts = seed_prior_documents(seen, args.prior_documents, args.prior_documents_sha256)
     write_status(root, state='preparing', prepared_train_tokens=0)
-    recipe = dict(format='flaxchat-mlm-continuation-data-v2', source_token_shares=SHARES,
+    recipe: dict[str, Any] = dict(format='flaxchat-mlm-continuation-data-v2', source_token_shares=SHARES,
                   development_quarantine=quarantine_identity, historical_documents=prior_receipts,
                   retain_raw=args.retain_raw, raw_shards=[], rejected_development_documents=0,
                   language_exponent=.5, seed=args.seed, sequence_length=args.sequence_length,
@@ -370,12 +371,12 @@ def run(args):
             for stream in streams.values():
                 stream.close()
         seen.commit()
-        receipt = dict(dataset=dataset, revision=pin, path=path, row_group=group, source_group=source,
+        receipt: dict[str, Any] = dict(dataset=dataset, revision=pin, path=path, row_group=group, source_group=source,
                        language=language, selected_documents=accepted, selected_jsonl_sha256=digest.hexdigest())
         for split, raw_path in raw_paths.items():
             if accepted[split]:
                 output = root / f'shard-{iteration}-{split}'
-                manifest = prepare(raw_path, args.tokenizer, output, dataset=DATASET, revision=revision,
+                manifest: dict[str, Any] = prepare(raw_path, args.tokenizer, output, dataset=DATASET, revision=revision,
                                    split=split, sequence_length=args.sequence_length, max_rows=10000000)
                 shards[split].append(output)
                 if split == 'train':

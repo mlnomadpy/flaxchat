@@ -86,7 +86,7 @@ class CommittedMetadataTests(unittest.TestCase):
             )
             admitted = {
                 "parent_hashes": {"tokenizer.json": "a" * 64},
-                "encoder_config": {"epsilon": 0.01},
+                "parent_encoder_config": {"epsilon": 0.01},
                 "mixture_receipt": {},
                 "admission_receipt": {},
                 "data_items": [],

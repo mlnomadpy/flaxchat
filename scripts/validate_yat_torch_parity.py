@@ -6,6 +6,9 @@ refuses a CPU backend for either forward pass.
 """
 
 from __future__ import annotations
+from typing import Any
+from typing import cast
+from importlib import import_module
 
 import argparse
 import json
@@ -64,7 +67,7 @@ def run_jax(model_dir: Path, input_path: Path, output: Path, batch_size: int = 8
     model = load_public_encoder(model_dir)
     indices = intermediate_scope(json.loads((model_dir / "config.json").read_text()))["intermediate_indices"]
     ids = jnp.asarray(np.load(input_path))
-    segments = jnp.where(ids == model.config.pad_token_id, -1, 0)
+    segments = cast(jax.Array, jnp.where(ids == model.config.pad_token_id, -1, 0))
     positions = jnp.broadcast_to(jnp.arange(ids.shape[1]), ids.shape)
 
     @nnx.jit
@@ -76,7 +79,7 @@ def run_jax(model_dir: Path, input_path: Path, output: Path, batch_size: int = 8
             x = layer(x, segs, pos, packed=False)
             if i in indices:
                 intermediates.append(x)
-        hidden = jnp.where((segs >= 0)[..., None], model.final_norm(x), 0)
+        hidden = cast(jax.Array, jnp.where((segs >= 0)[..., None], model.final_norm(x), 0))
         pool = hidden.sum(axis=1) / jnp.maximum((segs >= 0).sum(axis=1, keepdims=True), 1)
         return (embedding, *intermediates, hidden, pool)
 
@@ -86,15 +89,15 @@ def run_jax(model_dir: Path, input_path: Path, output: Path, batch_size: int = 8
               for i in range(0, len(ids), batch_size)]
     outputs = [np.concatenate([np.asarray(chunk[index]) for chunk in chunks]) for index in range(len(indices) + 3)]
     output.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(output, **{name: np.asarray(value, dtype=np.float32) for name, value in zip(
-        ("embedding", *(f"layer_{i}" for i in indices), "hidden", "pool"), outputs, strict=True)})
+    np.savez(output, **cast(dict[str, Any], {name: np.asarray(value, dtype=np.float32) for name, value in zip(
+        ("embedding", *(f"layer_{i}" for i in indices), "hidden", "pool"), outputs, strict=True)}))
     _run_receipt("jax", model_dir, input_path, output, batch_size,
                  [{"kind": d.device_kind, "platform": d.platform} for d in jax.devices()])
 
 
 def run_torch(model_dir: Path, input_path: Path, output: Path, batch_size: int = 8) -> None:
     import torch
-    import torch_xla
+    torch_xla = import_module("torch_xla")
     from torch_port.yat_encoder import YatTorchEncoder, _norm
 
     current_identity("torch", model_dir)
@@ -126,8 +129,8 @@ def run_torch(model_dir: Path, input_path: Path, output: Path, batch_size: int =
                   for i in range(0, len(ids), batch_size)]
     values = [np.concatenate([chunk[index] for chunk in chunks]) for index in range(len(indices) + 3)]
     output.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(output, **dict(zip(
-        ("embedding", *(f"layer_{i}" for i in indices), "hidden", "pool"), values, strict=True)))
+    np.savez(output, **cast(dict[str, Any], dict(zip(
+        ("embedding", *(f"layer_{i}" for i in indices), "hidden", "pool"), values, strict=True))))
     _run_receipt("torch", model_dir, input_path, output, batch_size,
                  [{"kind": kind} for kind in torch_xla.real_devices()])
 
@@ -138,7 +141,7 @@ def current_identity(backend, model_dir):
         import importlib
         importlib.import_module('jax')
     elif backend == "torch":
-        import torch_xla
+        torch_xla = import_module("torch_xla")
         torch_xla.runtime.set_device_type("TPU")
     else:
         raise ValueError("Unknown parity backend")
@@ -164,7 +167,10 @@ def _run_receipt(backend, model_dir, input_path, output, batch_size, devices):
     if backend == "torch":
         names += ("yat_encoder.py",)
         import sys
-        actual_implementation = Path(sys.modules["torch_port.yat_encoder"].__file__)
+        implementation_file = sys.modules["torch_port.yat_encoder"].__file__
+        if implementation_file is None:
+            raise ValueError("Torch implementation has no source file")
+        actual_implementation = Path(implementation_file)
         if digest(actual_implementation) != digest(model_dir / "yat_encoder.py"):
             raise ValueError("Torch runtime implementation differs from shipped release")
     identity = current_identity(backend, model_dir)

@@ -1,5 +1,6 @@
 """Host-metadata accounting; never executes a model or changes recovery state."""
 from __future__ import annotations
+from typing import Any
 
 from contextlib import contextmanager
 import math
@@ -25,7 +26,7 @@ def reduce_step(host_rows):
             raise ValueError('Invalid useful exposure or compilation marker')
     if len({row[6] for row in rows}) != 1:
         raise ValueError('Hosts disagree on compiled variant cadence')
-    result = {f'{name}_global': sum(int(row[i]) for row in rows)
+    result: dict[str, Any] = {f'{name}_global': sum(int(row[i]) for row in rows)
               for i, name in enumerate(STEP_FIELDS[:3])}
     result.update({f'{name}_slowest_host': max(float(row[i]) for row in rows)
                    for i, name in enumerate(STEP_FIELDS[3:6], 3)})

@@ -1,4 +1,6 @@
 """One bounded new stage; continue only successful committed segments, never retry."""
+from typing import BinaryIO
+from typing import Any
 
 from pathlib import Path
 import argparse
@@ -38,7 +40,7 @@ def main():
     work.mkdir(exist_ok=False)
     started = time.monotonic()
     deadline = started + 27000
-    result = dict(
+    result: dict[str, Any] = dict(
         status="running",
         parent_step=379079,
         optimizer_policy="fresh",
@@ -75,14 +77,17 @@ def main():
                     stderr=subprocess.STDOUT,
                 )
 
-                def tee(process=process, log_file=f):
-                    for line in process.stdout:
+                stdout = process.stdout
+                assert stdout is not None
+
+                def tee(stdout: BinaryIO, log_file: BinaryIO) -> None:
+                    for line in stdout:
                         log_file.write(line)
                         log_file.flush()
                         sys.stdout.buffer.write(line)
                         sys.stdout.buffer.flush()
 
-                reader = threading.Thread(target=tee, daemon=True)
+                reader = threading.Thread(target=tee, args=(stdout, f), daemon=True)
                 reader.start()
                 try:
                     code = process.wait(

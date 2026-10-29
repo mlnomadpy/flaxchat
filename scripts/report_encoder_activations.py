@@ -6,6 +6,7 @@ They do not isolate architecture or reproduce an official benchmark.
 """
 
 from __future__ import annotations
+from typing import Any
 import argparse
 import json
 from pathlib import Path
@@ -453,7 +454,7 @@ def summarize(report, vectors, rows, role, *, native_only=False):
     total = weights.sum()
     for i in range(22):
         records = [b["layers"][i] for b in batches]
-        layer = {"layer": i, "valid_tokens": int(total)}
+        layer: dict[str, Any] = {"layer": i, "valid_tokens": int(total)}
         for key in RMS_FIELDS:
             layer[key] = float(
                 np.sqrt(np.average([r[key] ** 2 for r in records], weights=weights))

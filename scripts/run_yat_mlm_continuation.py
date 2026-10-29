@@ -1,5 +1,6 @@
 """Bounded physical-TPU MLM continuation from an explicitly authenticated base."""
 from __future__ import annotations
+from typing import Any
 
 import argparse
 import hashlib
@@ -286,7 +287,7 @@ def qualification_identity(args):
     tree = source_snapshot(args.root / 'source')
     if not tree:
         raise ValueError('Frozen source tree is missing')
-    result = dict(schema_version=1, passed=True, backend='tpu', devices=8, processes=1,
+    result: dict[str, Any] = dict(schema_version=1, passed=True, backend='tpu', devices=8, processes=1,
                   source_tree_sha256=source_tree_digest(tree),
                   training_arguments_sha256=canonical_hash(training_arguments(args)), **values)
     if getattr(args, 'random_init', False):
@@ -461,6 +462,7 @@ def main(argv=None):
 
     try:
         if args.continue_qualified:
+            assert saved is not None
             baseline = saved[1]
         else:
             if goat_stage(args):
@@ -480,10 +482,12 @@ def main(argv=None):
                 publish()
             run('train', 4)
             baseline = run(baseline_action(args), 4)
+            assert baseline is not None
             receipt['random_initializer_masked_token_loss' if args.random_init else 'parent_masked_token_loss'] = baseline['masked_token_loss']
             check_quality(run('evaluate', 4), baseline)
             run('train', 8, resume=True)
             evaluated = run('evaluate', 8)
+            assert evaluated is not None
             check_quality(evaluated, baseline)
             receipt[qualification_status_key(args)] = True
             if args.qualify_only:
@@ -491,6 +495,7 @@ def main(argv=None):
                     raise ValueError('Physical evaluation topology evidence differs')
                 if qualification_identity(args) != bound_identity:
                     raise ValueError('Deployed stage changed during qualification')
+                assert bound_identity is not None
                 qualification = dict(bound_identity,
                     step8_evaluation_sha256=canonical_hash(evaluated),
                     tests=[{'id': name, 'status': 'passed'} for name in required_qualification_tests(args)])

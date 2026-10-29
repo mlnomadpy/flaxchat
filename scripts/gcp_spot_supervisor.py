@@ -5,6 +5,7 @@ require a confirmed non-READY node and use the explicitly supplied resume argv.
 No retry is allowed while prior resource absence remains unverified.
 """
 from __future__ import annotations
+from typing import Any
 import argparse
 import hashlib
 import json
@@ -146,6 +147,7 @@ def wait_for_ready(name, flags, remaining, capacity_wait_seconds=None,
             budget, mono_start, wall_start = capacity_wait_seconds, started, wall_started
             label = 'Spot capacity wait budget exhausted; allocation has not been observed'
         if budget is not None:
+            assert wall_start is not None
             elapsed = max(time.monotonic() - mono_start, time.time() - wall_start)
             seconds = min(seconds, budget - elapsed)
             if seconds <= 0:
@@ -261,7 +263,7 @@ def campaign(args):
     receipt_path = args.output / 'campaign-receipt.json'
     if receipt_path.exists():
         raise ValueError('Campaign receipt already exists; preserve evidence and use fresh output')
-    report = dict(schema_version=1, passed=False, status='running', project=args.project, zone=args.zone,
+    report: dict[str, Any] = dict(schema_version=1, passed=False, status='running', project=args.project, zone=args.zone,
         run_id=args.run_id or args.name, stage_id=args.stage_id, phase='admission', started_unix=time.time(),
         whole_slice_hourly_usd=args.hourly_usd, attempt_seconds=args.attempt_seconds,
         capacity_wait_seconds=args.capacity_wait_seconds, startup_wait_seconds=args.startup_wait_seconds, max_attempts=args.max_attempts,
@@ -331,7 +333,7 @@ def _run_campaign(args, report, phase, persist):
     run_nonce = uuid.uuid4().hex[:16]
     for index in range(args.max_attempts):
         name = attempt_resource_name(args.name, index, run_nonce)
-        attempt = dict(index=index, resource_name=name, attempt_id=(run_nonce + ':' + str(index)) if args.campaign_ledger else str(index),
+        attempt: dict[str, Any] = dict(index=index, resource_name=name, attempt_id=(run_nonce + ':' + str(index)) if args.campaign_ledger else str(index),
             cleanup={'state': 'not_required'}, remote_stages_started=[])
         report['attempts'].append(attempt)
         phase('identity_admission')
@@ -385,7 +387,7 @@ def _run_campaign(args, report, phase, persist):
             observed = verify_node_labels(node, labels)
             (output / 'billing-labels.json').write_text(json.dumps(dict(
                 run_id=args.run_id or args.name, stage_id=args.stage_id, requested=labels,
-                observed=observed, node_name=node.get('name'), observed_unix=time.time()), indent=2) + '\n')
+                observed=observed, node_name=(node or {}).get('name'), observed_unix=time.time()), indent=2) + '\n')
         def execute(argv, label, setup=False, single_worker=False, name=name, output=output, attempt=attempt):
             phase(label)
             attempt['remote_stages_started'].append(label)

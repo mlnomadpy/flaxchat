@@ -3,6 +3,7 @@
 This scores supplied TPU embeddings, not tokens. Physical encoder/export identity
 and numerical parity must be qualified separately; no CPU fallback is provided.
 """
+from typing import cast
 import hashlib
 import json
 from pathlib import Path
@@ -66,8 +67,8 @@ def score_tpu_blocks(query_embeddings, query_ids, document_blocks, *, expected_d
         values = jnp.dot(q, p.T, precision=jax.lax.Precision.HIGHEST)
         columns = jnp.arange(p.shape[0], dtype=jnp.int32)
         valid = columns < valid_documents
-        values = jnp.where(valid[None, :], values, -jnp.inf)
-        candidates = jnp.broadcast_to(jnp.where(valid, columns + offset, -1), values.shape)
+        values = cast(jax.Array, jnp.where(valid[None, :], values, -jnp.inf))
+        candidates = jnp.broadcast_to(cast(jax.Array, jnp.where(valid, columns + offset, -1)), values.shape)
         values = jnp.concatenate((scores, values), axis=1)
         candidates = jnp.concatenate((indices, candidates), axis=1)
         # lax.top_k selects lower array indices for tied values. Earlier corpus

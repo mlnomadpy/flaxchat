@@ -1,6 +1,7 @@
 """Evaluate selected language subsets of one large MTEB retrieval task on TPU."""
 
 from __future__ import annotations
+from importlib import import_module
 
 import argparse
 import json
@@ -30,8 +31,8 @@ def main() -> None:
     parser.add_argument("--model-id", default="mlnomad/yat-mmbert-base-contrastive-12000")
     args = parser.parse_args()
 
-    import mteb
-    from mteb.models.abs_encoder import AbsEncoder
+    mteb = import_module("mteb")
+    AbsEncoder = import_module("mteb.models.abs_encoder").AbsEncoder
 
     if mteb.__version__ != MTEB_VERSION or jax.default_backend() != "tpu" or jax.process_count() != 1:
         raise RuntimeError("Requires MTEB 2.21.8 on a physical single-host TPU")

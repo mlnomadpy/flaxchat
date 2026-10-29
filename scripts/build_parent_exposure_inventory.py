@@ -154,7 +154,7 @@ def build(
                 raise ValueError("Producer policies must map supplied source names")
             for name, policy in policies.items():
                 known = (
-                    VERIFIED_LEGACY_PRODUCERS.get(policy.get("policy"))
+                    VERIFIED_LEGACY_PRODUCERS.get(policy.get("policy", ""))
                     if isinstance(policy, dict)
                     else None
                 )

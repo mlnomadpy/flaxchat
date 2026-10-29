@@ -256,6 +256,7 @@ def scan(
                         stderr=subprocess.DEVNULL,
                         start_new_session=True,
                     )
+                    assert process.stdout is not None
                     selector.register(process.stdout, selectors.EVENT_READ)
 
                     def consume(
@@ -332,6 +333,7 @@ def scan(
                     os.fsync(handle.fileno())
                     handle.close()
                     handle = None
+                    assert partial is not None and folder is not None
                     partial.rename(folder / "train.jsonl")
                 result["sources"].append(
                     {
@@ -359,7 +361,8 @@ def scan(
                         if process.poll() is None:
                             process.kill()
                     process.wait(timeout=5)
-                    process.stdout.close()
+                    if process.stdout is not None:
+                        process.stdout.close()
                 if handle:
                     handle.close()
                 if partial and partial.exists():

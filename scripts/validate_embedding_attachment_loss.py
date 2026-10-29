@@ -4,6 +4,7 @@ Reattach byte-identical existing runner commands under the same execution_id.
 This does not qualify network outages or whole-controller SIGKILL/lease cleanup.
 """
 from __future__ import annotations
+from typing import Any
 import argparse
 import hashlib
 import json
@@ -152,7 +153,7 @@ def execute(plan, output):
     from flaxchat.checkpoint_metadata import read_committed_metadata
     value = validate_plan(plan)
     output.mkdir(parents=True, exist_ok=False)
-    report = dict(schema_version=1, passed=False, status='incomplete', scope='local-ssh-attachment-loss-v1',
+    report: dict[str, Any] = dict(schema_version=1, passed=False, status='incomplete', scope='local-ssh-attachment-loss-v1',
         controller_sigkill_qualified=False, network_outage_qualified=False, lease_cleanup_qualified=False,
         plan=value, plan_sha256=canonical_hash(value), workers=[])
     path = output / 'receipt.json'

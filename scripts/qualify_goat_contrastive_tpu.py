@@ -1,4 +1,5 @@
 """Actual-parent, real-data qualification before the first GOAT contrastive stage."""
+from typing import Any
 
 from pathlib import Path
 import argparse
@@ -109,7 +110,7 @@ def main():
         OMP_NUM_THREADS="4",
         TOKENIZERS_PARALLELISM="false",
     )
-    result = dict(
+    result: dict[str, Any] = dict(
         schema_version=1,
         passed=False,
         backend="tpu",

@@ -4,6 +4,7 @@ Run plan/check locally. Execute only under the campaign owner on a qualified sli
 Controller/transport loss are explicitly outside this campaign's acceptance.
 """
 from __future__ import annotations
+from typing import Any
 import argparse
 import hashlib
 import json
@@ -184,7 +185,7 @@ def execute(plan, output):
     from flaxchat.checkpoint_metadata import read_committed_metadata
     value = validate_plan(plan)
     output.mkdir(parents=True, exist_ok=False)
-    report = dict(schema_version=1, passed=False, status='incomplete', scope='physical-embedding-peer-loss-v1',
+    report: dict[str, Any] = dict(schema_version=1, passed=False, status='incomplete', scope='physical-embedding-peer-loss-v1',
         controller_loss_qualified=False, transport_loss_qualified=False, plan=value, stages=[])
     receipt_path = output / 'receipt.json'
     def persist():

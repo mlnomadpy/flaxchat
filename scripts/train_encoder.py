@@ -4,6 +4,7 @@ Run with python -m scripts.train_encoder --help. Data parallel training uses
 one global JAX mesh; parameters are replicated by default. Experimental FSDP
 shards divisible matrix parameters and optimizer state along their first axis. Use the existing external TPU budget/deadline supervisor on GCP.
 """
+from typing import Any
 import argparse
 from dataclasses import asdict, replace
 import hashlib
@@ -169,7 +170,7 @@ def initialization_metadata(directory, step, config, tokenizer_identity):
         raise ValueError('Initialization checkpoint encoder configuration differs')
     if parent.get('tokenizer_identity') != tokenizer_identity:
         raise ValueError('Initialization checkpoint tokenizer differs')
-    receipt = dict(checkpoint=str(directory), step=parent['step'],
+    receipt: dict[str, Any] = dict(checkpoint=str(directory), step=parent['step'],
                    metadata_sha256=hashlib.sha256(json.dumps(parent, sort_keys=True).encode()).hexdigest(),
                    policy='model_weights_only; fresh_optimizer_schedule_and_data_cursor',
                    execution_overrides={name: dict(parent=getattr(parent_config, name), current=value)
@@ -210,7 +211,7 @@ def public_initialization_metadata(directory, config, tokenizer_identity, metada
         raise ValueError('Initialization public encoder configuration differs')
     if parent.get('tokenizer_identity') != tokenizer_identity or file_hash(root / 'tokenizer.json') != tokenizer_identity:
         raise ValueError('Initialization public tokenizer differs')
-    receipt = dict(public_export=str(root), step=committed['step'],
+    receipt: dict[str, Any] = dict(public_export=str(root), step=committed['step'],
                    metadata_sha256=metadata_sha256, manifest_sha256=manifest_sha256,
                    weights_sha256=file_hash(root / 'model.safetensors'),
                    policy='model_weights_only; fresh_optimizer_schedule_and_data_cursor',
@@ -429,7 +430,7 @@ def run(args):
         Path(__file__).parents[1] / 'flaxchat/fused_cross_entropy.py',
         Path(__file__).parents[1] / 'flaxchat/public_encoder.py',
         Path(__file__).parents[1] / 'scripts/release_contract.py')).encode()).hexdigest()
-    metadata = dict(source_python_sha256=source_digest, resolved_config=identity, tokenizer_identity=manifest['tokenizer_sha256'],
+    metadata: dict[str, Any] = dict(source_python_sha256=source_digest, resolved_config=identity, tokenizer_identity=manifest['tokenizer_sha256'],
                     data_manifest_identity=file_hash(data_dir / 'manifest.json'), model_family='modernbert')
     expected = dict(resolved_config=identity, tokenizer=metadata['tokenizer_identity'],
                     data_manifest=metadata['data_manifest_identity'], source_python_sha256=source_digest)
@@ -489,6 +490,7 @@ def run(args):
             raise ValueError('Initialization checkpoint metadata changed during restore')
         metadata['initialization'] = initialization
     if public_parent and not args.resume:
+        assert initialization is not None
         checked_manifest, checked = public_initialization_metadata(
             public_parent, config, manifest['tokenizer_sha256'],
             args.initialize_public_metadata_sha256, args.initialize_public_manifest_sha256,
@@ -503,6 +505,7 @@ def run(args):
         optimizer = make_optimizer(model)
     start_step = 0
     if coverage_parent:
+        assert coverage_admission is not None
         restored, state = restore_model_from_checkpoint(model, coverage_parent, step=coverage_transition,
             optimizer=optimizer, expected_identity=coverage_admission['expected_identity'], load_training_state=True)
         if state is None:
@@ -663,6 +666,7 @@ def run(args):
             if step == start_step and args.compile_diagnostics:
                 print(json.dumps(dict(event='training_phase', phase='preparing_batch', process=jax.process_index())), flush=True)
             global_ids = rows.batch(step, args.batch_size)
+            assert global_ids is not None
             local_ids = global_ids[jax.process_index() * local_batch:(jax.process_index() + 1) * local_batch]
             x, y = mask_prepared_rows(tokens, local_ids, pad_token_id=config.pad_token_id,
                 allow_padding=isinstance(rows, RemainingCoverageMixtureRows), seed=args.seed, step=step,

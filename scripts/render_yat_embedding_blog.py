@@ -16,6 +16,8 @@ def render() -> None:
     article = SOURCE.read_text()
     markdown = mistune.create_markdown(escape=True, plugins=["table", "math"])
     body = markdown(article)
+    if not isinstance(body, str):
+        raise TypeError("HTML renderer returned tokens instead of text")
     page = """<!doctype html>
 <html lang="en">
 <head>

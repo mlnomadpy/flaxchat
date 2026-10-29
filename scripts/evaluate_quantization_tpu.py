@@ -297,9 +297,9 @@ def main():
                     "libtpu",
                 )
             },
-            "jax_enable_x64": bool(jax.config.jax_enable_x64),
+            "jax_enable_x64": bool(jax.config.values["jax_enable_x64"]),
             "jax_default_matmul_precision": str(
-                jax.config.jax_default_matmul_precision
+                jax.config.values["jax_default_matmul_precision"]
             ),
         }
         report["hardware"] = {

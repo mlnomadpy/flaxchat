@@ -6,6 +6,7 @@ later stages can load weights from a prior stage without reusing its optimizer.
 """
 
 from __future__ import annotations
+from typing import cast
 
 import argparse
 from dataclasses import replace
@@ -483,7 +484,7 @@ def run(args):
             if jax.process_index() == 0:
                 print(json.dumps({"event": "embedding_step", "step": step + 1,
                     "loss": float(loss), "seconds": time.monotonic() - begun,
-                    "learning_rate": float(lr(step)),
+                    "learning_rate": float(cast(float, lr(step))),
                     "batch_sha256": hashlib.sha256(b"".join(
                         key.encode() + str(value.dtype).encode() + str(value.shape).encode() + value.tobytes()
                         for key, value in sorted(batch.items()))).hexdigest(),

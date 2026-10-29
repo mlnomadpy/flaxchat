@@ -1,4 +1,5 @@
 """Explicit weights-only migration to V-only GOAT; never an optimizer resume."""
+from typing import cast
 from dataclasses import replace
 
 from flax import nnx
@@ -28,7 +29,8 @@ def migrate_yat_to_goat(source, target):
             source_path = (*path[:2], 'qkv', 'kernel')
         if source_path not in old_map:
             raise ValueError(f'Missing source parameter: {source_path}')
-        value = old_map[source_path][...]
+        variable = cast(nnx.Param, variable)
+        value = cast(nnx.Param, old_map[source_path])[...]
         if is_v:
             if value.shape != (a.hidden_size, 3 * a.hidden_size):
                 raise ValueError('Unexpected QKV layout')

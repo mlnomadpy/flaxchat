@@ -348,6 +348,7 @@ class RemainingCoverageMixtureRows(CoverageMixtureRows):
             if not take:
                 raise RuntimeError('Nonexhausted pool scheduling made no progress')
             if materialize:
+                assert result is not None
                 for pool in np.flatnonzero(counts):
                     positions = np.flatnonzero(choices[:take] == pool)
                     cursor = int(self._remaining_positions[pool])

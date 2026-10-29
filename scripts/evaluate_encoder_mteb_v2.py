@@ -5,6 +5,8 @@ the same frozen plan, then compare reports with ``--compare``. MTEB itself
 loads each task and computes its official per-task metrics. The selected tasks
 are a diagnostic slice, never the full MTEB/mmBERT paper aggregate.
 """
+from importlib import import_module
+from typing import Any
 
 import argparse
 from dataclasses import asdict
@@ -112,7 +114,8 @@ class MtebEncoder:
     """MTEB v2 text encoder backed by the same harness pooling for both roles."""
 
     def __init__(self, session, tokenizer_path, config, length, name, revision):
-        from mteb.models.model_meta import ModelMeta, ScoringFunction
+        model_meta = import_module("mteb.models.model_meta")
+        ModelMeta, ScoringFunction = model_meta.ModelMeta, model_meta.ScoringFunction
 
         self.mteb_model_meta = ModelMeta.create_empty(overwrites=dict(
             name=name, revision=revision, max_tokens=length,
@@ -158,8 +161,8 @@ class MtebEncoder:
 
 
 def run(plan_path, role, output, *, batch_size=16, progress=None):
-    import mteb
-    from mteb.models.abs_encoder import AbsEncoder
+    mteb = import_module("mteb")
+    AbsEncoder = import_module("mteb.models.abs_encoder").AbsEncoder
 
     if mteb.__version__ != MTEB_VERSION:
         raise ValueError(f"MTEB {MTEB_VERSION} required; found {mteb.__version__}")
@@ -189,7 +192,7 @@ def run(plan_path, role, output, *, batch_size=16, progress=None):
     progress = Path(progress) if progress is not None else None
     if progress is not None and progress.exists():
         raise ValueError("Refusing existing MTEB progress receipt")
-    raw_result = dict(model_name=name, model_revision=revision,
+    raw_result: dict[str, Any] = dict(model_name=name, model_revision=revision,
                       task_results=[], exceptions=None)
     for task in tasks:
         result = mteb.evaluate(model, tasks=[task],

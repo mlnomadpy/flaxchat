@@ -4,6 +4,7 @@ Run under a provider-enforced VM lease and a cloud-side durable controller.
 This runner does not allocate resources, launch a model, or upload artifacts.
 """
 from __future__ import annotations
+from typing import Any, Iterable, cast
 
 import argparse
 from collections import Counter
@@ -168,7 +169,7 @@ def raw(args):
             dataset = load_dataset(identity['repo'], identity['config'],
                                    revision=identity['revision'], split='train').shuffle(seed=SOURCE_SHUFFLE_SEED)
             iterable = (dict(query=row['anchor'], positive=row['positive'], negative=row['negative'],
-                             group=row['anchor'], language=language) for row in dataset)
+                             group=row['anchor'], language=language) for row in cast(Iterable[dict[str, Any]], dataset))
         target = rawdir / (name + '.jsonl')
         counts, languages = Counter(), Counter()
         with target.open('x') as stream:

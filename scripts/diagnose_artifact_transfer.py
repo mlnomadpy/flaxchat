@@ -89,6 +89,7 @@ def stream_transfer(manifest, *, output, mode='range', range_bytes=MAX_RANGE_BYT
             selector = selectors.DefaultSelector()
             try:
                 for name, pipe in (('stdout', process.stdout), ('stderr', process.stderr)):
+                    assert pipe is not None
                     os.set_blocking(pipe.fileno(), False)
                     selector.register(pipe, selectors.EVENT_READ, name)
                 while selector.get_map():
@@ -104,7 +105,7 @@ def stream_transfer(manifest, *, output, mode='range', range_bytes=MAX_RANGE_BYT
                             progress(sample)
                         next_progress = now + 5
                     for key, _ in selector.select(timeout=min(1, deadline - now)):
-                        data = os.read(key.fileobj.fileno(), 1024 * 1024)
+                        data = os.read(key.fd, 1024 * 1024)
                         if not data:
                             selector.unregister(key.fileobj)
                             continue

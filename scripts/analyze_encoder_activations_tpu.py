@@ -6,6 +6,7 @@ Run models sequentially in separate processes with an external finite lease.
 """
 
 from __future__ import annotations
+from typing import cast
 import argparse
 from dataclasses import asdict
 import hashlib
@@ -295,7 +296,7 @@ def main():
                 # Replay each query tile's actual union/padding geometry for YAT.
                 length, heads = q.shape[1], q.shape[2]
                 local = index % c.global_attn_every_n_layers != 0
-                radius = c.local_attention // 2 if local else None
+                radius = c.local_attention // 2 if local else 0
                 tile = (
                     min(
                         c.yat_attention_block_size
@@ -309,8 +310,8 @@ def main():
                 total_entropy = jnp.zeros(heads, jnp.float32)
                 total_mass = jnp.zeros(heads, jnp.float32)
                 valid = segments >= 0
-                q = jnp.where(valid[..., None, None], q, 0)
-                k = jnp.where(valid[..., None, None], k, 0)
+                q = cast(jax.Array, jnp.where(valid[..., None, None], q, 0))
+                k = cast(jax.Array, jnp.where(valid[..., None, None], k, 0))
                 for start in range(0, length, tile):
                     end = min(length, start + tile)
                     lo, hi = (
@@ -352,12 +353,12 @@ def main():
                         jnp.arange(kk.shape[-2]) == 0
                     )[None, None, :]
                     probs = jax.nn.softmax(
-                        jnp.where(mask[:, None], logits, -jnp.inf), axis=-1
+                        cast(jax.Array, jnp.where(mask[:, None], logits, -jnp.inf)), axis=-1
                     )
                     ent = -jnp.sum(
-                        jnp.where(
+                        cast(jax.Array, jnp.where(
                             probs > 0, probs * jnp.log(jnp.maximum(probs, 1e-30)), 0
-                        ),
+                        )),
                         -1,
                     )
                     total_entropy += jnp.sum(
@@ -401,7 +402,7 @@ def main():
                     if a.role == "yat"
                     else jnp.array(1.0, jnp.float32)
                 )
-                attended = bidirectional_attention(
+                attended = cast(jax.Array, bidirectional_attention(
                     q,
                     k,
                     v,
@@ -418,7 +419,7 @@ def main():
                     if local
                     else c.yat_global_attention_block_size,
                     alpha=alpha,
-                )
+                ))
                 attn_delta = layer.attn_out(attended.reshape(x.shape))
                 y = x + attn_delta
                 h = layer.mlp_norm(y)
@@ -476,7 +477,7 @@ def main():
                 def rms(z):
                     return jnp.sqrt(
                         jnp.sum(
-                            jnp.where(valid[..., None], z.astype(jnp.float32) ** 2, 0)
+                            cast(jax.Array, jnp.where(valid[..., None], z.astype(jnp.float32) ** 2, 0))
                         )
                         / jnp.maximum(valid.sum() * z.shape[-1], 1)
                     )
@@ -504,7 +505,7 @@ def main():
                 return y + ffn_delta, stat, stats
 
             def finish(model, x, segments):
-                hidden = jnp.where((segments >= 0)[..., None], model.final_norm(x), 0)
+                hidden = cast(jax.Array, jnp.where((segments >= 0)[..., None], model.final_norm(x), 0))
                 return hidden.sum(1) / jnp.maximum(
                     (segments >= 0).sum(1, keepdims=True), 1
                 )
@@ -515,7 +516,7 @@ def main():
 
             @nnx.jit
             def trace_full(model, ids):
-                segments = jnp.where(ids == c.pad_token_id, -1, 0)
+                segments = cast(jax.Array, jnp.where(ids == c.pad_token_id, -1, 0))
                 positions = jnp.broadcast_to(jnp.arange(ids.shape[1]), ids.shape)
                 x = start_hidden(model, ids)
                 stats, heads = [], []

@@ -52,7 +52,7 @@ def historical_row_view(row, source_identity, source_name, manifest=None, *, pro
         policy = producer_policy or (manifest or {}).get('historical_row_policy')
         if not isinstance(policy, dict):
             raise ValueError('Historical MIRACL needs verified legacy producer evidence or upstream_group')
-        known = VERIFIED_LEGACY_PRODUCERS.get(policy.get('policy'))
+        known = VERIFIED_LEGACY_PRODUCERS.get(policy.get('policy', ''))
         if known is None or any(policy.get(key) != value for key, value in known.items()):
             raise ValueError('Historical MIRACL legacy producer fingerprints are unverified')
         match = re.fullmatch(r'miracl:([A-Za-z][A-Za-z0-9-]*):(0|[1-9][0-9]*)', str(row.get('group', '')))

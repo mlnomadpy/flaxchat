@@ -41,6 +41,8 @@ def merge(inputs: list[Path], inventory_receipt: Path, output: Path) -> dict:
             scores[(split, subset)] = row
             merged["result"]["scores"].setdefault(split, []).append(row)
         merged["sources"].append(str(path))
+    if merged is None:
+        raise ValueError("No benchmark receipts supplied")
     if {subset for split, subset in scores} != set(merged["full_subsets"]):
         raise ValueError(f"Incomplete subset coverage: got {len(scores)} of {len(merged['full_subsets'])}")
     if merged["identity"] != inventory_source["identity"]:

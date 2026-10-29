@@ -6,6 +6,7 @@ and memory-mappable token arrays for a TPU training process.
 """
 
 from __future__ import annotations
+from typing import Any, Iterable, Iterator, cast
 
 import argparse
 from collections import Counter
@@ -107,7 +108,7 @@ def _registry_rows(spec, seed):
                "modalities": spec.get("modalities", {}), "coordinate": str(position)}
 
 
-def selected_rows(source: str, seed: int):
+def selected_rows(source: str, seed: int) -> Iterator[dict[str, Any]]:
     from datasets import get_dataset_config_names, load_dataset
 
     spec = SOURCES[source]
@@ -121,7 +122,7 @@ def selected_rows(source: str, seed: int):
         for language in configs:
             dataset = load_dataset(spec["repo"], language, split="train",
                                    revision=spec["revision"])
-            for position, row in enumerate(dataset):
+            for position, row in enumerate(cast(Iterable[dict[str, Any]], dataset)):
                 yield dict(query=row["query"], positive=row["positive"],
                            negative=row["negative"], group=f"miracl:{row['id']}", upstream_group=str(row['id']),
                            coordinate=f"{language}:{position}", language=language)
@@ -134,7 +135,7 @@ def selected_rows(source: str, seed: int):
         raise ValueError("CodeSearchNet pair inventory changed")
     shuffled = dataset.shuffle(seed=seed)
     limit = spec["candidate_limit"]
-    for position, row in enumerate(shuffled.select(range(min(limit, len(shuffled))))):
+    for position, row in enumerate(cast(Iterable[dict[str, Any]], shuffled.select(range(min(limit, len(shuffled)))))):
         if source == "msmarco":
             query, positive, negative = row["query"], row["positive"], row["negative"]
         else:

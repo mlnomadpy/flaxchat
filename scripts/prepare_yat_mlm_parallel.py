@@ -1,4 +1,5 @@
 """Resume committed MLM chunks with bounded fetch/tokenization pipelines; no models."""
+from typing import cast
 
 import argparse
 from collections import deque
@@ -111,7 +112,7 @@ def authenticate_resume(root, tokenizer, connection):
             raw_digest = hashlib.sha256()
             with gzip.open(raw, "rb") as stream:
                 for block in iter(lambda: stream.read(1024 * 1024), b""):
-                    raw_digest.update(block)
+                    raw_digest.update(cast(bytes, block))
             if raw_digest.hexdigest() != manifest["source_sha256"]:
                 raise ValueError(
                     "Committed raw content differs from tokenization input"

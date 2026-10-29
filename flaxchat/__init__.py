@@ -19,6 +19,17 @@ __version__ = "0.1.1"
 # Keep metadata/cloud tooling usable before the numerical runtime is installed.
 # Public training symbols preserve their existing import paths, loaded on demand.
 from importlib import import_module
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .common import (LOGICAL_AXIS_RULES, compute_init, get_mesh, setup_mesh,
+                         shard_model_params, shard_batch_logical)
+    from .config import FlaxChatConfig
+    from .engine import Engine, generate, generate_with_cache, generate_fast, generate_speculative
+    from .eval import evaluate_core, evaluate_bpb
+    from .execution import execute_code, ExecutionResult
+    from .gpt import GPT, GPTConfig
+    from .prefetch import BackgroundPrefetcher
 
 _EXPORTS = {
     "FlaxChatConfig": "config", "GPT": "gpt", "GPTConfig": "gpt",

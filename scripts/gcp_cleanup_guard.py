@@ -1,5 +1,6 @@
 """Arm/verify a deployed Cloud Workflows expiry guard before TPU allocation."""
 from __future__ import annotations
+from typing import Any
 import argparse
 import hashlib
 import json
@@ -87,12 +88,12 @@ def preflight_cleanup_scope(*, project, zone, queue, location='us-central1',
                  'total_timeout_seconds': 120, 'command_timeout_seconds': 20,
                  'maximum_attempts_per_read': 2}
     deadline = time.monotonic() + 120
-    def read(arguments):
+    def read(arguments) -> dict[str, Any]:
         for attempt in range(2):
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 error = TimeoutError('Cleanup scope discovery total deadline exhausted before reservation')
-                error.cleanup_scope_discovery = discovery
+                vars(error)['cleanup_scope_discovery'] = discovery
                 raise error
             observation = {'operation': arguments[:3], 'attempt': attempt + 1,
                            'timeout_seconds': min(20, remaining)}
@@ -102,6 +103,8 @@ def preflight_cleanup_scope(*, project, zone, queue, location='us-central1',
                 output = subprocess.check_output(['gcloud', *arguments, '--format=json'],
                     text=True, stderr=subprocess.PIPE, timeout=observation['timeout_seconds'])
                 result = json.loads(output)
+                if not isinstance(result, dict):
+                    raise ValueError("Cleanup discovery requires a JSON object")
                 observation.update(status='succeeded',
                     output_sha256=hashlib.sha256(output.encode()).hexdigest())
                 return result
@@ -120,14 +123,15 @@ def preflight_cleanup_scope(*, project, zone, queue, location='us-central1',
                 observation.update(status='transient_failure' if transient else 'terminal_failure',
                                    error_type=type(error).__name__)
                 if not transient or attempt == 1:
-                    error.cleanup_scope_discovery = discovery
+                    vars(error)['cleanup_scope_discovery'] = discovery
                     raise
             except (ValueError, OSError) as error:
                 observation.update(status='terminal_failure', error_type=type(error).__name__)
-                error.cleanup_scope_discovery = discovery
+                vars(error)['cleanup_scope_discovery'] = discovery
                 raise
             finally:
                 observation['elapsed_seconds'] = time.monotonic() - started
+        raise RuntimeError('Cleanup scope discovery produced no result')
     deployed = read(['workflows', 'describe', workflow, '--project', project, '--location', location])
     source = Path(__file__).parents[1] / 'infra/tpu/cleanup_workflow.yaml'
     if yaml.safe_load(deployed.get('sourceContents', '')) != yaml.safe_load(source.read_text()):
@@ -148,7 +152,7 @@ def preflight_cleanup_scope(*, project, zone, queue, location='us-central1',
             arguments = ['iam', 'roles', 'describe', match[3],
                          '--project' if match[1] == 'projects' else '--organization', match[2]]
         roles[name] = read(arguments)
-    receipt = validate_cleanup_scope(policy, roles, service_account=service_account,
+    receipt: dict[str, Any] = validate_cleanup_scope(policy, roles, service_account=service_account,
                                      project=project, zone=zone, queue=queue)
     receipt.update(workflow_revision=deployed.get('revisionId'),
                    workflow_sha256=hashlib.sha256(json.dumps(deployed, sort_keys=True).encode()).hexdigest(),

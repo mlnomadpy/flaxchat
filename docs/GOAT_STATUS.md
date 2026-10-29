@@ -25,3 +25,7 @@ The published MLM weights, full-state recovery parents and raw failure receipts 
 - [Looped encoder / LoopCD](LOOPED_ENCODER.md): opt-in implementation with separate physical acceptance requirements; not silently enabled in the published model.
 
 Historical dated operational receipts are retained outside the Git source payload. They do not establish that old resources are running or that an unqualified feature passed. [Coverage transition design](coverage-transition-design.md), [training tools](TRAINING_TOOLS.md) and [runbook](REPRESENTATION_TRAINING_RUNBOOK.md) describe the implementation and its boundaries.
+
+## Local source validation
+
+The October28 typecheck cleanup reduced Pyright from231errors/19warnings to **zero errors and warnings**, without adding typecheck exclusions. Repository-wide lint passed. The metadata/control-path suite passed742tests and119subtests, with one platform-specific skip. Optional evaluation imports remain deferred; heterogeneous JSON records and validated optional values now have explicit types. Source comparison confirmed that encoder/contrastive computations are unchanged apart from identity-only type casts. These checks did not run model forwards, alter checkpoint files, or allocate cloud resources; physical qualification and training status above are unchanged.

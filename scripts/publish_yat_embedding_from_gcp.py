@@ -29,7 +29,7 @@ def publish(args):
                       commit_message=f"Publish authenticated YAT embedding step {export['source_checkpoint_step']}")
     info = api.model_info(args.repo, files_metadata=True)
     expected = set(hashes) | {'files.sha256.json'}
-    if not expected <= {file.rfilename for file in info.siblings}:
+    if not expected <= {file.rfilename for file in (info.siblings or [])}:
         raise RuntimeError('Public release missing files')
     for name in expected:
         remote = Path(hf_hub_download(args.repo, name, revision=info.sha, token=token))

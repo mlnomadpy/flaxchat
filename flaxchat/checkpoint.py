@@ -530,12 +530,13 @@ def restore_model_from_checkpoint(
 
         # Recurrence changes computation without changing parameter shapes.
         # Protect direct restores too, not only callers supplying an identity.
-        if hasattr(model, 'config') and hasattr(model.config, 'loop_core_layers'):
+        model_config = getattr(model, 'config', None)
+        if model_config is not None and hasattr(model_config, 'loop_core_layers'):
             encoder = metadata.get('resolved_config', {}).get('encoder')
             defaults = {'loop_core_start': 1, 'loop_core_layers': 0, 'loop_steps': 1}
-            if encoder is None and model.config.loop_core_layers:
+            if encoder is None and model_config.loop_core_layers:
                 raise CheckpointCompatibilityError('Looped checkpoint lacks encoder architecture identity')
-            if encoder is not None and any(encoder.get(name, default) != getattr(model.config, name)
+            if encoder is not None and any(encoder.get(name, default) != getattr(model_config, name)
                                            for name, default in defaults.items()):
                 raise CheckpointCompatibilityError('Checkpoint loop architecture differs from model')
 

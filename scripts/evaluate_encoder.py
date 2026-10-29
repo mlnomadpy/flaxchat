@@ -1,4 +1,5 @@
 """Deterministic, masked-token-weighted held-out evaluation of an encoder checkpoint."""
+from typing import Any
 import argparse
 import hashlib
 import json
@@ -65,7 +66,7 @@ def initial_weight_identity(metadata, config, directory):
 
 
 def evaluate(checkpoint, data, *, train_data, batch_size=8, max_rows=1024, seed=2026,
-             initial_pretrained=None, checkpoint_step=None, balanced_languages=False):
+             initial_pretrained=None, checkpoint_step=None, balanced_languages=False) -> dict[str, Any]:
     if batch_size <= 0 or max_rows <= 0 or seed < 0:
         raise ValueError('Invalid evaluation bounds or seed')
     if checkpoint_step is not None and checkpoint_step < 0:

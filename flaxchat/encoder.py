@@ -257,11 +257,11 @@ def bidirectional_attention(q, k, v, segments, *, radius=None, backend='xla', pa
         # Each repair predicate and loop belongs to one chip. Global dynamic
         # slices otherwise force the partitioner to handle cross-chip tiles.
         local = jax.shard_map(
-            lambda qq, kk, vv, ss, aa: bidirectional_attention(qq, kk, vv, ss,
+            lambda qq, kk, vv, ss, aa: cast(jax.Array, bidirectional_attention(qq, kk, vv, ss,
                 radius=radius, backend=backend, packed=packed, score=score,
                 alpha=aa, yat_compute_mode=yat_compute_mode, yat_attention_block_size=yat_attention_block_size,
                 yat_softmax_backward=yat_softmax_backward,
-                yat_attention_implementation=yat_attention_implementation),
+                yat_attention_implementation=yat_attention_implementation)),
             mesh=Mesh(np.asarray(jax.devices()), ('data',)),
             in_specs=(P('data'), P('data'), P('data'), P('data'), P()),
             out_specs=P('data'), check_vma=False)
@@ -456,7 +456,7 @@ class EncoderBlock(nnx.Module):
             q = k = _rope(score_input, positions, base)
         else:
             q, k = _rope(q, positions, base), _rope(k, positions, base)
-        h = bidirectional_attention(q, k, v, segments,
+        h = cast(jax.Array, bidirectional_attention(q, k, v, segments,
                                     radius=c.local_attention // 2 if local else None,
                                     backend=c.attention_backend, packed=packed,
                                     score=c.attention_score, yat_compute_mode=c.yat_compute_mode,
@@ -464,7 +464,7 @@ class EncoderBlock(nnx.Module):
                                     yat_softmax_backward=c.yat_softmax_backward,
                                     yat_attention_implementation=c.yat_attention_implementation,
                                     yat_attention_block_size=c.yat_attention_block_size if local else c.yat_global_attention_block_size,
-                                    alpha=self.yat_attention_alpha[...] if c.attention_score in ('yat_softmax', 'goat', 'goat_input') else 1.)
+                                    alpha=self.yat_attention_alpha[...] if c.attention_score in ('yat_softmax', 'goat', 'goat_input') else 1.))
         x = x + qat_linear(self.attn_out, h.reshape(x.shape), c)
         h = self.mlp_norm(x)
         if c.ffn_type == 'yat_glu':

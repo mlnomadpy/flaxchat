@@ -70,9 +70,15 @@ def score_full_rankings(corpus_ids, query_ids, qrels, rankings, *, protocol,
             collection.add(value)
         if not collection:
             raise ValueError('Complete nonempty corpus and queries required')
-    if ranking_mode == 'topk_unqualified' and ranking_depth < min(cutoffs[-1], len(corpus)):
+    if ranking_mode == 'topk_unqualified':
+        assert isinstance(ranking_depth, int)
+    if ranking_mode == 'topk_unqualified' and ranking_depth is not None and ranking_depth < min(cutoffs[-1], len(corpus)):
         raise ValueError('Top-k retention must cover every available metric cutoff')
-    depth = len(corpus) if ranking_mode == 'exhaustive' else min(ranking_depth, len(corpus))
+    if ranking_mode == 'exhaustive':
+        depth = len(corpus)
+    else:
+        assert isinstance(ranking_depth, int)
+        depth = min(ranking_depth, len(corpus))
     if type(max_rows) is not int or max_rows < 1 or depth * len(queries) > max_rows:
         raise ValueError('Full corpus-query scoring exceeds declared row bound')
     judgments = {qid: {} for qid in queries}
@@ -90,6 +96,7 @@ def score_full_rankings(corpus_ids, query_ids, qrels, rankings, *, protocol,
     rows = 0
 
     def finish():
+        assert current is not None
         if (ranking_mode == 'exhaustive' and seen != corpus) or len(seen) != depth:
             raise ValueError('Ranking does not cover the complete corpus for query ' + current)
         values = judgments[current]

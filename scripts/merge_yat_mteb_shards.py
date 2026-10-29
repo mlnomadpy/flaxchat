@@ -42,6 +42,8 @@ def merge(inputs: list[Path], output: Path) -> dict:
             if name not in merged["results"]:
                 merged["failures"][name] = item
         merged["sources"].append(str(path))
+    if merged is None:
+        raise ValueError("No benchmark receipts supplied")
     merged["assigned_tasks"] = sorted(seen_selections)
     merged["aggregate"] = _aggregate(merged)
     _write_atomic(output, merged)
