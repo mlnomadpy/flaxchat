@@ -47,6 +47,8 @@ class YatEncoderConfig:
     @classmethod
     def from_json(cls, path: str | Path, *, compressed_int8: bool = False) -> "YatEncoderConfig":
         data = json.loads(Path(path).read_text())
+        if data.get('loop_core_layers', 0) != 0 or data.get('loop_steps', 1) != 1:
+            raise ValueError('Looped encoders require the native JAX loader; PyTorch recurrence parity is not qualified')
         quantization = data.get("weight_quantization", "none")
         if quantization not in ("none", "int8_per_channel_ste"):
             raise ValueError("Unsupported source weight quantization policy")

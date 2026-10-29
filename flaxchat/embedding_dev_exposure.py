@@ -38,7 +38,7 @@ def parent_exposure(path, index, parent_hashes, *, timeout_seconds=600):
         or spec.get("parent_files_sha256") != parent_hashes
         or spec.get("known_contrastive_inventory_complete") is not True
         or not isinstance(expected, list)
-        or not expected
+        or (not expected and not spec.get("mlm_only_parent"))
         or len(set(expected)) != len(expected)
         or any(not re.fullmatch("[0-9a-f]{64}", stage) for stage in expected)
     ):
@@ -140,6 +140,12 @@ def parent_exposure(path, index, parent_hashes, *, timeout_seconds=600):
             raise ValueError("Stage metadata changed during exposure audit")
         proof["checked_stages"][stage["stage_identity_sha256"]] = checked
         proof["overlap_rows"] += checked["overlap_rows"]
+    if spec.get("mlm_only_parent") is not None:
+        if stages or expected:
+            raise ValueError("MLM-only parent cannot declare contrastive stages")
+        from flaxchat.mlm_parent_exposure import validate_mlm_only_parent
+        proof["mlm_only_parent"] = validate_mlm_only_parent(
+            Path(path).parent / spec["mlm_only_parent"]["directory"], parent_hashes)
     if proof["overlap_rows"]:
         raise ValueError(
             "Candidate probes exposed to known contrastive parent training; select fresh independent data"

@@ -141,12 +141,36 @@ def test_manifest_adapter_carries_explicit_flag_only():
     assert '--allow-long-lease' not in args
 
 
-@pytest.mark.parametrize('seconds,accepted', [(30, True), (1800, True), (1801, False), (29, False)])
-def test_outer_setup_cap_is_bounded(tmp_path, seconds, accepted):
-    args = campaign_args(tmp_path, 43200, True) + ['--setup-timeout-seconds', str(seconds)]
+@pytest.mark.parametrize('opt_in,seconds,accepted', [
+    (False, 30, True), (False, 1800, True), (False, 1801, False),
+    (False, 4800, False), (False, 29, False),
+    (True, 30, True), (True, 1800, True), (True, 1801, True),
+    (True, 4800, True), (True, 7200, True), (True, 7201, False),
+    (True, 29, False),
+])
+def test_outer_setup_cap_is_bounded(tmp_path, opt_in, seconds, accepted):
+    args = campaign_args(tmp_path, 43200 if opt_in else 7200, opt_in) + ['--setup-timeout-seconds', str(seconds)]
     with patch.object(supervisor, 'campaign', return_value=0) as launch:
         if accepted:
             assert supervisor.main(args) == 0
+        else:
+            with pytest.raises(SystemExit):
+                supervisor.main(args)
+            launch.assert_not_called()
+
+
+@pytest.mark.parametrize('attempt,setup,accepted', [
+    (4800, 4800, False), (4800, 4801, False), (4801, 4800, True),
+    (7200, 7200, False), (7201, 7200, True),
+])
+def test_extended_setup_fits_inside_original_lease(tmp_path, attempt, setup, accepted):
+    args = campaign_args(tmp_path, attempt, True) + ['--setup-timeout-seconds', str(setup)]
+    with patch.object(supervisor, 'campaign', return_value=0) as launch:
+        if accepted:
+            assert supervisor.main(args) == 0
+            admitted = launch.call_args.args[0]
+            assert admitted.attempt_seconds == attempt
+            assert admitted.setup_timeout_seconds == setup
         else:
             with pytest.raises(SystemExit):
                 supervisor.main(args)

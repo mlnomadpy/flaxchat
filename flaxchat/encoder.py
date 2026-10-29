@@ -57,8 +57,22 @@ class EncoderConfig:
     yat_attention_implementation: str = 'standard'
 
     weight_quantization: str = 'none'
+    # num_hidden_layers counts unique blocks, not recurrent applications.
+    loop_core_start: int = 1
+    loop_core_layers: int = 0
+    loop_steps: int = 1
 
     def __post_init__(self):
+        for name in ('loop_core_start', 'loop_core_layers', 'loop_steps'):
+            if type(getattr(self, name)) is not int:
+                raise ValueError(f'{name} must be an integer')
+        if self.loop_steps < 1 or self.loop_core_layers < 0 or self.loop_core_start < 1:
+            raise ValueError('Loops require positive steps, nonnegative core size and at least one prelude block')
+        if self.loop_core_layers:
+            if self.loop_core_start + self.loop_core_layers > self.num_hidden_layers:
+                raise ValueError('Loop core exceeds the unique block count')
+        elif self.loop_steps != 1:
+            raise ValueError('Multiple loops require loop_core_layers > 0')
         if self.attention_score in ('goat', 'goat_input') and self.yat_local_shards:
             raise ValueError('GOAT uses automatic data sharding; disable yat_local_shards')
         if self.weight_quantization not in ('none', 'int8_per_channel_ste'):
@@ -156,6 +170,21 @@ class EncoderConfig:
             return min(length, self.mlm_projection_capacity)
         chunk = self.loss_chunk_size
         return min(length, ((length + 4 * chunk - 1) // (4 * chunk)) * chunk)
+
+    @property
+    def effective_depth(self):
+        return self.num_hidden_layers + (self.loop_steps - 1) * self.loop_core_layers
+
+    def loop_inference_options(self, steps=None, strength=0.0):
+        """Validate static inference options without allocating device arrays."""
+        steps = self.loop_steps if steps is None else steps
+        if type(steps) is not int or steps < 1:
+            raise ValueError('Inference loop_steps must be a positive static integer')
+        if not self.loop_core_layers and (steps != 1 or strength != 0):
+            raise ValueError('Recurrence and LoopCD require a configured shared core')
+        if isinstance(strength, bool) or not isinstance(strength, (int, float)) or not math.isfinite(strength) or strength < 0:
+            raise ValueError('LoopCD strength must be a finite nonnegative static scalar')
+        return steps, strength
 
     @classmethod
     def from_hf(cls, config, **overrides):
@@ -475,7 +504,18 @@ class ModernBert(nnx.Module):
         self.head_norm = norm()
         self.decoder_bias = nnx.Param(jnp.zeros(config.vocab_size, jnp.float32))
 
-    def encode(self, ids, *, segment_ids=None, position_ids=None):
+    def _apply_layers(self, x, segments, positions, start, end, *, packed):
+        for index in range(start, end):
+            layer = self.layers[index]
+            if self.config.use_remat:
+                x = nnx.remat(lambda block, h, s, p: block(h, s, p, packed=packed))(
+                    layer, x, segments, positions)
+            else:
+                x = layer(x, segments, positions, packed=packed)
+        return x
+
+    def _loop_boundaries(self, ids, *, segment_ids=None, position_ids=None, loop_steps=None):
+        steps, _ = self.config.loop_inference_options(loop_steps)
         if ids.ndim != 2 or ids.shape[1] > self.config.max_position_embeddings:
             raise ValueError('Expected [batch, sequence] within configured context length')
         segments = jnp.where(ids == self.config.pad_token_id, -1, 0) if segment_ids is None else segment_ids
@@ -490,17 +530,65 @@ class ModernBert(nnx.Module):
             # Gather before quantizing: never materialize a quantized vocabulary.
             embedded = fake_quantize_int8(embedded, -1)
         x = self.embedding_norm(embedded.astype(getattr(jnp, self.config.residual_dtype)))
-        for layer in self.layers:
-            if self.config.use_remat:
-                x = nnx.remat(lambda block, h, s, p: block(h, s, p, packed=segment_ids is not None))(
-                    layer, x, segments, positions)
-            else:
-                x = layer(x, segments, positions, packed=segment_ids is not None)
+        packed = segment_ids is not None
+        c = self.config
+        if not c.loop_core_layers:
+            return x, x, segments, positions, packed, 0
+        start, end = c.loop_core_start, c.loop_core_start + c.loop_core_layers
+        x = self._apply_layers(x, segments, positions, 0, start, packed=packed)
+        first = self._apply_layers(x, segments, positions, start, end, packed=packed)
+        x = first
+        if steps > 1:
+            # Broadcast one module/state tree across iterations. No stacked
+            # weights or per-iteration outputs; compiled body size is fixed.
+            @nnx.scan(in_axes=(None, nnx.Carry, None, None), out_axes=nnx.Carry, length=steps - 1)
+            def recur(model, hidden, seg, pos):
+                return model._apply_layers(hidden, seg, pos, start, end, packed=packed)
+            x = recur(self, x, segments, positions)
+        return x, first, segments, positions, packed, end
+
+    def _finish_encode(self, x, segments, positions, packed, start):
+        x = self._apply_layers(x, segments, positions, start, self.config.num_hidden_layers, packed=packed)
         return jnp.where((segments >= 0)[..., None], self.final_norm(x), 0)
 
-    def pool(self, ids, *, segment_ids=None):
+    def encode(self, ids, *, segment_ids=None, position_ids=None, loop_steps=None, loop_guidance_strength=0.0):
+        """Encode with optional fixed-strength hidden LoopCD before the coda.
+
+        Training calls use the configured loop count and zero guidance. Runtime
+        options must be static under JIT; changing loop count recompiles.
+        """
+        self.config.loop_inference_options(loop_steps, loop_guidance_strength)
+        x, first, segments, positions, packed, end = self._loop_boundaries(
+            ids, segment_ids=segment_ids, position_ids=position_ids, loop_steps=loop_steps)
+        if loop_guidance_strength:
+            x = x + loop_guidance_strength * (x - first)
+        return self._finish_encode(x, segments, positions, packed, end)
+
+    def loopcd_logits(self, ids, *, strength=1.0, adaptive=False, segment_ids=None, position_ids=None, loop_steps=None):
+        """Logits LoopCD; adaptive strength uses the final top-two probability gap.
+
+        Unlike hidden guidance this requires a second coda/head pass. This is an
+        experimental MLM inference adaptation, not an embedding training loss.
+        """
+        self.config.loop_inference_options(loop_steps, strength)
+        if not self.config.loop_core_layers:
+            raise ValueError('LoopCD requires a shared core')
+        x, first, segments, positions, packed, end = self._loop_boundaries(
+            ids, segment_ids=segment_ids, position_ids=position_ids, loop_steps=loop_steps)
+        final = self.project(self._finish_encode(x, segments, positions, packed, end))
+        if strength == 0:
+            return final
+        early = self.project(self._finish_encode(first, segments, positions, packed, end))
+        if adaptive:
+            top, _ = jax.lax.top_k(final, 2)
+            gap = jnp.exp(top[..., 0] - jax.nn.logsumexp(final, axis=-1)) * (-jnp.expm1(top[..., 1] - top[..., 0]))
+            strength = strength * (1 - gap[..., None])
+        return final + strength * (final - early)
+
+    def pool(self, ids, *, segment_ids=None, loop_steps=None, loop_guidance_strength=0.0):
         """One embedding per row; callers should provide one document per row."""
-        h = self.encode(ids, segment_ids=segment_ids)
+        h = self.encode(ids, segment_ids=segment_ids, loop_steps=loop_steps,
+                        loop_guidance_strength=loop_guidance_strength)
         valid = ids != self.config.pad_token_id if segment_ids is None else segment_ids >= 0
         return h.sum(axis=1) / jnp.maximum(valid.sum(axis=1, keepdims=True), 1)
 
@@ -583,6 +671,8 @@ class ModernBert(nnx.Module):
 
 def import_hf_weights(model, tensors):
     """Validate all names/shapes before mutation. Values are NumPy-like arrays."""
+    if model.config.loop_core_layers:
+        raise ValueError('Looped models require native checkpoints; HF import is not an exact restore')
     if model.config.attention_score in ('goat', 'goat_input'):
         raise ValueError('GOAT requires explicit QKV-to-V migration; HF import is not an exact restore')
     mapping = {'model.embeddings.tok_embeddings.weight': (model.embedding.embedding, False),

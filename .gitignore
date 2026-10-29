@@ -1,60 +1,128 @@
-# Python
+# Python bytecode, packaging and tool caches
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 *.egg-info/
 *.egg
-dist/
-build/
+/build/
+/dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.ipynb_checkpoints/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+coverage.json
 
-# Virtual environments
+# Local environments; dependency lockfiles remain versionable
 .venv/
 venv/
 .pixi/
 
-# IDE
+# Editors and operating-system files
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Exports & model artifacts
-exports/
-models/
+# Local secrets; checked-in examples are allowed
+.env
+.env.*
+!.env.example
+!.env.template
+.secrets/
+.credentials/
+application_default_credentials.json
+
+# Downloaded datasets, model exports and numerical payloads
+# Anchor these folders so source packages such as flaxchat/models remain visible.
+/exports/
+/models/
+/data/
 *.tflite
 *.stablehlo
 *.pkl
 *.npz
 
-# Data & caches
-data/
-# Versioned recipes are source configuration, not downloaded datasets.
-!configs/data/
-!configs/data/*.json
-.cache/
-tests/.cache/
+# Experiment artifacts: expose authored campaign-root builders, not copied source trees.
+/artifacts/*
+!/artifacts/*/
+/artifacts/*/*
+!/artifacts/*/*.py
+!/artifacts/*/*.sh
 
-# Logs & experiment tracking
+# Generated payloads inside operational docs; keep .py/.sh sources, JSON receipts,
+# recipes, manifests, model cards, benchmark tables and restore instructions visible.
+docs/**/*.npy
+docs/**/*.npz
+docs/**/*.safetensors
+docs/**/*.bin
+docs/**/*.whl
+docs/**/*.bundle
+docs/**/*.tar
+docs/**/*.tar.*
+docs/**/*.zip
+docs/**/*.gz
+docs/**/*.bz2
+docs/**/*.xz
+docs/**/*.zst
+docs/**/*.incomplete
+docs/**/*.sqlite
+docs/**/*.sqlite-*
+docs/**/*.stablehlo
+docs/**/*.stablehlo.txt
+docs/**/*.xplane.pb
+docs/**/ocdbt.process_*/
+docs/**/manifest.ocdbt
+docs/**/torch-wheels/
+docs/**/checkpoints/
+
+# Transfer scratch and bulk staging; canonical proofs/manifests live beside them.
+/docs/storage-audit-2026-10-25/migration/parts/
+/docs/storage-audit-2026-10-25/migration/range-chunks/
+/docs/storage-audit-2026-10-25/migration/failed-stream-attempts/
+/docs/storage-audit-2026-10-25/migration/failed-empty-attempt-files/
+/docs/storage-audit-2026-10-25/migration/publish/shards/
+/docs/local-cleanup-2026-10-27/deep/staging/
+
+# Download caches, logs and experiment tracking
+.cache/
 wandb/
 *.log
 *.prof
 tensorboard/
-.coverage
-coverage.xml
-coverage.json
-artifacts/
 
-# Jekyll build
-docs/_site/
-docs/.jekyll-cache/
-docs/.sass-cache/
-docs/Gemfile.lock
+# Source-controlled recipes and intentionally small test fixtures
+!configs/data/
+!configs/data/*.json
+!tests/fixtures/
+!tests/fixtures/**
+
+# Machine-local operational/account observations; never hide Python source or lockfiles.
+*-local.json
+*-local.jsonl
+*-local.txt
+*-local.md
+*_local.json
+*_local.jsonl
+*_local.txt
+*_local.md
+docs/**/credit-observation*.json
+docs/**/credit-check*.json
+docs/**/billing-observation*.json
+
+# Jekyll output
+/docs/_site/
+/docs/.jekyll-cache/
+/docs/.sass-cache/
 
 # The dacli workspace lives on its own ref (dacli-record), not on trunk: records
 # carried on a branch fork with it, so a task closed on a task branch is

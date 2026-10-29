@@ -89,6 +89,28 @@ def test_source_mixture_preserves_token_shares_and_replay(tmp_path):
     np.testing.assert_array_equal(ids,MixtureRows(tmp_path,tokens,manifest,17,.5).batch(10,200000))
 
 
+def test_provenance_streaming_preserves_mixture_rows_and_replay(tmp_path, monkeypatch):
+    from pathlib import Path
+    from flaxchat.encoder_data import MixtureRows
+    tokens, manifest = mixture_inputs(tmp_path)
+    expected = MixtureRows(tmp_path, tokens, manifest, 17, .5)
+    original = Path.read_text
+
+    def reject_whole_provenance(path, *args, **kwargs):
+        if path.name == 'documents.jsonl':
+            raise AssertionError('Document provenance must be streamed')
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'read_text', reject_whole_provenance)
+    actual = MixtureRows(tmp_path, tokens, manifest, 17, .5)
+    assert actual.pools == expected.pools
+    np.testing.assert_array_equal(actual.row_source, expected.row_source)
+    np.testing.assert_array_equal(actual.row_language, expected.row_language)
+    np.testing.assert_array_equal(actual.nonpadding, expected.nonpadding)
+    np.testing.assert_array_equal(actual.row_probabilities, expected.row_probabilities)
+    np.testing.assert_array_equal(actual.batch(10, 100), expected.batch(10, 100))
+
+
 @pytest.mark.parametrize('shares', [dict(hq=.6),dict(hq=.6,english=.2,missing=.2,reference=0),dict(hq=float('nan'),english=.2,missing=.15,reference=.05)])
 def test_mixture_rejects_missing_sources_and_invalid_shares(tmp_path,shares):
     from flaxchat.encoder_data import MixtureRows

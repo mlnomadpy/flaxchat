@@ -1,9 +1,26 @@
 # Tools for continued representation training
 
+October10 dataset continuation: `scripts.prepare_yat_mlm_continuation` now
+authenticates historical normalized identities and candidate development exclusions,
+retains raw/provenance shards, and binds per-label heldout qualification into
+COMPLETE.json. Ten model-free tests pass; actual corpus acceptance comes from
+the cloud execution. `scripts.build_mlm_history_index` derives compact exclusions
+from authenticated manifests. `scripts.run_mlm_data_release_gce` prepares and
+publishes datasets without launching training; `scripts.run_mlm_data_controller_gce`
+observes one bounded execution. See [the data handoff](GOAT_STATUS.md)
+for pins, published versions and the retained startup observer failure/correction.
+Future training admission must enforce the new qualification hash/flag explicitly;
+legacy loaders do not automatically enforce this new contract.
+
+October 9 addition: [experimental looped GOAT encoder and LoopCD](LOOPED_ENCODER.md)
+supports a shared recurrent core, native checkpoint identity, MLM training config,
+and hidden/logits inference guidance. Model-free admission checks are available;
+the new physical-TPU suite and quality/performance gates remain unrun.
+
 Latest reconciled audit: [all open issues, current evidence and tool priorities](SYSTEM_AUDIT_CURRENT_2026-10-01.md). Earlier dated findings below remain historical where superseded.
 
 
-Subsequent [implemented safeguards, verification and guarded diagnostic outcome](audit-2026-09-30/implementation-followup-2026-10-01.md) supersede the earlier implementation gaps while retaining their physical acceptance requirements.
+Subsequent [implemented safeguards, verification and guarded diagnostic outcome](GOAT_STATUS.md) supersede the earlier implementation gaps while retaining their physical acceptance requirements.
 
 Latest requested parallel review: [audit, new gaps, tools and validation scope](PARALLEL_SYSTEM_AUDIT_2026-10-01.md). All 29 open issues were refreshed; historical counts below remain dated evidence.
 
@@ -115,9 +132,9 @@ Use JAX profiling/XProf after correctness passes; use an available Billing expor
 
 ## October 1 concrete follow-up integrations
 
-The [parent exposure inventory builder](PARENT_EXPOSURE_INVENTORY_BUILDER.md) now matches retained stage metadata to actual prepared manifests and bounds historical raw authentication. The [terminal campaign receipt](audit-2026-09-30/supervisor-terminal-campaign-receipt.md) retains capacity/setup/workload failure phase and cleanup observations even before worker readiness. Both have model-free checks; actual historical raw scanning and physical/controller failure qualification remain separate.
+The [parent exposure inventory builder](PARENT_EXPOSURE_INVENTORY_BUILDER.md) now matches retained stage metadata to actual prepared manifests and bounds historical raw authentication. The [terminal campaign receipt](GOAT_STATUS.md) retains capacity/setup/workload failure phase and cleanup observations even before worker readiness. Both have model-free checks; actual historical raw scanning and physical/controller failure qualification remain separate.
 
-The subsequent consolidation adds authenticated development exclusions to training preparation, independent retrieval/bitext/code tokenization and `--retrieval-dev NAME=DIR` admission/evaluation. Parent-exposure proofs are recomputed against explicitly declared known stages; complete historical cleanliness remains unresolved. MIRACL upstream alignment groups are shared across languages for new preparation. Peer recovery now requires durable worker terminal evidence, and attachment stamps publish atomically. See the [follow-up receipt](audit-2026-09-30/consolidated-followup-2026-10-01.md) for verification and the capacity-limited diagnostic outcome.
+The subsequent consolidation adds authenticated development exclusions to training preparation, independent retrieval/bitext/code tokenization and `--retrieval-dev NAME=DIR` admission/evaluation. Parent-exposure proofs are recomputed against explicitly declared known stages; complete historical cleanliness remains unresolved. MIRACL upstream alignment groups are shared across languages for new preparation. Peer recovery now requires durable worker terminal evidence, and attachment stamps publish atomically. See the [follow-up receipt](GOAT_STATUS.md) for verification and the capacity-limited diagnostic outcome.
 
 `infra/tpu/embedding-qualification-lock.txt` supplements the older generic lock
 with pinned Safetensors for the embedding export/trainer fixtures. The Linux
@@ -127,7 +144,7 @@ runtime installed offline on a physical 8-chip v5e TPU, passed pip dependency
 checks and the required-import/device setup checks. The model workload is a
 separate acceptance gate. Its headless interpreter transformation preserves
 all retained files and excludes only the optional terminal database; upstream
-and derived hashes are retained. See the [qualification log](audit-2026-09-30/physical-qualification-2026-10-01.md).
+and derived hashes are retained. See the [qualification log](GOAT_STATUS.md).
 
 Programming-language provenance and exact exposure reporting are implemented
 ([guide](CODE_LANGUAGE_PROVENANCE.md)); absent upstream labels remain unknown.
@@ -140,13 +157,13 @@ and bounded streaming exporter verify source metadata and keep final benchmark
 splits out of tuning. Actual preparation, parent-exposure checks, cross-source
 quarantine and physical acceptance of the implemented independent development integration remain required.
 
-The [peer-loss campaign](audit-2026-09-30/embedding-peer-loss-campaign.md) is
+The [peer-loss campaign](GOAT_STATUS.md) is
 an isolated adapter for an already leased physical multi-host slice. It must
 prove durable commit, all original remote workers drained, and exact resumed
 state; metadata checks are not physical fault acceptance. Controller and
 transport loss remain separate unqualified requirements.
 
-Current posted-cost discovery (October 1): the `azettaai` project has billing enabled on account `012CAE-712976-475489`. Its read-only BigQuery dataset list returned no datasets and no next page. [Receipt](audit-2026-09-30/billing-export-discovery-2026-10-01.json). This does not inventory other possible export projects or establish zero spend; no query ran and no service/export was enabled.
+Current posted-cost discovery (October 1): the `azettaai` project has billing enabled on account `012CAE-712976-475489`. Its read-only BigQuery dataset list returned no datasets and no next page. [Receipt](GOAT_STATUS.md). This does not inventory other possible export projects or establish zero spend; no query ran and no service/export was enabled.
 
 ## Implemented after the current audit
 
@@ -160,7 +177,7 @@ The [bounded transfer diagnostic](ARTIFACT_TRANSFER_DIAGNOSTIC.md) is implemente
 and literal-byte tested. The actual parent06 GCS copy timed out before enrichment;
 no current enriched parent or physical import is established. Measure the executor
 transfer before selecting a changed bounded download strategy. Keep full original
-SHA/lineage and leaf authentication. The [current issue inventory](audit-2026-09-30/issue-acceptance-2026-10-01-current.md)
+SHA/lineage and leaf authentication. The [current issue inventory](GOAT_STATUS.md)
 was refreshed at21:46UTC; all29 issues remain open.
 
 ## Actionable tool matrix after parallel review
@@ -194,7 +211,7 @@ freeze; fresh changed-source Linux acceptance is pending. No TPU model or cloud
 execution occurred in this review.
 
 Actual continuation: the changed observer/controller source has now passed its
-[Linux lifecycle and external-pin acceptance](audit-2026-09-30/bounded-data-job-linux-selftest-02/selftest.json),
+[Linux lifecycle and external-pin acceptance](GOAT_STATUS.md),
 with four separate terminal cleanup observations. Earlier statements that fresh
 changed-source Linux acceptance was pending are superseded for this exact source;
 whole-controller/provider/TPU faults remain separate. The measured-transfer worker
@@ -232,3 +249,77 @@ later MS MARCO/MIRACL/code stage; omitting earlier training would mislabel seen
 examples as independent development. The bounded
 `scripts.prepare_next_stage_development` accepts a completed candidate and an
 actual history relocation receipt, then scans, filters and independently rescans.
+
+### MLM data-recipe diagnostic
+
+`scripts/diagnose_mlm_recipe_tpu.py` restores an explicit checkpoint on one physical
+eight-chip TPU host and reports masked-token-weighted language/code slices for the
+canonical512 heldout row selection. Execution regroups into padded16-row language
+batches, so it is a separate numerical protocol; it does not replace canonical MLM
+loss or edit the training mixture. Small slices remain marked limited. Syntax/lint passed; physical TPU inference passed for46language/code slices
+at checkpoint87,000 on the current single-host eight-chip v5e, matching canonical
+aggregate MLM loss within3.6e-9. Small slices remain diagnostic-only. Evidence is recorded in
+[the completion campaign](GOAT_STATUS.md).
+
+### Bounded 10B MLM data release
+
+`scripts/run_mlm_data_release_gce.py` authenticates historical corpus bytes,
+four filtered development candidates and six original heldouts, then invokes
+`prepare_yat_mlm_continuation` with a10B nonpadding training-token target.
+`scripts/run_mlm_data_controller_gce.py` observes one externally pinned bounded
+execution, tolerates progress-transport failure and deletes the exact owned VM.
+The bootstrap also deletes on setup failure; a provider DELETE lease is the
+independent fallback. Publication verifies remote file hashes and creates an
+immutable version tag only after corpus coverage qualification. This is CPU
+data preparation, not CPU model testing or model training. See
+[October11 deployment and live evidence](GOAT_STATUS.md).
+
+`scripts.prepare_yat_mlm_parallel` resumes an externally pinned partial recipe
+with authenticated retained raw/token/document shards. Bounded concurrent fetch
+and spawned tokenization workers share a single dedup/split coordinator; ordered
+atomic chunk commits preserve recovery. The tokenizer prepares bounded native
+batches with exact overflow/provenance parity. See the [same-VM recovery](GOAT_STATUS.md)
+for measured cloud parity and separately recorded throughput. Neither data
+preparation nor metadata checks qualify model execution on CPU.
+
+Memory-safe 10B recovery (October12): `prepare_yat_mlm_parallel` uses fresh
+RSS/deadline-bounded tokenizer processes per chunk, retaining exact resume and
+output identity. `run_mlm_data_controller_gce --workload-unit ... --source ...
+--corpus-root ...` separates the48GiB workload cgroup from the cleanup observer
+and preserves the full corpus before deletion. `run_mlm_data_release_gce`
+rehydrates original pinned setup on fresh VMs and verifies >=10B actual tokens
+before immutable publication. See [recovery evidence](GOAT_STATUS.md).
+
+### MLM tokenizer overflow memory correction (2026-10-13)
+
+`prepare_encoder_corpus` now detaches the first native encoding window from its
+overflow tree before postprocessing, then releases processed batch roots. Full
+document tokenization and BPE boundaries remain unchanged. Metadata regressions
+cover200k-character multilingual/code input and exact original token/provenance
+bytes, plus BPE offsets and word IDs. The native Encoding pickle-state adapter
+is bound to the pinned runtime and requires physical parity after upgrades.
+`prepare_yat_mlm_parallel` reports authenticated committed-chunk progress during
+resume rather than leaving the restored historical failure status visible.
+The new recovery requires physical replay of the actual failed chunk8874 under
+the unchanged1.5GiB guard before production. See data-2026-10-13 receipts.
+
+### Dataset resume memory and replay accounting (2026-10-14)
+
+Linux per-chunk guards use exec-local VmHWM and ready-gated sampled VmRSS;
+inherited getrusage peaks and pre-exec fork RSS do not qualify child memory.
+Missing Linux metrics fail closed. Committed coordinate exclusions now reach
+fetch workers before payload decoding, preserving original no-op scheduling.
+Known excluded remaining coordinates avoid remote opens. Status reports fetch
+and tokenizer wait time and excluded/fresh group counts. Physical regression
+uses a live parent above the child RSS cap plus actual failed-chunk parity.
+See data-2026-10-14 receipts; production throughput requires new commit intervals.
+
+### Remaining-corpus coverage transition
+
+`RemainingCoverageMixtureRows` and `scripts.plan_remaining_coverage` prepare a no-repeat pass over rows not exposed by the existing legacy coverage sampler. `scripts.train_encoder --migrate-coverage-from-checkpoint` explicitly restores full model/optimizer/cursor state under parent manifest/metadata/source pins into a distinct stage, preserving the learning-rate horizon. `--remaining-coverage-from-step` is immutable on future resumes; completion pads only unused slots and stops. See `docs/remaining-coverage-2026-10-15/README.md` and `docs/coverage-transition-design.md`. Metadata verified; physical migration/tail acceptance pending. Existing running1014d source is unchanged.
+
+October19 exact127000 recovery: the external adapter adds model-free `--validate-launch` for BOTH real resolved setup/workload argv, before backend imports. The campaign authenticates parser bytes, checks actual RunLedger/template cap equality, and retains cloud `cli-admission.json` before allocation. 35 launch/recovery tests passed. Current physical v5e8 qualification passed all four sampler/full-state/recovery/heldout gates; original parent loss1.3130168618367615 reproduced. Evidence: [recovery O](GOAT_STATUS.md). Production progress requires separate authenticated commits above127000.
+
+### First GOAT contrastive stage (October28)
+
+`flaxchat.mlm_parent_exposure` admits zero prior contrastive history only for the independently pinned MLM379079 release and its exact lineage files. Unknown parents and changed bytes fail closed; MLM/semantic exposure remains unresolved. `scripts.validate_production_parent_tpu --expected-family modernbert` performs the actual TPU leaf import separately. `scripts.qualify_goat_contrastive_tpu` and `scripts.run_goat_contrastive_pilot` implement finite real-data/recovery qualification and successful bounded segments under one lease. Their metadata fixtures passed; physical acceptance is recorded only in the current [campaign receipts](GOAT_STATUS.md).

@@ -60,6 +60,42 @@ class AdmissionTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'startup_wait_seconds'):
                     runner.load_manifest(path)
 
+    def test_extended_checks_require_explicit_long_lease(self):
+        value = fixture()
+        value['setup_checks_timeout_seconds'] = 3600
+        with TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'run.json'
+            path.write_text(json.dumps(value))
+            with self.assertRaisesRegex(ValueError, 'Setup checks timeout'):
+                runner.load_manifest(path)
+            value['deployment'] = dict(project='project',zone='us-west4-a',
+                accelerator_type='v5litepod-8',runtime_version='v2-alpha-tpuv5-lite',
+                hourly_usd=4.8,budget_usd=90,provisioning_model='flex-start',
+                attempt_seconds=43200,allow_long_lease=True,
+                pricing=dict(sku='v5e-flex',region='us-west4',provisioning_model='flex-start',
+                    source='official-pricing',observed_at='2026-10-01T10:00:00Z',
+                    accelerator_type='v5litepod-8',currency='USD',unit='whole_slice_hour',hourly_usd=4.8))
+            value['expected_topology'] = 'v5litepod-8'
+            value['expected_device_count'] = 8
+            value['expected_process_count'] = 1
+            path.write_text(json.dumps(value))
+            runner.load_manifest(path)
+            for accepted in (3600, 6420, 7200):
+                value['setup_checks_timeout_seconds'] = accepted
+                path.write_text(json.dumps(value))
+                self.assertEqual(runner.load_manifest(path)['setup_checks_timeout_seconds'], accepted)
+            for invalid in (7201, True):
+                value['setup_checks_timeout_seconds'] = invalid
+                path.write_text(json.dumps(value))
+                with self.assertRaisesRegex(ValueError, 'Setup checks timeout'):
+                    runner.load_manifest(path)
+            value['setup_checks_timeout_seconds'] = 1801
+            value['deployment']['allow_long_lease'] = False
+            value['deployment']['attempt_seconds'] = 1800
+            path.write_text(json.dumps(value))
+            with self.assertRaises(ValueError):
+                runner.load_manifest(path)
+
     def test_training_namespace_binds_both_argv_forms_and_rejects_duplicates(self):
         manifest = fixture()
         expected = manifest['output_prefix'] + '/checkpoints'

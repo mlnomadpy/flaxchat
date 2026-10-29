@@ -52,3 +52,25 @@ def mask_tokens(tokens, *, seed, step, example_ids, vocab_size, mask_token_id,
         randomize = selected & (choice >= .8) & (choice < .9)
         inputs[i, randomize] = replacement[randomize]
     return inputs, targets
+
+
+def mask_prepared_rows(tokens, row_ids, *, pad_token_id, allow_padding=False, **policy):
+    """Build a fixed-shape batch; -1 denotes an unused final-batch slot only.
+
+    Padding never selects the last corpus row and never receives an MLM target.
+    Real rows retain their original IDs for reproducible corruption.
+    """
+    ids = np.asarray(row_ids)
+    if (ids.ndim != 1 or not np.issubdtype(ids.dtype, np.integer)
+            or np.any(ids >= len(tokens)) or np.any(ids < (-1 if allow_padding else 0))):
+        raise ValueError('Invalid prepared row IDs')
+    valid = ids >= 0
+    safe = np.maximum(ids, 0)
+    batch = np.asarray(tokens[safe])
+    if not np.all(valid):
+        batch = batch.copy()
+        batch[~valid] = pad_token_id
+    inputs, targets = mask_tokens(batch, example_ids=safe, **policy)
+    inputs[~valid] = pad_token_id
+    targets[~valid] = -1
+    return inputs, targets

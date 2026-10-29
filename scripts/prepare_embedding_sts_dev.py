@@ -5,7 +5,6 @@ SHA256 and declare dev/validation provenance. HF provenance can additionally
 be bound with --source-repo/--source-revision. No model inference is performed.
 """
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -29,7 +28,8 @@ def prepare(raw, raw_sha, tokenizer, encoder_config, output, *, source_split, le
     tok = Tokenizer.from_file(str(tokenizer))
     if tok.get_vocab_size() != config['vocab_size'] or config['pad_token_id'] not in tok.get_vocab().values():
         raise ValueError('STS tokenizer vocabulary/padding differs from model')
-    tok.no_padding(); tok.no_truncation()
+    tok.no_padding()
+    tok.no_truncation()
     rows = [json.loads(line) for line in raw.read_text().splitlines() if line.strip()]
     scores = np.array([row['score'] for row in rows], np.float64)
     if len(rows) < 3 or scores.shape != (len(rows),) or not np.all(np.isfinite(scores)):

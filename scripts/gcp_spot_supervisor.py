@@ -214,7 +214,7 @@ def main(argv=None):
     parser.add_argument('--startup-wait-seconds', type=int,
                         help='Separate bounded startup wait after PROVISIONING; global lease still applies')
     parser.add_argument('--setup-timeout-seconds', type=int, default=300,
-                        help='Bound setup and SSH connection delays separately from training')
+                        help='Bound setup and SSH connection delays; maximum 1800 seconds, or 7200 with --allow-long-lease and a longer attempt')
     parser.add_argument('--tunnel-through-iap', action='store_true')
     parser.add_argument('--iap-fallback', action='store_true',
                         help='Reattach failed public SSH over IAP without launching another remote command')
@@ -236,8 +236,11 @@ def main(argv=None):
         parser.error('Capacity wait must be positive and no longer than the attempt lease')
     if args.startup_wait_seconds is not None and not 1 <= args.startup_wait_seconds <= args.attempt_seconds:
         parser.error('Startup wait must be positive and no longer than the attempt lease')
-    if not 30 <= args.setup_timeout_seconds <= 1800:
-        parser.error('Setup timeout must be 30–1800 seconds')
+    setup_maximum = 7200 if args.allow_long_lease else 1800
+    if not 30 <= args.setup_timeout_seconds <= setup_maximum:
+        parser.error(f'Setup timeout must be 30–{setup_maximum} seconds; extended setup requires --allow-long-lease')
+    if args.setup_timeout_seconds > 1800 and args.setup_timeout_seconds >= args.attempt_seconds:
+        parser.error('Extended setup timeout must be shorter than the attempt lease')
     if args.max_attempts > 1 and not args.resume_workload:
         parser.error('Retries require explicit durable-checkpoint resume argv')
     if args.acceptance_prefix and not args.acceptance_prefix.startswith('gs://'):

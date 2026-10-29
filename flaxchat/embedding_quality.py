@@ -460,7 +460,7 @@ def load_retrieval_dev(
         != file_hash(directory / "parent-exposure-input.json")
         or proof.get("complete") is not True
         or proof.get("overlap_rows") != 0
-        or not proof.get("checked_stages")
+        or (not proof.get("checked_stages") and not proof.get("mlm_only_parent"))
         or not proof.get("unresolved_exposure")
     ):
         raise ValueError(
@@ -471,7 +471,7 @@ def load_retrieval_dev(
     checked = proof["checked_stages"]
     if (
         not isinstance(expected_stages, list)
-        or not expected_stages
+        or (not expected_stages and not proof.get("mlm_only_parent"))
         or len(expected_stages) != len(set(expected_stages))
         or set(checked) != set(expected_stages)
         or any(

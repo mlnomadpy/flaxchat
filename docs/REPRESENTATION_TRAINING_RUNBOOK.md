@@ -1,10 +1,28 @@
 # YAT training runbook
 
-**Latest requested MLM continuation — October 9:** [GOAT-input recovery from
-committed checkpoint35,500](goat-input-2026-10-09/README.md). The source, optimizer, schedule,
-cursor and multilingual/code recipe remain frozen. Consult its latest physical
-status receipt before claiming training is active. This supersedes the historical
-October6 failed launcher below; do not restart the contrastive stage.
+**Current authorized contrastive pilot — October 28:** [first contrastive stage from completed GOAT MLM379079](GOAT_STATUS.md). One v5e8 Flex-start attempt capped at90USD, fresh contrastive Adam/schedule/sampler, protected complete MLM recovery unchanged. Rebuilt pinned563,962-row mixture and8,082-row development candidate passed metadata admission; current physical qualification and production status must come from the campaign receipts. No automatic retries or inference-only numerical patches. This explicit authorization supersedes the historical October6 MLM-only restriction for this new stage.
+
+**Current authorized MLM recovery — October20:** [exact259500 continuation](GOAT_STATUS.md), preserving full Adam/sampler/schedule. Three successful sequential FlexStart slices, maximum240USD new reservation; stop on failure/uncertain handoff or379079 coverage completion. Validation child6300s/wrapper6420s fit7200s setup and12h TPU lease; patched manifest admission ceiling is orchestration-only and native model digest is unchanged. Current physical/production state must come from dated receipts.
+
+**Current authorized MLM continuation — October 18:** [autonomous exact remaining-corpus campaign M](GOAT_STATUS.md), from127000 with original fullAdam/500k schedule/remaining sampler. at most six sequential12hFlexStart slices with9hworkeach,480USDnewreservation,stop on firstfailed/uncertainhandoff or379079coveragecomplete. Same native Kcheckpointnamespace and numericalsource; dynamic sealedparent/physicalqualification eachslice.
+
+**Current authorized MLM continuation — October 17:** [longer remaining-corpus recovery K](GOAT_STATUS.md). Resume88250 with full Adam state and original500k schedule; fresh physical gates precede up to8hours production in one12hour FlexStart attempt. J passed sampler/full-state/recovery gates but made no production updates because its work window was too short. K adds preallocation window admission and rejects zero-update production success.
+
+**Optional architecture, October 9:** [looped GOAT encoder and LoopCD](LOOPED_ENCODER.md).
+This is an experimental separate candidate, not a migration or exact continuation
+of the active MLM stage. Do not change the running stage to use it. Its physical
+TPU, quality and performance acceptance remains outstanding.
+
+**Latest requested MLM continuation — October 10:** [Flex-start completion from
+checkpoint87,000 and separate data diagnostics](GOAT_STATUS.md).
+This schedule completed100,000 updates, with heldout MLM loss1.605303160 on the
+same512-row protocol (87,000:1.629804590). Its controller/TPU/queue are absent.
+Completion is not a production-quality or sufficient-pretraining claim.
+The [10B fresh-data job and versioned dataset publication](GOAT_STATUS.md)
+is a separate bounded CPU-only execution. Changed data requires a separate stage,
+authenticated100,000-step parent weights and a newly qualified schedule/optimizer policy.
+It must not restart the expired100k schedule or substitute contrastive/QAT training.
+Previous attemptF saved87,000, evaluated86,000 atloss1.633476 and cleaned owned resources.
 
 > **Active user objective — October 6, 2026:** Continue **MLM pretraining of the
 > YAT-mmBERT base**, from the last verified MLM checkpoint, on multilingual text
@@ -42,7 +60,7 @@ Latest reconciled audit: [all open issues, current evidence and tool priorities]
 
 Latest requested parallel review: [audit, new gaps, tools and validation scope](PARALLEL_SYSTEM_AUDIT_2026-10-01.md). All 29 open issues were refreshed; historical counts below remain dated evidence.
 
-Canonical operating guide as of 2026-09-30. The objective is to improve the existing model's representations for multilingual text and code retrieval. This guide supersedes the launch procedure in `TPU_TRAINING_CHECKLIST.md`; that file records earlier historical runs and is not a live resource ledger. Audit findings are in [evaluation-review.md](audit-2026-09-30/evaluation-review.md). The versioned agent workflow is [flaxchat-training](../skills/flaxchat-training/SKILL.md).
+Canonical operating guide as of 2026-09-30. The objective is to improve the existing model's representations for multilingual text and code retrieval. This guide supersedes the launch procedure in `TPU_TRAINING_CHECKLIST.md`; that file records earlier historical runs and is not a live resource ledger. Audit findings are in [evaluation-review.md](GOAT_STATUS.md). The versioned agent workflow is [flaxchat-training](GOAT_STATUS.md).
 
 The [October 1 follow-up audit](SYSTEM_AUDIT_2026-10-01.md) supersedes the implementation status below where noted. New fixes are local, pass selected model-free checks, and remain physically unqualified. The [issue checklist](ISSUE_READINESS_CHECKLIST.md) records the current remaining defects and separates training, scaling and release gates.
 
@@ -61,8 +79,8 @@ The mean improvement conceals a Tatoeba decline from 52.72 to 35.27, spanning 10
 | Development validation | Bounded declared held-out retrieval probes for every source, finite MRR/Recall gates, best-checkpoint retention and persisted quality state | Language-stratified retrieval/bitext and pinned STS gates implemented, including per-language regressions; physical recovery/metric acceptance and production suite quality remain unproven |
 | Physical TPU tests | [validate_test_suite.py](../scripts/validate_test_suite.py) runs isolated modules with JUnit, timeout and GCS evidence; [validate_gcp_multihost.py](../scripts/validate_gcp_multihost.py) covers its declared workloads | Dedicated hard-negative, cache and trainer recovery tests now exist; the new [embedding multi-host worker](EMBEDDING_MULTIHOST_ADMISSION.md) checks actual distributed training. Physical execution, sustained interruption and each changed recipe/topology remain unqualified |
 | Full public checkpoint evaluation | [evaluate_yat_public_mteb.py](../scripts/evaluate_yat_public_mteb.py), [subset evaluator](../scripts/evaluate_yat_mteb_subsets.py), [split evaluator](../scripts/evaluate_yat_mteb_splits.py), merge helpers: finite score checks, expected row coverage and source/package provenance are implemented | Immutable task revision/inventory and interpreter/numerical environment checks are implemented; physical task receipts and matched EmbeddingGemma adapter remain pending |
-| Recovery | [checkpoint.py](../flaxchat/checkpoint.py), immutable stage metadata, explicit `--resume` | Check changed embedding trainer interruption behavior and topology transitions on the actual physical topology |
-| Profiling | [profiling.py](../flaxchat/profiling.py), [summarize_jax_trace.py](../scripts/summarize_jax_trace.py) | Scheduled trace wired into embedding trainer; input, gradient, token and checkpoint metrics added. Physical traces and throughput still required |
+| Recovery | [checkpoint.py](GOAT_STATUS.md), immutable stage metadata, explicit `--resume` | Check changed embedding trainer interruption behavior and topology transitions on the actual physical topology |
+| Profiling | [profiling.py](GOAT_STATUS.md), [summarize_jax_trace.py](../scripts/summarize_jax_trace.py) | Scheduled trace wired into embedding trainer; input, gradient, token and checkpoint metrics added. Physical traces and throughput still required |
 | Cloud operations | Guarded GCP lifecycle plus [representation_run.py](../scripts/representation_run.py) sealed manifest launch/worker, [build_runtime_bundle.py](../scripts/build_runtime_bundle.py) Linux frozen wheelhouse and [cloud_accounting.py](../scripts/cloud_accounting.py) posted billing/retained storage | Fresh GCE offline dependency install passed; TPU install/execution and physical disconnect acceptance remain. Actual training output-path binding and installed inventory revalidation are implemented; [deployment guide](INFRASTRUCTURE_RUNS.md) |
 | Publishing | [Flax publisher](../scripts/publish_yat_embedding_from_gcp.py), [PyTorch publisher](../scripts/publish_yat_torch_from_gcp.py), [TPU parity tool](../scripts/validate_yat_torch_parity.py) | Generic authenticated stage identity is implemented. Full runtime provenance and bounded campaign scheduling are implemented; physical matrix coverage and verified upload remain pending |
 | Larger contrastive batches | Current trainer uses replicated parameters/optimizer with globally sharded batch arrays | Pair-only static update avoids the third encoder, and hosts materialize only their local rows. Opt-in `--encoder-chunk-size` gradient caching is implemented with a full global denominator and recomputed encoder VJPs. FSDP remains unimplemented; all paths need physical loss/gradient and throughput measurement |
@@ -129,7 +147,7 @@ The current selection score is the equal-source macro mean of aggregate MRR or S
 
 ## Implemented admission fixes and remaining qualification
 
-The October 1 reconciliation records local fixes for complete required-array checksums, raw negative-valid agreement, failed-quality-gate persistence, a nonmutating committed checkpoint reader and complete parity runtime provenance. Selected model-free checks pass; physical and actual-data acceptance remain outstanding. The reader verifies recorded metadata integrity and namespace stability, not tensor restoration. The embedding qualification lock now pins Safetensors; the frozen corrected runtime passed physical v5e setup. Selected acceptance is 14 passes and two cache optimizer-state failures; see the [physical follow-up](audit-2026-09-30/physical-qualification-2026-10-01.md). See the [current audit](SYSTEM_AUDIT_2026-10-01.md) for source evidence and GitHub mapping. These are not established defects in historical public weights.
+The October 1 reconciliation records local fixes for complete required-array checksums, raw negative-valid agreement, failed-quality-gate persistence, a nonmutating committed checkpoint reader and complete parity runtime provenance. Selected model-free checks pass; physical and actual-data acceptance remain outstanding. The reader verifies recorded metadata integrity and namespace stability, not tensor restoration. The embedding qualification lock now pins Safetensors; the frozen corrected runtime passed physical v5e setup. Selected acceptance is 14 passes and two cache optimizer-state failures; see the [physical follow-up](GOAT_STATUS.md). See the [current audit](SYSTEM_AUDIT_2026-10-01.md) for source evidence and GitHub mapping. These are not established defects in historical public weights.
 
 Shared admission uses the same trainer flags plus required `--expected-devices`, `--expected-processes` and `--receipt`. A missing or failing gate is not waived by relaunching the same stage. Fix the applicable defect, run the relevant metadata checks, freeze one revision, then perform one bounded physical qualification. Independent controllers must not allocate separately against a local budget ledger.
 
@@ -141,9 +159,9 @@ Prepare candidate development exclusions first, then pass `--development-exclusi
 
 `scripts.prepare_embedding_retrieval_dev` builds an independent tokenized retrieval/bitext/code bundle. Admit it through `--retrieval-dev NAME=DIR` in shared preflight and training. The loader recomputes candidate, token, future-training quarantine and declared historical parent-exposure evidence. The trainer records aggregate and per-language `independent/NAME` metrics in the same persisted baseline/best/recovery gate. Known-stage exposure checks do not prove complete historical, MLM, translation or semantic cleanliness. Actual production data and restored-parent evaluation remain required; metadata acceptance alone is insufficient.
 
-The latest cache diagnostic exhausted its bounded capacity wait and ran no model tests. Both its queue and TPU node were independently verified absent. The previous physical acceptance remains 14 passed and two optimizer-state failures. Shape-matched ordinary autodiff and named Adam-moment diagnostics are implemented; do not relax the original required assertions. See the [follow-up consolidation](audit-2026-09-30/consolidated-followup-2026-10-01.md).
+The latest cache diagnostic exhausted its bounded capacity wait and ran no model tests. Both its queue and TPU node were independently verified absent. The previous physical acceptance remains 14 passed and two optimizer-state failures. Shape-matched ordinary autodiff and named Adam-moment diagnostics are implemented; do not relax the original required assertions. See the [follow-up consolidation](GOAT_STATUS.md).
 
-Use the [pinned candidate development recipe](REPRESENTATION_DEVELOPMENT_RECIPE.md), [programming-language provenance](CODE_LANGUAGE_PROVENANCE.md) and [exact overlap auditor](EMBEDDING_BENCHMARK_OVERLAP.md) with actual authenticated inputs. Preparation, parent exposure and cross-source quarantine remain explicit gates. The isolated [peer-loss campaign](audit-2026-09-30/embedding-peer-loss-campaign.md) and [attachment-loss campaign](audit-2026-09-30/embedding-attachment-loss-campaign.md) require an already leased physical multi-host slice; their metadata checks do not establish physical fault recovery.
+Use the [pinned candidate development recipe](REPRESENTATION_DEVELOPMENT_RECIPE.md), [programming-language provenance](CODE_LANGUAGE_PROVENANCE.md) and [exact overlap auditor](EMBEDDING_BENCHMARK_OVERLAP.md) with actual authenticated inputs. Preparation, parent exposure and cross-source quarantine remain explicit gates. The isolated [peer-loss campaign](GOAT_STATUS.md) and [attachment-loss campaign](GOAT_STATUS.md) require an already leased physical multi-host slice; their metadata checks do not establish physical fault recovery.
 
 ## Production-quality and release safeguards follow-up
 
@@ -167,9 +185,9 @@ still outstanding; no metadata pass upgrades an old physical or publication rece
 
 ## Concrete prerequisite tools after the collision result
 
-The native MIRACL scan completed with three exact-text collisions in the broader exclusion inventory, not necessarily the selected cap. `scripts.filter_representation_development` now creates a separate bounded filtered candidate from authenticated complete collision details, preserving the original and replayable proof. The initial scan predates detailed output. The subsequent actual detail-producing scan/filter/re-scan completed: see [retained controller](audit-2026-09-30/native-miracl-filter-01-controller.json) and the current audit for its byte authentication and zero known-history exact overlap. No filtered production candidate has been physically accepted.
+The native MIRACL scan completed with three exact-text collisions in the broader exclusion inventory, not necessarily the selected cap. `scripts.filter_representation_development` now creates a separate bounded filtered candidate from authenticated complete collision details, preserving the original and replayable proof. The initial scan predates detailed output. The subsequent actual detail-producing scan/filter/re-scan completed: see [retained controller](GOAT_STATUS.md) and the current audit for its byte authentication and zero known-history exact overlap. No filtered production candidate has been physically accepted.
 
-`scripts.prepare_enriched_parent_export` creates the actual parent import prerequisite from independently pinned public artifacts and original committed JSON, streaming Safetensors leaf authentication without model execution. Its finite near-cloud template is in the [parent identity report](audit-2026-09-30/production-parent-public-identity-2026-10-01.md). The first actual materialization authenticated public weights but failed enrichment. Its stable-field comparison is fixed locally; corrected materialization and physical TPU import remain gates. CI routing identifies their metadata checks; physical embedding tests remain manual and cannot be counted as local model acceptance.
+`scripts.prepare_enriched_parent_export` creates the actual parent import prerequisite from independently pinned public artifacts and original committed JSON, streaming Safetensors leaf authentication without model execution. Its finite near-cloud template is in the [parent identity report](GOAT_STATUS.md). The first actual materialization authenticated public weights but failed enrichment. Its stable-field comparison is fixed locally; corrected materialization and physical TPU import remain gates. CI routing identifies their metadata checks; physical embedding tests remain manual and cannot be counted as local model acceptance.
 
 ## Current implementation follow-up: lifecycle, telemetry and confidence
 
@@ -183,7 +201,7 @@ The [bounded transfer diagnostic](ARTIFACT_TRANSFER_DIAGNOSTIC.md) is implemente
 and literal-byte tested. The actual parent06 GCS copy timed out before enrichment;
 no current enriched parent or physical import is established. Measure the executor
 transfer before selecting a changed bounded download strategy. Keep full original
-SHA/lineage and leaf authentication. The [current issue inventory](audit-2026-09-30/issue-acceptance-2026-10-01-current.md)
+SHA/lineage and leaf authentication. The [current issue inventory](GOAT_STATUS.md)
 was refreshed at21:46UTC; all29 issues remain open.
 
 [Full-corpus reporting](FULL_CORPUS_RETRIEVAL.md) now provides authenticated native
@@ -240,3 +258,22 @@ Checkpoint3000 full-model batch8 inference producedNaN despite finiteparameters.
 ## October 8 capacity retry
 
 [Recovery-b](goat-input-2026-10-08/recovery-b/README.md) retries exactcheckpoint27750 after capacity-only1008a timedout and independently cleaned. OneSpotv5e8 request,60min capacitybudget,9hgloballease and up-to8hworkload (capacity/setup reduceavailabletraining). Priorunusedreservationreconciledwithoriginaleventsretained; total899.70 under900cap. FrozenmodelsourceandMLMrecipeunchanged.
+
+## October11 fresh10B corpus preparation
+
+The existing GOAT-input MLM run completed100,000updates; final canonical heldout
+loss1.6053031599117003. Its protected checkpoint is retained. The separate
+[10B data preparation](GOAT_STATUS.md) prepares future MLM inputs and
+publishes the qualified release; it does not launch another training stage.
+Read the live receipts before reporting completion. The public1Bv1 release is
+provenance references; new10Bv2 retains raw natural-language rows and code
+references publicly, with complete training payload in protected GCS.
+
+## Finish remaining MLM rows without repeating small pools
+
+The opt-in remaining-corpus sampler reconstructs legacy exposure at a pinned final committed step, excludes all seen row IDs, removes exhausted language/source pools, and pads the final partial batch. This is an explicit sampler/source transition into a separate namespace with full optimizer, schedule and cursor preservation, not weights-only initialization or exact legacy-stage resume. Preserve the existing500k LR horizon and stop at the calculated coverage completion. Generate the plan near data with `scripts.plan_remaining_coverage`; require independently pinned full-state restore, zero-update state parity and fresh physical TPU recovery/tail acceptance before activation. Current cloud training stays frozen until a verified transition. Details and measured planning snapshot: `docs/remaining-coverage-2026-10-15/README.md`.
+
+
+October16 remaining-coverage recovery: [current receipts](GOAT_STATUS.md) fix Compute deleted-resource detection using structured inventories and pin actual checkpoint88250 for full Adam/model/cursor migration. Physical parity is required before production; read live bound qualification and production commits before reporting activation.
+
+October19 recovery O: [sealed launch and receipts](GOAT_STATUS.md) resume127000 with unchanged full Adam,500k schedule and remaining-sampler transition88250. Both actual command vectors parse through the pinned real adapter before allocation; manifest budget must equal the carried ledger cap. Fresh physical v5e8 tail/fullbatch, copied full-state, continuous4/split2+2 state/rows/LR and matched-heldout gates passed. Qualification branch127004 is not production; only native K output commits above127000 establish continuation. The cloud campaign owns at most six successful bounded Flex Start slices and stops on failure/uncertain handoff, with independent guards and provider controller deletion.

@@ -93,6 +93,11 @@ def prepare(
             if portable_root is not None:
                 for name in ('manifest.json', 'train.jsonl'):
                     portable_exposure_path(original / name, portable_root, output)
+    if exposure_spec.get("mlm_only_parent") is not None:
+        original = Path(exposure_input).parent / exposure_spec["mlm_only_parent"]["directory"]
+        exposure_spec["mlm_only_parent"]["directory"] = (
+            portable_exposure_path(original, portable_root, output)
+            if portable_root is not None else str(original.resolve()))
     exposure_spec_sha = file_hash(exposure_input)
     rows = []
     for name in names:

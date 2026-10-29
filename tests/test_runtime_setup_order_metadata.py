@@ -111,3 +111,44 @@ def test_setup_resolves_checkpoint_namespace_before_physical_qualification(tmp_p
     assert command[command.index('--root') + 1] == str(tmp_path)
     assert command[-1] == '--evidence=' + prefix + '/evidence'
     assert not any('{' in item for item in command)
+
+@pytest.mark.parametrize('runtime_first', [False, True])
+def test_runtime_first_moves_corpus_after_verified_offline_install(tmp_path, runtime_first):
+    manifest = dict(source={'uri': 'gs://bucket/source', 'sha256': 'a'*64, 'archive': True},
+        artifacts=[{'uri': 'gs://bucket/tokens', 'sha256': 'b'*64,
+                    'target': 'corpus/train/tokens.npy', 'archive': False},
+                   {'uri': 'gs://bucket/wheels', 'sha256': 'c'*64,
+                    'target': 'wheels', 'archive': True}], runtime_before_data=runtime_first,
+        runtime_lock={'path': 'lock.txt', 'sha256': 'd'*64, 'wheelhouse_target': 'wheels'},
+        expected_device_count=8, expected_process_count=1)
+    manifest_path = tmp_path / 'run.json'
+    manifest_path.write_text(json.dumps(manifest))
+    events = []
+    def command(argv, **kwargs):
+        if argv[:3] == ['gcloud', 'storage', 'cp']:
+            events.append('corpus' if argv[3].endswith('tokens') else 'input')
+            from pathlib import Path
+            Path(argv[4]).write_bytes(b'authenticated-fixture')
+        elif 'install' in argv:
+            events.append('install')
+            assert '--no-compile' in argv and '--no-deps' in argv and '--no-index' in argv
+        elif 'check' in argv:
+            events.append('pip-check')
+    def extract(archive, target, **kwargs):
+        target.mkdir(parents=True, exist_ok=True)
+        if target.name == 'source':
+            (target / 'lock.txt').write_text('example==1.0\n')
+    def output(argv, **kwargs):
+        if 'list' in argv:
+            return '[{"name":"example","version":"1.0"}]'
+        return '{"backend":"tpu","devices":8,"processes":1}'
+    with patch.object(runner, 'load_manifest', return_value=manifest), \
+            patch.object(runner, 'checked_hash'), patch.object(runner, 'extract_archive', side_effect=extract), \
+            patch.object(runner.subprocess, 'run', side_effect=command), \
+            patch.object(runner.subprocess, 'check_output', side_effect=output), \
+            patch.object(runner, 'qualify_setup_runtime'):
+        runner.setup(manifest_path, tmp_path)
+    if runtime_first:
+        assert events.index('install') < events.index('pip-check') < events.index('corpus')
+    else:
+        assert events.index('corpus') < events.index('install')

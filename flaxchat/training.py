@@ -190,7 +190,21 @@ def gradients_for_mlm_microbatches(model, all_inputs, all_targets):
     return numerator / denominator, jax.tree.map(lambda g: g / denominator, grads)
 
 
-def gradients_for_local_mlm_microbatches(model, all_inputs, all_targets, mesh):
+def gradients_for_local_mlm_microbatches(model, all_inputs, all_targets, mesh, *, padded_rows=False):
+    """Select the reference for tails using a host-known, static padding flag.
+
+    The sampler knows padding from global row IDs before device placement.
+    Avoid an XLA conditional around the ordinary local path: its compilation
+    can change FP32 rounding even when the branch body is unchanged.
+    """
+    if not isinstance(padded_rows, bool):
+        raise TypeError('padded_rows must be a static Python bool')
+    if padded_rows:
+        return gradients_for_mlm_microbatches(model, all_inputs, all_targets)
+    return _gradients_for_local_mlm_microbatches(model, all_inputs, all_targets, mesh)
+
+
+def _gradients_for_local_mlm_microbatches(model, all_inputs, all_targets, mesh):
     """Reduce parameter gradients once after device-local MLM accumulation.
 
     Parameters remain replicated. The global batch axis is axis1, following

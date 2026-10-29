@@ -161,14 +161,15 @@ class MixtureRows(LanguageRows):
         groups = {}
         self.sources = sorted(shares)
         self.row_source = np.empty(len(tokens), dtype=np.int32)
-        for line in (Path(directory) / 'documents.jsonl').read_text().splitlines():
-            doc = json.loads(line)
-            source = doc.get('source_group')
-            if source not in shares:
-                raise ValueError('Document source missing from mixture recipe')
-            indices = range(doc['first_row'], doc['end_row'])
-            groups.setdefault((source, doc['language_script']), []).extend(indices)
-            self.row_source[doc['first_row']:doc['end_row']] = self.sources.index(source)
+        with (Path(directory) / 'documents.jsonl').open() as stream:
+            for line in stream:
+                doc = json.loads(line)
+                source = doc.get('source_group')
+                if source not in shares:
+                    raise ValueError('Document source missing from mixture recipe')
+                indices = range(doc['first_row'], doc['end_row'])
+                groups.setdefault((source, doc['language_script']), []).extend(indices)
+                self.row_source[doc['first_row']:doc['end_row']] = self.sources.index(source)
         if {s for s, _ in groups} != set(shares):
             raise ValueError('Missing mixture source data')
         self.pools = sorted(groups)
@@ -263,3 +264,152 @@ class CoverageMixtureRows(MixtureRows):
                                  'total_exposures': int(self._positions[i]),
                                  'max_row_exposures': int(self.row_exposures[indices].max())}
                 for i, (name, indices) in enumerate(zip(self.pools, self.indices, strict=True))}
+
+
+class RemainingCoverageMixtureRows(CoverageMixtureRows):
+    """One finite pass over rows never seen before a frozen legacy transition.
+
+    Legacy pool-epoch exposure is reconstructed exactly. The new weighted stream
+    removes exhausted pools and renormalizes its original weights. Per-pool
+    permutations and RNG are pinned by seed, transition step and batch size.
+    Final padding is -1, never an index into the corpus. No model state changes.
+    """
+    def __init__(self, directory, tokens, manifest, seed, exponent, transition_step, transition_batch_size):
+        if (type(seed) is not int or seed < 0 or type(transition_step) is not int or transition_step < 0
+                or type(transition_batch_size) is not int or transition_batch_size < 1
+                or type(exponent) not in (int, float) or not np.isfinite(exponent) or not 0 <= exponent <= 1):
+            raise ValueError('Finite integer seed/transition step and positive transition batch required')
+        self._remaining_initialized = False
+        super().__init__(directory, tokens, manifest, seed, exponent)
+        if np.any(~np.isfinite(self.row_probabilities)) or np.any(self.row_probabilities <= 0):
+            raise ValueError('Finite positive weights required for every remaining coverage pool')
+        CoverageMixtureRows.seek(self, transition_step, transition_batch_size)
+        self.transition_step, self.transition_batch_size = transition_step, transition_batch_size
+        self._historical_seen = self.row_exposures > 0
+        self.historical_seen_rows = int(np.count_nonzero(self._historical_seen))
+        self._legacy_positions = self._positions.copy()
+        self._legacy_summary = CoverageMixtureRows.exposure_summary(self)
+        self._remaining_orders = []
+        for pool, indices in enumerate(self.indices):
+            unseen = indices[~self._historical_seen[indices]]
+            rng = np.random.default_rng(np.random.SeedSequence(
+                [self.seed, 0x52454D41, transition_step, transition_batch_size, pool]))
+            self._remaining_orders.append(rng.permutation(unseen))
+        self._order_cache.clear()
+        self._remaining_lengths = np.asarray([len(order) for order in self._remaining_orders], dtype=np.int64)
+        self.total_unseen_rows = int(self._remaining_lengths.sum())
+        self._remaining_positions = np.zeros(len(self.pools), dtype=np.int64)
+        self._remaining_tokens = np.asarray([self._token_sum(order) for order in self._remaining_orders], dtype=np.int64)
+        self.total_unseen_tokens = int(self._remaining_tokens.sum())
+        self.completion_step = transition_step + (self.total_unseen_rows + transition_batch_size - 1) // transition_batch_size
+        self.policy_identity = {'coverage_sampling': 'remaining_pool_epoch_v1',
+            'coverage_transition_step': transition_step, 'coverage_transition_batch_size': transition_batch_size}
+        self._remaining_initialized = True
+        self.seek(transition_step, transition_batch_size)
+
+    def _token_sum(self, order):
+        return sum(int(self.nonpadding[order[first:first + 65536]].sum()) for first in range(0, len(order), 65536))
+
+    @property
+    def remaining_unique_rows(self):
+        return self.total_unseen_rows - int(self._remaining_positions.sum())
+
+    @property
+    def remaining_unique_tokens(self):
+        return int(self._remaining_tokens.sum())
+
+    def _validate_cursor(self, step, size):
+        if (type(step) is not int or type(size) is not int or size != self.transition_batch_size
+                or not self.transition_step <= step <= self.completion_step):
+            raise ValueError('Remaining coverage cursor must use frozen transition batch within finite horizon')
+
+    def _draw_remaining(self, count, *, materialize):
+        # Reuse each uniform when a pool exhausts. Vector boundaries therefore
+        # cannot change the stream when replay uses bounded million-row chunks.
+        uniform = self._rng.random(count)
+        result = np.full(count, -1, dtype=np.int64) if materialize else None
+        offset = 0
+        while offset < count:
+            available = self._remaining_lengths - self._remaining_positions
+            active = np.flatnonzero(available > 0)
+            if not len(active):
+                break
+            weights = self.row_probabilities[active]
+            boundaries = np.cumsum(weights / weights.sum())
+            boundaries[-1] = 1.
+            choices = active[np.searchsorted(boundaries, uniform[offset:], side='right')]
+            counts = np.bincount(choices, minlength=len(self.pools))
+            exhausted = np.flatnonzero((available > 0) & (counts >= available))
+            take = len(choices)
+            for pool in exhausted:
+                take = min(take, int(np.flatnonzero(choices == pool)[int(available[pool]) - 1]) + 1)
+            if take < len(choices):
+                counts = np.bincount(choices[:take], minlength=len(self.pools))
+            if not take:
+                raise RuntimeError('Nonexhausted pool scheduling made no progress')
+            if materialize:
+                for pool in np.flatnonzero(counts):
+                    positions = np.flatnonzero(choices[:take] == pool)
+                    cursor = int(self._remaining_positions[pool])
+                    ids = self._remaining_orders[pool][cursor:cursor + len(positions)]
+                    result[offset + positions] = ids
+                    self.row_exposures[ids] = 1
+                    self._remaining_tokens[pool] -= int(self.nonpadding[ids].sum())
+            self._remaining_positions += counts
+            offset += take
+        self._positions[:] = self._legacy_positions + self._remaining_positions
+        return result
+
+    def seek(self, step, size):
+        if not self._remaining_initialized:
+            return CoverageMixtureRows.seek(self, step, size)
+        self._validate_cursor(step, size)
+        self._rng = np.random.default_rng(np.random.SeedSequence(
+            [self.seed, 0x52454D42, self.transition_step, self.transition_batch_size]))
+        self._remaining_positions[:] = 0
+        self.row_exposures[~self._historical_seen] = 0
+        remaining = min((step - self.transition_step) * size, self.total_unseen_rows)
+        while remaining:
+            take = min(remaining, 1_000_000)
+            self._draw_remaining(take, materialize=False)
+            remaining -= take
+        for pool, order in enumerate(self._remaining_orders):
+            cursor = int(self._remaining_positions[pool])
+            self.row_exposures[order[:cursor]] = 1
+            self._remaining_tokens[pool] = self._token_sum(order[cursor:])
+        self._positions[:] = self._legacy_positions + self._remaining_positions
+        self._next_step, self._batch_size = step, size
+
+    def batch(self, step, size):
+        self._validate_cursor(step, size)
+        if step != self._next_step:
+            self.seek(step, size)
+        if step == self.completion_step:
+            raise StopIteration('Every previously unseen corpus row has been consumed')
+        result = self._draw_remaining(size, materialize=True)
+        self._next_step += 1
+        return result
+
+    def _valid_indices(self, indices):
+        values = np.asarray(indices)
+        if (values.ndim != 1 or not np.issubdtype(values.dtype, np.integer)
+                or np.any(values < -1) or np.any(values >= len(self.nonpadding))):
+            raise ValueError('Remaining coverage row IDs must be valid or final -1 padding')
+        return values[values >= 0]
+
+    def token_counts(self, indices):
+        return LanguageRows.token_counts(self, self._valid_indices(indices))
+
+    def source_token_counts(self, indices):
+        return MixtureRows.source_token_counts(self, self._valid_indices(indices))
+
+    def exposure_summary(self):
+        summary = CoverageMixtureRows.exposure_summary(self)
+        for pool, name in enumerate(self.pools):
+            key = ':'.join(name)
+            summary[key].update(legacy_seen_rows=self._legacy_summary[key]['seen_rows'],
+                legacy_exposures=self._legacy_summary[key]['total_exposures'],
+                remaining_unique_rows=int(self._remaining_lengths[pool] - self._remaining_positions[pool]),
+                remaining_unique_tokens=int(self._remaining_tokens[pool]),
+                new_unique_exposures=int(self._remaining_positions[pool]))
+        return summary

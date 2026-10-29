@@ -1,5 +1,44 @@
 # flaxchat
 
+Native JAX/Flax NNX training, recovery and inference tools for TPU language models and the **GOAT** multilingual encoder family.
+
+## GOAT multilingual encoder
+
+<img src="assets/branding/goat/goat-logo-v1.png" width="180" alt="GOAT model family" />
+
+[GOAT mmBERT YAT Base MLM 10B](https://huggingface.co/mlnomad/goat-mmbert-yat-base-mlm-10b) is a 22-layer, 768-dimensional encoder with GOAT-input attention and YATGLU feed-forward blocks. It was initialized from scratch and pretrained with masked language modeling, including complete coverage of a **10,038,104,948 nonpadding-token** prepared corpus after an earlier MLM stage. The published checkpoint is **379079**; it has no contrastive or downstream fine-tuning.
+
+Load the native model directly from Hugging Face through FlaxChat:
+
+```bash
+pip install -e ".[encoder]"
+```
+
+```python
+from flaxchat.hub import from_pretrained
+
+model = from_pretrained(
+    "mlnomad/goat-mmbert-yat-base-mlm-10b",
+    revision="a0279613f6a2cca746847fbba1672a6f0b407ea4",
+)
+# model.encode(token_ids): token representations
+# model.pool(token_ids): pooled, normalized representations
+```
+
+The model card includes tokenization and batching examples. Model execution and numerical acceptance use the documented accelerator runtime; metadata-only tests do not qualify inference or training.
+
+| Benchmark | GOAT MLM-only base | Previous YAT embedding v1, fine-tuned | mmBERT-base paper, embedding fine-tuned |
+|---|---:|---:|---:|
+| English MTEB, 41 tasks / seven-category mean | 36.84 | 52.78 | 53.9 |
+| Multilingual MTEB, 131 tasks / eight-category mean | 31.77 | 48.21 | 54.1 |
+| CoIR, ten-task mean | 9.91 | 43.45 | 42.2 |
+| MIRACL hard-negative, 18-language mean | 1.82 | 46.37 | — |
+
+Scores use the 0–100 display scale. GOAT measurements use the complete pinned task inventories, length512, nonpadding mean pooling including special tokens, FP32 L2 normalization and no prompts. Previous-model results are historical published receipts; [mmBERT paper](https://arxiv.org/html/2509.06888v1) embedding results follow fine-tuning. These columns have different training histories. See [full results and protocol](docs/GOAT_BENCHMARKS.md).
+
+**Contrastive pilot status — October28,2026:** eight-chip parent import and four hard-negative loss/gradient checks passed. The real-data recovery qualification stopped before optimizer updates because its development sample was too small to cover every language. The local sample-budget correction passed model-free admission; physical revalidation and production contrastive training remain pending. Protected MLM checkpoints and failure evidence are retained, and the attempt's compute resources were independently verified removed. See [current model and training status](docs/GOAT_STATUS.md).
+
+
 Latest reconciled audit: [all open issues, current evidence and tool priorities](docs/SYSTEM_AUDIT_CURRENT_2026-10-01.md). Earlier dated findings below remain historical where superseded.
 
 

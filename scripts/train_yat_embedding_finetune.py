@@ -483,6 +483,10 @@ def run(args):
             if jax.process_index() == 0:
                 print(json.dumps({"event": "embedding_step", "step": step + 1,
                     "loss": float(loss), "seconds": time.monotonic() - begun,
+                    "learning_rate": float(lr(step)),
+                    "batch_sha256": hashlib.sha256(b"".join(
+                        key.encode() + str(value.dtype).encode() + str(value.shape).encode() + value.tobytes()
+                        for key, value in sorted(batch.items()))).hexdigest(),
                     "global_pairs": args.batch_size, "input_seconds": input_seconds,
                     "telemetry": step_telemetry,
                     "gradient_norm": float(grad_norm), "pair_only": pair_only,

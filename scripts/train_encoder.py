@@ -21,14 +21,16 @@ from jax.sharding import Mesh, NamedSharding, PartitionSpec as P
 from flaxchat.checkpoint import create_checkpoint_manager, load_checkpoint_metadata, restore_model_from_checkpoint, save_checkpoint
 from flaxchat.common import replicate_on_mesh
 from flaxchat.encoder import EncoderConfig, ModernBert, import_hf_weights
-from flaxchat.mlm import mask_tokens
+from flaxchat.mlm import mask_prepared_rows
 from flaxchat.profiling import HostGCTiming, TrainingTrace
-from flaxchat.encoder_data import MixtureRows, CoverageMixtureRows, file_hash, load_prepared_rows, EpochRows, LanguageRows
+from flaxchat.encoder_data import MixtureRows, CoverageMixtureRows, RemainingCoverageMixtureRows, file_hash, load_prepared_rows, EpochRows, LanguageRows
 from flaxchat.training import initialize_sharded, apply_gradients_if_finite, place_host_batch, gather_process_metadata, gradients_for_mlm_microbatches, gradients_for_local_mlm_microbatches
 
 
 def pretrained_shapes(config):
     """HF tensor header shapes, without constructing a model or device arrays."""
+    if config.loop_core_layers:
+        raise ValueError('Looped encoders require native checkpoints, not implicit HF migration')
     h, i = config.hidden_size, config.intermediate_size
     shapes = {'model.embeddings.tok_embeddings.weight': (config.vocab_size, h),
               'model.embeddings.norm.weight': (h,), 'model.final_norm.weight': (h,),
@@ -274,6 +276,23 @@ def restore_public_mlm(model, directory, committed, *, migrate_to_goat=False):
 
 
 def run(args):
+    coverage_transition = getattr(args, 'remaining_coverage_from_step', None)
+    coverage_parent = getattr(args, 'migrate_coverage_from_checkpoint', None)
+    coverage_pins = [getattr(args, name, None) for name in (
+        'coverage_parent_manifest_sha256', 'coverage_parent_metadata_sha256', 'coverage_parent_source_sha256')]
+    if coverage_parent:
+        if (coverage_transition is None or not all(coverage_pins) or args.resume
+                or args.initialize_from_checkpoint or getattr(args, 'initialize_from_public', None) or args.pretrained
+                or coverage_parent.rstrip('/') == args.output.rstrip('/')
+                or (not coverage_parent.startswith('gs://') and not args.output.startswith('gs://')
+                    and Path(coverage_parent).resolve() == Path(args.output).resolve())):
+            raise ValueError('Coverage transition requires pinned full-state parent and a distinct new output')
+    elif any(coverage_pins):
+        raise ValueError('Coverage parent pins require explicit full-state migration')
+    if coverage_transition is not None and (
+            type(coverage_transition) is not int or coverage_transition < 0 or not args.coverage_sampling
+            or not (coverage_parent or args.resume)):
+        raise ValueError('Remaining coverage requires an explicit migrated or resumed coverage stage')
     public_parent = getattr(args, 'initialize_from_public', None)
     migrate_to_goat = getattr(args, 'migrate_to_goat', False)
     if migrate_to_goat and not public_parent:
@@ -332,6 +351,8 @@ def run(args):
                      mlm_vocab_tile=args.mlm_vocab_tile)
     overrides.update({name: getattr(args, name) for name in ('ffn_type', 'yat_epsilon', 'yat_alpha', 'yat_attention_alpha', 'attention_score', 'yat_compute_mode', 'yat_ffn_compute_mode', 'yat_softmax_backward', 'yat_attention_implementation', 'yat_ffn_backward_block', 'mlm_projection_capacity')
                       if getattr(args, name) is not None})
+    overrides.update({name: getattr(args, name) for name in ('loop_core_start', 'loop_core_layers', 'loop_steps')
+                      if getattr(args, name, None) is not None})
     config = EncoderConfig.from_hf(raw, **overrides) if raw.get('model_type') else EncoderConfig(**(raw | overrides))
     if config.attention_backend == 'splash' and jax.device_count() > 1:
         raise ValueError('Multi-device encoder training currently requires --attention-backend xla')
@@ -344,8 +365,17 @@ def run(args):
     if manifest.get('source_token_shares') is not None and args.language_exponent is None:
         raise ValueError('A source mixture requires explicit within-source language sampling')
     sampler = (CoverageMixtureRows if args.coverage_sampling else MixtureRows) if manifest.get('source_token_shares') is not None else LanguageRows
-    rows = (sampler(data_dir, tokens, manifest, args.seed, args.language_exponent)
-            if args.language_exponent is not None else EpochRows(len(tokens), args.seed, shuffle=args.shuffle))
+    if coverage_transition is not None:
+        rows = RemainingCoverageMixtureRows(data_dir, tokens, manifest, args.seed,
+            args.language_exponent, coverage_transition, args.batch_size)
+    else:
+        rows = (sampler(data_dir, tokens, manifest, args.seed, args.language_exponent)
+                if args.language_exponent is not None else EpochRows(len(tokens), args.seed, shuffle=args.shuffle))
+    effective_stop = args.stop_after or args.steps
+    if isinstance(rows, RemainingCoverageMixtureRows):
+        if rows.completion_step > args.steps:
+            raise ValueError('Remaining coverage exceeds the preserved learning-rate horizon')
+        effective_stop = min(effective_stop, rows.completion_step)
     if args.pretrained:
         tokenizer_path = Path(args.pretrained) / 'tokenizer.json'
         if not tokenizer_path.exists() or file_hash(tokenizer_path) != manifest['tokenizer_sha256']:
@@ -374,6 +404,10 @@ def run(args):
         identity['public_mlm_initialization'] = public_initialization_identity(initialization)
     if args.coverage_sampling:
         identity['coverage_sampling'] = 'pool_epoch_v1'
+    if coverage_transition is not None:
+        identity.update(coverage_sampling='remaining_pool_epoch_v1',
+                        coverage_transition_step=coverage_transition,
+                        coverage_transition_batch_size=args.batch_size)
     if fsdp > 1:
         identity['fsdp'] = fsdp
     if args.local_gradient_accumulation:
@@ -388,6 +422,7 @@ def run(args):
         Path(__file__).parents[1] / 'flaxchat/yat_attention_centered.py',
         Path(__file__).parents[1] / 'flaxchat/profiling.py',
         Path(__file__).parents[1] / 'flaxchat/encoder_data.py',
+        Path(__file__).parents[1] / 'flaxchat/coverage_transition.py',
         Path(__file__).parents[1] / 'flaxchat/training.py',
         Path(__file__).parents[1] / 'flaxchat/common.py',
         Path(__file__).parents[1] / 'flaxchat/checkpoint.py',
@@ -398,8 +433,17 @@ def run(args):
                     data_manifest_identity=file_hash(data_dir / 'manifest.json'), model_family='modernbert')
     expected = dict(resolved_config=identity, tokenizer=metadata['tokenizer_identity'],
                     data_manifest=metadata['data_manifest_identity'], source_python_sha256=source_digest)
+    coverage_admission = None
+    if coverage_parent:
+        from flaxchat.checkpoint_metadata import read_committed_metadata
+        from flaxchat.coverage_transition import admit_coverage_transition
+        coverage_metadata = read_committed_metadata(coverage_parent, coverage_transition, include_receipt=True)
+        admitted_identity, admitted_lineage = admit_coverage_transition(coverage_metadata, identity,
+            metadata['tokenizer_identity'], metadata['data_manifest_identity'], coverage_transition, *coverage_pins)
+        coverage_admission = dict(expected_identity=admitted_identity, lineage=admitted_lineage)
     identities = gather_process_metadata(expected | {'initial_weights_sha256': initial_weights,
-                                                     'initialization': initialization})
+                                                     'initialization': initialization,
+                                                     'coverage_transition': coverage_admission})
     if any(item != identities[0] for item in identities):
         raise ValueError('Workers disagree on data, tokenizer, source, weights, runtime, or training configuration')
     if args.preflight_only:
@@ -458,18 +502,31 @@ def run(args):
     if fsdp == 1:
         optimizer = make_optimizer(model)
     start_step = 0
+    if coverage_parent:
+        restored, state = restore_model_from_checkpoint(model, coverage_parent, step=coverage_transition,
+            optimizer=optimizer, expected_identity=coverage_admission['expected_identity'], load_training_state=True)
+        if state is None:
+            raise ValueError('Coverage migration requires full optimizer and training cursor')
+        start_step, updates = validate_resume_cursor(state, horizon=args.steps, stop=effective_stop)
+        if start_step != coverage_transition or int(np.asarray(optimizer.step[...])) != updates:
+            raise ValueError('Restored coverage transition optimizer/cursor differs')
+        metadata['initialization'] = restored.get('initialization')
+        metadata['coverage_transition'] = dict(coverage_admission['lineage'], checkpoint=coverage_parent,
+                                              optimizer_updates=updates, new_source_python_sha256=source_digest)
     if args.resume:
         metadata, state = restore_model_from_checkpoint(model, args.output, optimizer=optimizer,
                                                 expected_identity=expected, load_training_state=True)
         if state is None:
             raise ValueError('Checkpoint has no training cursor')
-        start_step, updates = validate_resume_cursor(state, horizon=args.steps, stop=args.stop_after or args.steps)
+        start_step, updates = validate_resume_cursor(state, horizon=args.steps, stop=effective_stop)
+        if coverage_transition is not None and int(np.asarray(optimizer.step[...])) != updates:
+            raise ValueError('Remaining coverage optimizer counter differs from restored cursor')
         optimizer.step[...] = jnp.asarray(updates, dtype=optimizer.step.dtype)
-        if start_step == (args.stop_after or args.steps):
+        if start_step == effective_stop:
             if jax.process_index() == 0:
                 print(json.dumps(dict(event='already_completed', step=start_step, optimizer_updates=updates)), flush=True)
             return
-    if isinstance(rows, CoverageMixtureRows):
+    if isinstance(rows, (CoverageMixtureRows, RemainingCoverageMixtureRows)):
         rows.seek(start_step, args.batch_size)
     if fsdp == 1:
         nnx.update(optimizer, replicate_on_mesh(nnx.state(optimizer), mesh))
@@ -494,14 +551,14 @@ def run(args):
         manager.close()
         raise ValueError('Output already contains checkpoints; use --resume or a new directory')
 
-    def train_step(model, optimizer, x, y):
+    def train_step(model, optimizer, x, y, *, padded_rows=False):
         if args.accumulation_steps > 1 or args.local_gradient_accumulation:
             shape = (args.accumulation_steps, args.batch_size // args.accumulation_steps, x.shape[1])
             layout = NamedSharding(mesh, P(None, data_axes))
             inputs = jax.lax.with_sharding_constraint(x.reshape(shape), layout)
             targets = jax.lax.with_sharding_constraint(y.reshape(shape), layout)
             if args.local_gradient_accumulation:
-                loss, grads = gradients_for_local_mlm_microbatches(model, inputs, targets, mesh)
+                loss, grads = gradients_for_local_mlm_microbatches(model, inputs, targets, mesh, padded_rows=padded_rows)
             else:
                 loss, grads = gradients_for_mlm_microbatches(model, inputs, targets)
         else:
@@ -520,53 +577,86 @@ def run(args):
         return (loss, selected, updated, overflow, (x != config.pad_token_id).sum(),
                 gradient_norm, gradient_clip_scale)
 
-    if jit_partial_mode:
-        # Bind after restore/placement. The partial wrapper's argument zero is
-        # the single flattened model+optimizer list, not the original model.
-        train_step = nnx.jit_partial(train_step, model, optimizer,
-            graph=True, graph_updates=False,
-            donate_argnums=(0,) if args.donate_state else ())
-    else:
-        if fsdp > 1:
-            # NNX also applies input StateSharding to mutated state outputs.
-            # Preserve parameter and optimizer layouts across every update.
-            def state_layout(node):
-                return nnx.StateSharding(
-                    jax.tree.map(lambda leaf: leaf.sharding, nnx.state(node)))
-
-            batch_layout = NamedSharding(mesh, P(data_axes))
-            train_step = nnx.jit(
-                train_step,
-                in_shardings=(state_layout(model), state_layout(optimizer), batch_layout, batch_layout),
-                out_shardings=NamedSharding(mesh, P()),
-                donate_argnums=(0, 1) if args.donate_state else (),
-            )
+    def compile_train_step(function):
+        if jit_partial_mode:
+            # Bind after restore/placement. The partial wrapper's argument zero is
+            # the single flattened model+optimizer list, not the original model.
+            compiled = nnx.jit_partial(function, model, optimizer,
+                graph=True, graph_updates=False,
+                donate_argnums=(0,) if args.donate_state else ())
         else:
-            train_step = nnx.jit(train_step,
-                donate_argnums=(0, 1) if args.donate_state else ())
+            if fsdp > 1:
+                # NNX also applies input StateSharding to mutated state outputs.
+                # Preserve parameter and optimizer layouts across every update.
+                def state_layout(node):
+                    return nnx.StateSharding(
+                        jax.tree.map(lambda leaf: leaf.sharding, nnx.state(node)))
+
+                batch_layout = NamedSharding(mesh, P(data_axes))
+                compiled = nnx.jit(
+                    function,
+                    in_shardings=(state_layout(model), state_layout(optimizer), batch_layout, batch_layout),
+                    out_shardings=NamedSharding(mesh, P()),
+                    donate_argnums=(0, 1) if args.donate_state else (),
+                )
+            else:
+                compiled = nnx.jit(function,
+                    donate_argnums=(0, 1) if args.donate_state else ())
+        return compiled
+
+    from functools import partial
+    full_train_step = compile_train_step(train_step)
+    padded_train_step = compile_train_step(partial(train_step, padded_rows=True))
+    train_step = full_train_step
 
     if jax.process_index() == 0:
         print(json.dumps(dict(event='run_config', backend=jax.default_backend(),
             devices=jax.device_count(), processes=jax.process_count(),
             input_identity=identities[0],
             compute_dtype=config.compute_dtype, residual_dtype=config.residual_dtype,
+            unique_blocks=config.num_hidden_layers, effective_depth=config.effective_depth,
+            loop_core_start=config.loop_core_start, loop_core_layers=config.loop_core_layers,
+            loop_steps=config.loop_steps,
             mlm_projection=config.mlm_projection,
             mlm_loss_backend=config.mlm_loss_backend, mlm_vocab_tile=config.mlm_vocab_tile,
             parameter_dtype='float32', optimizer_dtype='float32', donate_state=args.donate_state,
             nnx_jit_partial=jit_partial_mode, fsdp=fsdp, mesh_shape=dict(mesh.shape),
             checkpoint_manifest_chunk_mib=manifest_chunk_mib,
             matmul_precision=str(jax.default_matmul_precision.value))), flush=True)
-    end = args.stop_after or args.steps
+    end = effective_stop
+    if isinstance(rows, RemainingCoverageMixtureRows):
+        if jax.process_index() == 0:
+            print(json.dumps(dict(event='remaining_coverage_plan', transition_step=coverage_transition,
+                                  completed_step=start_step, completion_step=rows.completion_step,
+                                  schedule_horizon=args.steps, final_batch_padding=True)), flush=True)
     local_batch = args.batch_size // jax.process_count()
     if isinstance(rows, LanguageRows) and jax.process_index() == 0:
         pool_names = [":".join(pool) for pool in rows.pools] if isinstance(rows, MixtureRows) else rows.languages
-        print(json.dumps(dict(event="mixture_sampling" if isinstance(rows, MixtureRows) else "language_sampling", policy="pool_epoch_without_replacement" if isinstance(rows, CoverageMixtureRows) else "with_replacement",
+        print(json.dumps(dict(event="mixture_sampling" if isinstance(rows, MixtureRows) else "language_sampling",
+            policy=("remaining_corpus_without_replacement" if isinstance(rows, RemainingCoverageMixtureRows)
+                    else "pool_epoch_without_replacement" if isinstance(rows, CoverageMixtureRows) else "with_replacement"),
             target_token_shares=dict(zip(pool_names, rows.target_token_shares.tolist(), strict=True)),
-            expected_row_exposures={name: args.steps * args.batch_size * float(p) / len(ids)
-                for name, p, ids in zip(pool_names, rows.row_probabilities, rows.indices, strict=True)})), flush=True)
+            shares_scope="initial_weights_renormalized_on_exhaustion" if isinstance(rows, RemainingCoverageMixtureRows) else "fixed_expected_token_shares",
+            expected_row_exposures=(None if isinstance(rows, RemainingCoverageMixtureRows) else
+                {name: args.steps * args.batch_size * float(p) / len(ids)
+                 for name, p, ids in zip(pool_names, rows.row_probabilities, rows.indices, strict=True)}))), flush=True)
     step_executable = train_step
     gc_timing = HostGCTiming(getattr(args, 'host_gc_diagnostics', False))
     try:
+        if coverage_parent:
+            # Durable zero-update transition: its model/optimizer/training
+            # manifests can be compared with the admitted parent before any
+            # new batch is consumed. Subsequent invocations use ordinary resume.
+            save_checkpoint(manager, start_step, model, optimizer, metadata,
+                manifest_chunk_bytes=manifest_chunk_mib * 1024 * 1024,
+                training_state={'completed_steps': np.array([start_step], dtype=np.int32),
+                                'optimizer_updates': np.array([int(optimizer.step[...])], dtype=np.int32)})
+            manager.wait_until_finished()
+            if jax.process_index() == 0:
+                print(json.dumps(dict(event='coverage_transition_committed', step=start_step,
+                    optimizer_updates=int(optimizer.step[...]),
+                    next_learning_rate=float(np.asarray(schedule(int(optimizer.step[...])))),
+                    parent_manifest_sha256=coverage_pins[0], model_updates_applied=0)), flush=True)
         for step in range(start_step, end):
             gc_before = gc_timing.snapshot() if gc_timing.enabled else None
             started = time.monotonic()
@@ -574,25 +664,33 @@ def run(args):
                 print(json.dumps(dict(event='training_phase', phase='preparing_batch', process=jax.process_index())), flush=True)
             global_ids = rows.batch(step, args.batch_size)
             local_ids = global_ids[jax.process_index() * local_batch:(jax.process_index() + 1) * local_batch]
-            x, y = mask_tokens(tokens[local_ids], seed=args.seed, step=step, example_ids=local_ids,
+            x, y = mask_prepared_rows(tokens, local_ids, pad_token_id=config.pad_token_id,
+                allow_padding=isinstance(rows, RemainingCoverageMixtureRows), seed=args.seed, step=step,
                 vocab_size=config.vocab_size, mask_token_id=config.mask_token_id,
                 special_token_ids=manifest['special_token_ids'], probability=args.mask_probability)
             learning_rate = float(np.asarray(schedule(int(optimizer.step[...]))))
             if step == start_step and args.compile_diagnostics:
                 print(json.dumps(dict(event='training_phase', phase='placing_batch', process=jax.process_index())), flush=True)
             x_device, y_device = place_host_batch(x, mesh, data_axes=data_axes), place_host_batch(y, mesh, data_axes=data_axes)
+            # All processes select from the same global sampler IDs. This is a
+            # host dispatch, never a data-dependent conditional inside XLA.
+            padded_batch = bool(np.any(np.asarray(global_ids) < 0))
+            selected_train_step = padded_train_step if padded_batch else full_train_step
+            selected_executable = selected_train_step if padded_batch else step_executable
             step_args = (x_device, y_device) if jit_partial_mode else (model, optimizer, x_device, y_device)
             batch_prepared_at = time.monotonic()
             if step == start_step and args.compile_diagnostics:
                 tick = time.monotonic()
                 print(json.dumps(dict(event='training_phase', phase='lowering_started', process=jax.process_index())), flush=True)
-                lowered = train_step.lower(*step_args)
+                lowered = selected_train_step.lower(*step_args)
                 print(json.dumps(dict(event='training_phase', phase='lowering_finished', seconds=time.monotonic()-tick, process=jax.process_index())), flush=True)
                 tick = time.monotonic()
-                step_executable = lowered.compile()
+                selected_executable = lowered.compile()
+                if not padded_batch:
+                    step_executable = selected_executable
                 print(json.dumps(dict(event='training_phase', phase='compilation_finished', seconds=time.monotonic()-tick, process=jax.process_index())), flush=True)
                 try:
-                    memory_stats = step_executable.memory_analysis()
+                    memory_stats = selected_executable.memory_analysis()
                     memory = str(memory_stats)
                     memory_bytes = {name: getattr(memory_stats, name, None) for name in (
                         'argument_size_in_bytes', 'output_size_in_bytes',
@@ -610,7 +708,7 @@ def run(args):
             execution_started_at = time.monotonic()
             with trace.step(step - start_step):
                 (loss, selected, updated, overflow, nonpadding,
-                 gradient_norm, gradient_clip_scale) = step_executable(*step_args)
+                 gradient_norm, gradient_clip_scale) = selected_executable(*step_args)
                 # Synchronize inside the trace so device execution is captured.
                 loss_value, selected_value, updated_value = float(loss), int(selected), bool(updated)
             if selected_value and not updated_value:
@@ -620,6 +718,8 @@ def run(args):
             elapsed = execution_finished_at - started
             if jax.process_index() == 0:
                 print(json.dumps(dict(event='train_step', step=step + 1, loss=loss_value, masked_tokens=selected_value,
+                                      row_ids_sha256=(hashlib.sha256(np.asarray(global_ids, dtype='<i8').tobytes()).hexdigest()
+                                                      if isinstance(rows, RemainingCoverageMixtureRows) else None),
                                       updated=updated_value, tokens=args.batch_size * tokens.shape[1],
                                       nonpadding_tokens=int(nonpadding), nonpadding_tokens_per_second=int(nonpadding) / elapsed,
                                       learning_rate=learning_rate,
@@ -638,7 +738,7 @@ def run(args):
                                       seconds=elapsed, includes_compilation=step == start_step,
                                       tokens_per_second=args.batch_size * tokens.shape[1] / elapsed)), flush=True)
             if (step + 1) % args.save_every == 0 or step + 1 == end:
-                if isinstance(rows, CoverageMixtureRows) and jax.process_index() == 0:
+                if isinstance(rows, (CoverageMixtureRows, RemainingCoverageMixtureRows)) and jax.process_index() == 0:
                     print(json.dumps(dict(event='coverage_sampling', step=step + 1,
                                           pools=rows.exposure_summary())), flush=True)
                 verify_fsdp_layout(f'before_checkpoint_{step + 1}')
@@ -683,6 +783,13 @@ def parser():
     p.add_argument('--language-exponent', type=float, help='Opt-in language token-temperature sampling in [0,1]; requires corpus document provenance')
     p.add_argument('--coverage-sampling', action='store_true',
                    help='With a source mixture, sample each source/language pool without replacement until it is exhausted')
+    p.add_argument('--remaining-coverage-from-step', type=int,
+                   help='Exclude rows already seen through this legacy sampler cursor; stop after all remaining rows')
+    p.add_argument('--migrate-coverage-from-checkpoint',
+                   help='Explicit full model/optimizer/cursor transition into a distinct remaining-coverage output')
+    p.add_argument('--coverage-parent-manifest-sha256')
+    p.add_argument('--coverage-parent-metadata-sha256')
+    p.add_argument('--coverage-parent-source-sha256')
     p.add_argument('--ffn-type', choices=['geglu', 'yat_glu'],
                    help='Opt-in YAT feature branch with linear gate; changes pretrained model behavior')
     p.add_argument('--yat-ffn-backward-block', type=int, help='Direct BF16 FFN backward coordinate tile; forward distance order is unchanged')
@@ -718,6 +825,9 @@ def parser():
     p.add_argument('--mlm-loss-backend', choices=['xla', 'xla_full', 'xla_local', 'pallas'], default='xla')
     p.add_argument('--mlm-vocab-tile', type=int, default=1024)
     p.add_argument('--no-remat', action='store_true')
+    p.add_argument('--loop-core-start', type=int, help='Prelude block count; shared core must start after block zero')
+    p.add_argument('--loop-core-layers', type=int, help='Number of unique shared core blocks; zero disables recurrence')
+    p.add_argument('--loop-steps', type=int, help='Shared core applications per forward pass, recorded in checkpoint identity')
     p.add_argument('--donate-state', action='store_true', help='Opt-in model/optimizer buffer reuse; benchmark memory and throughput')
     p.add_argument('--profile-dir', help='Local trace directory; one subdirectory per JAX process')
     p.add_argument('--profile-skip-steps', type=int, default=2, help='Warmup updates before bounded trace, relative to this invocation')

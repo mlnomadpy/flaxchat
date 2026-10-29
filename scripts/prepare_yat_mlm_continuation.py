@@ -6,6 +6,8 @@ Benchmark/semantic decontamination is NOT established by this preparation.
 """
 import argparse
 import hashlib
+import gzip
+import re
 import json
 import random
 import shutil
@@ -33,6 +35,116 @@ def normalized_digest(text):
     return hashlib.sha256(value.encode()).hexdigest()
 
 
+def candidate_hashes(directory):
+    """Authenticate retrieval probes, then quarantine both identity policies."""
+    from flaxchat.embedding_development_quarantine import load_candidate_exclusions
+    from flaxchat.embedding_data import row_identities
+    index = load_candidate_exclusions(directory)
+    hashes = set(index.text_hashes)
+    for filename in index.identity['raw_hashes']:
+        path = Path(directory) / filename
+        if file_hash(path) != index.identity['raw_hashes'][filename]:
+            raise ValueError('Development raw input changed')
+        with path.open() as stream:
+            for line in stream:
+                row = json.loads(line)
+                hashes.update(row_identities(row, filename.split('__')[0]).values())
+                for field in ('query', 'positive', 'negative'):
+                    if isinstance(row.get(field), str):
+                        hashes.add(normalized_digest(row[field]))
+        if file_hash(path) != index.identity['raw_hashes'][filename]:
+            raise ValueError('Development raw input changed')
+    return frozenset(hashes), index.identity
+
+
+def candidate_hashes_union(directories):
+    if isinstance(directories, (str, Path)):
+        directories = [directories]
+    if not directories:
+        raise ValueError('Require at least one authenticated development exclusion directory')
+    hashes, identities = set(), []
+    for directory in directories:
+        candidate, identity = candidate_hashes(directory)
+        hashes.update(candidate)
+        identities.append(identity)
+    return frozenset(hashes), identities
+
+
+def excluded_text(text, source, hashes):
+    from flaxchat.embedding_data import row_identities
+    return (normalized_digest(text) in hashes or
+            any(value in hashes for value in row_identities({'positive': text}, source).values()))
+
+
+def open_document_stream(path):
+    path = Path(path)
+    return gzip.open(path, 'rt', encoding='utf-8') if path.suffix == '.gz' else path.open(encoding='utf-8')
+
+
+def historical_digest(row):
+    identities = [row[key] for key in ('text_sha256', 'normalized_text_sha256') if key in row]
+    if not identities or any(not isinstance(value, str) or not re.fullmatch('[0-9a-f]{64}', value) for value in identities):
+        raise ValueError('Prior document missing normalized text_sha256 identity')
+    if len(set(identities)) != 1:
+        raise ValueError('Prior document has conflicting normalized identity fields')
+    return identities[0]
+
+
+def seed_prior_documents(connection, paths, expected_hashes):
+    """Stream authenticated normalized historical identities into disk-backed dedup."""
+    if not paths or len(paths) != len(expected_hashes):
+        raise ValueError('Every prior documents file requires a paired --prior-documents-sha256')
+    receipts = []
+    for path, expected in zip(paths, expected_hashes, strict=True):
+        if not re.fullmatch('[0-9a-f]{64}', expected) or file_hash(path) != expected:
+            raise ValueError('Prior documents checksum mismatch')
+        count = 0
+        with open_document_stream(path) as stream:
+            for line in stream:
+                row = json.loads(line)
+                identity = historical_digest(row)
+                if 'text' in row and normalized_digest(row['text']) != identity:
+                    raise ValueError('Prior document normalized text identity mismatch')
+                connection.execute('INSERT OR IGNORE INTO seen VALUES (?)', (identity,))
+                count += 1
+                if count % 10000 == 0:
+                    connection.commit()
+        connection.commit()
+        if file_hash(path) != expected:
+            raise ValueError('Prior documents changed while seeding')
+        if not count:
+            raise ValueError('Prior documents file is empty')
+        receipts.append(dict(path=str(path), sha256=expected, documents=count))
+    return receipts
+
+
+def provenance(row):
+    # Retain original upstream values, including nested licenses and license text.
+    fields = ('license', 'licenses', 'license_text', 'license_name', 'license_url',
+              'url', 'source_url', 'document_url', 'repo_name', 'repository', 'path')
+    result = {key: row[key] for key in fields if key in row}
+    result['license_provenance'] = ('upstream-row' if any(key in row for key in
+        ('license', 'licenses', 'license_text', 'license_name')) else 'not-specified-in-upstream-row')
+    return result
+
+
+def write_status(root, **values):
+    path = Path(root) / 'status.json'
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps(dict(updated_unix=time.time(), **values), indent=2) + '\n')
+    temporary.replace(path)
+
+
+def retain_raw(path, root, iteration, split):
+    directory = Path(root) / 'raw' / split
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / f'part-{iteration:07d}.jsonl.gz'
+    with Path(path).open('rb') as stream, target.open('wb') as destination:
+        with gzip.GzipFile(fileobj=destination, mode='wb', mtime=0, filename='') as compressed:
+            shutil.copyfileobj(stream, compressed)
+    return dict(path=str(target.relative_to(root)), sha256=file_hash(target), bytes=target.stat().st_size)
+
+
 def prior_coordinates(paths):
     excluded = set()
     for path in paths:
@@ -45,8 +157,41 @@ def prior_coordinates(paths):
     return excluded
 
 
-def split_for_digest(digest):
-    return 'validation' if int(digest[:16], 16) % 1000 == 0 else 'train'
+def split_for_digest(digest, modulus=100):
+    if type(modulus) is not int or modulus < 2:
+        raise ValueError('Validation split modulus must be >= 2')
+    return 'validation' if int(digest[:16], 16) % modulus == 0 else 'train'
+
+
+def reserve_validation_split(digest, label, reserved_counts, minimum_documents=100, modulus=100):
+    """Reserve first unique accepted documents, then apply deterministic hash split.
+
+    Call only after global historical/current dedup admission. Selection order is
+    the seeded pinned-shard traversal, not a representative random language sample.
+    """
+    if not isinstance(label, str) or not label or type(minimum_documents) is not int or minimum_documents < 1:
+        raise ValueError('Require label and positive validation reservation')
+    if reserved_counts.get(label, 0) < minimum_documents:
+        reserved_counts[label] = reserved_counts.get(label, 0) + 1
+        return 'validation'
+    return split_for_digest(digest, modulus)
+
+
+def validation_qualification(train_manifest, validation_manifest, minimum_documents):
+    if type(minimum_documents) is not int or minimum_documents < 1:
+        raise ValueError('Require positive validation document minimum')
+    labels = sorted(set(train_manifest['language_counts']) | set(validation_manifest.get('language_counts', {})))
+    counts = {label: validation_manifest.get('language_counts', {}).get(label, {}).get('documents', 0)
+              for label in labels}
+    training_counts = {label: train_manifest['language_counts'].get(label, {}).get('documents', 0) for label in labels}
+    missing_training_labels = [label for label, count in training_counts.items() if count < 1]
+    deficits = {label: minimum_documents - count for label, count in counts.items() if count < minimum_documents}
+    return dict(format='flaxchat-mlm-validation-qualification-v1', qualified=not deficits and not missing_training_labels,
+                minimum_documents_per_training_label=minimum_documents,
+                validation_documents_per_label=counts, deficits=deficits,
+                training_documents_per_label=training_counts, missing_training_labels=missing_training_labels,
+                limitation='Prepared corpus remains available; training admission must require qualified=true. '
+                           'Minimum counts do not establish benchmark decontamination or balanced evaluation.')
 
 
 def merge_shards(shards, output, recipe_revision, tokenizer):
@@ -98,9 +243,11 @@ def run(args):
     if root.exists() and any(root.iterdir()):
         raise ValueError('Use an empty output root; partial preparation must not be mistaken for complete data')
     root.mkdir(parents=True, exist_ok=True)
+    write_status(root, state='authenticating-inputs')
     started = time.monotonic()
     rng = random.Random(args.seed)
     excluded = prior_coordinates(args.prior_recipe)
+    quarantine_hashes, quarantine_identity = candidate_hashes_union(args.development_exclusions)
     api, fs = HfApi(), HfFileSystem()
     pools = {}
     for source, (dataset, revision) in SOURCES.items():
@@ -127,15 +274,25 @@ def run(args):
     shards = {'train': [], 'validation': []}
     seen = sqlite3.connect(root / 'dedup.sqlite')
     seen.execute('CREATE TABLE seen (digest TEXT PRIMARY KEY)')
-    recipe = dict(format='flaxchat-mlm-continuation-data-v1', source_token_shares=SHARES,
+    write_status(root, state='seeding-historical-dedup')
+    prior_receipts = seed_prior_documents(seen, args.prior_documents, args.prior_documents_sha256)
+    write_status(root, state='preparing', prepared_train_tokens=0)
+    recipe = dict(format='flaxchat-mlm-continuation-data-v2', source_token_shares=SHARES,
+                  development_quarantine=quarantine_identity, historical_documents=prior_receipts,
+                  retain_raw=args.retain_raw, raw_shards=[], rejected_development_documents=0,
                   language_exponent=.5, seed=args.seed, sequence_length=args.sequence_length,
                   target_nonpadding_tokens=args.target_tokens, prior_recipe_sha256=[file_hash(p) for p in args.prior_recipe],
                   tokenizer_sha256=file_hash(args.tokenizer), sources=SOURCES, chunks=[],
-                  split_policy='SHA256 normalized document modulo 1000; 0 held out; source train only',
-                  decontamination='Normalized exact-document dedup only; no benchmark or semantic decontamination claim')
+                  split_policy=f'First {args.minimum_validation_documents_per_label} globally unique accepted documents per language/code label held out; then SHA256 normalized document modulo {args.validation_modulus}; 0 held out; source train only',
+                  validation_sampling_limitation='Initial per-label reservation follows deterministic seeded pinned-shard traversal; nonuniform sampling is not a representative random sample or benchmark decontamination claim',
+                  validation_modulus=args.validation_modulus,
+                  minimum_validation_documents_per_label=args.minimum_validation_documents_per_label,
+                  decontamination='Authenticated historical normalized exact-document dedup and candidate-development exact quarantine; no semantic or complete benchmark decontamination claim')
     revision = hashlib.sha256(json.dumps(recipe, sort_keys=True).encode()).hexdigest()
+    (root / 'recipe.partial.json').write_text(json.dumps(recipe, indent=2) + '\n')
     iteration = 0
     remaining_groups = {}
+    reserved_validation_counts = {}
     while any(counters[k] < args.target_tokens * SHARES[k[0]] / sum(x[0] == k[0] for x in pools) for k in pools):
         if time.monotonic() - started > args.max_seconds:
             raise TimeoutError('Preparation deadline reached; partial output is not qualified')
@@ -156,7 +313,8 @@ def run(args):
                 rng.shuffle(groups)
                 remaining_groups[group_key] = groups
             groups = remaining_groups[group_key]
-            wanted = {'text', 'code', 'content', 'language', 'license', 'licenses', 'repo_name', 'path', 'language_score'}
+            wanted = {'text', 'code', 'content', 'language', 'license', 'licenses', 'repo_name', 'path', 'language_score', 'license_text', 'license_name', 'license_url',
+                      'url', 'source_url', 'document_url', 'repository'}
             columns = [name for name in parquet.schema_arrow.names if name in wanted]
             if not {'text', 'code', 'content'} & set(columns):
                 raise ValueError(f'No supported text column in {dataset}/{path}')
@@ -185,18 +343,24 @@ def run(args):
                     continue
                 if source != 'code' and row.get('language_score') is not None and float(row['language_score']) < .8:
                     continue
+                if excluded_text(text, source, quarantine_hashes):
+                    recipe['rejected_development_documents'] += 1
+                    continue
                 identity = normalized_digest(text)
                 try:
                     seen.execute('INSERT INTO seen VALUES (?)', (identity,))
                 except sqlite3.IntegrityError:
                     continue
-                split = split_for_digest(identity)
                 code_language = row.get('language') or 'unknown'
+                label = f'code:{code_language}' if source == 'code' else language
+                split = reserve_validation_split(identity, label, reserved_validation_counts,
+                                                 args.minimum_validation_documents_per_label, args.validation_modulus)
                 doc = dict(dataset=DATASET, revision=revision, split=split, id=identity, text=text,
-                           language_script=f'code:{code_language}' if source == 'code' else language,
+                           language_script=label,
                            source_group=source, source_dataset=dataset, source_revision=pin,
                            source_split='train', source_path=path, source_row_group=group, source_row=row_index,
-                           license=row.get('license', row.get('licenses', 'upstream-dataset-card')),
+                           upstream_provenance=provenance(row),
+                           license=row.get('license', row.get('licenses')),
                            repository=row.get('repo_name'), code_path=row.get('path'), text_sha256=identity)
                 encoded = json.dumps(doc, ensure_ascii=False) + '\n'
                 streams[split].write(encoded)
@@ -217,14 +381,28 @@ def run(args):
                 if split == 'train':
                     counters[key] += manifest['nonpadding_tokens']
                 receipt[split + '_nonpadding_tokens'] = manifest['nonpadding_tokens']
+                if args.retain_raw:
+                    recipe['raw_shards'].append(retain_raw(raw_path, root, iteration, split))
             raw_path.unlink()
         recipe['chunks'].append(receipt)
         (root / 'recipe.partial.json').write_text(json.dumps(recipe, indent=2) + '\n')
         print(json.dumps(dict(chunk=iteration, prepared_train_tokens=sum(counters.values()), source=source, language=language)), flush=True)
+        write_status(root, state='preparing', chunk=iteration, prepared_train_tokens=sum(counters.values()),
+                     target_train_tokens=args.target_tokens, elapsed_seconds=time.monotonic() - started,
+                     source_tokens={source: sum(value for key, value in counters.items() if key[0] == source) for source in SOURCES})
         iteration += 1
     seen.close()
+    write_status(root, state='merging', prepared_train_tokens=sum(counters.values()))
+    if candidate_hashes_union(args.development_exclusions)[1] != quarantine_identity:
+        raise ValueError('Development exclusion identity changed during preparation')
+    manifests = {}
     for split, paths in shards.items():
-        merge_shards(paths, root / split, revision, args.tokenizer)
+        manifests[split] = merge_shards(paths, root / split, revision, args.tokenizer)
+    qualification = validation_qualification(manifests['train'], manifests['validation'],
+                                           args.minimum_validation_documents_per_label)
+    (root / 'QUALIFICATION.json').write_text(json.dumps(qualification, indent=2) + '\n')
+    recipe['validation_qualification'] = qualification
+    recipe['initial_reserved_validation_documents_per_label'] = reserved_validation_counts
     recipe['actual_train_nonpadding_tokens'] = sum(counters.values())
     recipe['elapsed_seconds'] = time.monotonic() - started
     (root / 'recipe.json').write_text(json.dumps(recipe, indent=2) + '\n')
@@ -233,7 +411,11 @@ def run(args):
             shutil.rmtree(path)
     (root / 'recipe.partial.json').unlink()
     (root / 'COMPLETE.json').write_text(json.dumps(dict(recipe_sha256=file_hash(root / 'recipe.json'),
-        train_manifest_sha256=file_hash(root / 'train/manifest.json'), validation_manifest_sha256=file_hash(root / 'validation/manifest.json')), indent=2) + '\n')
+        train_manifest_sha256=file_hash(root / 'train/manifest.json'), validation_manifest_sha256=file_hash(root / 'validation/manifest.json'),
+        qualification_sha256=file_hash(root / 'QUALIFICATION.json'), training_qualified=qualification['qualified']), indent=2) + '\n')
+    write_status(root, state='complete', prepared_train_tokens=sum(counters.values()),
+                 elapsed_seconds=time.monotonic() - started, recipe_sha256=file_hash(root / 'recipe.json'),
+                 training_qualified=qualification['qualified'])
     return recipe
 
 
@@ -244,13 +426,32 @@ def main():
     parser.add_argument('--target-tokens', type=int, default=1000000000)
     parser.add_argument('--max-seconds', type=int, default=10800)
     parser.add_argument('--min-free-gb', type=float, default=20)
+    parser.add_argument('--validation-modulus', type=int, default=100,
+                        help='Deterministic document holdout denominator; default 100 gives approximately 1%%')
+    parser.add_argument('--minimum-validation-documents-per-label', type=int, default=100,
+                        help='Final training qualification minimum per language/code label; preparation retained on failure')
     parser.add_argument('--sequence-length', type=int, default=512)
     parser.add_argument('--seed', type=int, default=106)
+    parser.add_argument('--development-exclusions', required=True, type=Path, action='append',
+                        help='Authenticated candidate-development directory; repeat for every development split; at least one required')
+    parser.add_argument('--prior-documents', action='append', default=[], type=Path,
+                        help='Historical train AND validation documents.jsonl; repeat for all corpora')
+    parser.add_argument('--prior-documents-sha256', action='append', default=[],
+                        help='Expected authenticated documents hash, paired in argument order')
+    parser.add_argument('--retain-raw', action='store_true', help='Retain accepted text and provenance as JSONL gzip shards')
     parser.add_argument('--prior-recipe', action='append', default=[])
     args = parser.parse_args()
-    if args.target_tokens < 1 or args.max_seconds < 1 or args.min_free_gb <= 0 or args.seed < 0:
+    if (args.target_tokens < 1 or args.max_seconds < 1 or args.min_free_gb <= 0 or args.seed < 0
+            or args.validation_modulus < 2 or args.minimum_validation_documents_per_label < 1):
         parser.error('Require positive target/time/disk limits and nonnegative seed')
-    run(args)
+    if not args.prior_documents or len(args.prior_documents) != len(args.prior_documents_sha256):
+        parser.error('Require authenticated historical documents files with paired expected hashes')
+    try:
+        run(args)
+    except Exception as error:
+        if Path(args.root).is_dir() and not (Path(args.root) / 'COMPLETE.json').exists():
+            write_status(args.root, state='failed', error_type=type(error).__name__, error=str(error))
+        raise
 
 
 if __name__ == '__main__':

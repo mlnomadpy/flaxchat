@@ -191,9 +191,14 @@ def load_manifest(path):
         argv = value[key]
         if not isinstance(argv, list) or not argv or not all(isinstance(x, str) and x for x in argv):
             raise ValueError(f'{key} must be a nonempty argv array')
+    if type(value.get('runtime_before_data', False)) is not bool:
+        raise ValueError('runtime_before_data must be boolean')
     checks_timeout = value.get('setup_checks_timeout_seconds', 300)
-    if type(checks_timeout) is not int or not 30 <= checks_timeout <= 1800:
-        raise ValueError('Setup checks timeout must be an integer in 30–1800 seconds')
+    deployment = value.get('deployment', {})
+    maximum_checks = (7200 if deployment.get('allow_long_lease') is True
+                      and deployment.get('attempt_seconds', 0) >= 7200 else 1800)
+    if type(checks_timeout) is not int or not 30 <= checks_timeout <= maximum_checks:
+        raise ValueError(f'Setup checks timeout must be an integer in 30–{maximum_checks} seconds')
     meaningful_setup(value['setup_checks'])
     training_output(value)
     if value.get('qualification'):
@@ -309,7 +314,7 @@ def setup(manifest_path, root):
     download_timeout = manifest.get('download_timeout_seconds', 300)
     if not 30 <= download_timeout <= 900:
         raise ValueError('Download timeout must be 30–900 seconds')
-    for index, item in enumerate((manifest['source'], *manifest.get('artifacts', []), *manifest.get('overlays', []))):
+    def materialize(index, item):
         temporary = root / f'download-{index}'
         subprocess.run(['gcloud', 'storage', 'cp', item['uri'], str(temporary)], check=True, timeout=download_timeout)
         checked_hash(temporary, item['sha256'])
@@ -320,6 +325,16 @@ def setup(manifest_path, root):
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
             temporary.replace(target)
+    runtime_first = manifest.get('runtime_before_data', False)
+    if type(runtime_first) is not bool:
+        raise ValueError('runtime_before_data must be boolean')
+    inputs = list(enumerate((manifest['source'], *manifest.get('artifacts', []), *manifest.get('overlays', []))))
+    deferred = []
+    for index, item in inputs:
+        if runtime_first and item.get('target', '').startswith('corpus/'):
+            deferred.append((index, item))
+        else:
+            materialize(index, item)
     source_dir = root / manifest['source'].get('target', 'source')
     lock = source_dir / manifest['runtime_lock']['path']
     checked_hash(lock, manifest['runtime_lock']['sha256'])
@@ -330,7 +345,7 @@ def setup(manifest_path, root):
     python = str(venv / 'bin/python')
     # --no-deps prevents transitive resolution from silently selecting a floating
     # package. A complete freeze is required and pip check verifies completeness.
-    subprocess.run([python, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', '--no-index', '--find-links', str(root / manifest['runtime_lock']['wheelhouse_target']), '-r', str(lock)], check=True, timeout=900)
+    subprocess.run([python, '-m', 'pip', 'install', '--no-compile', '--force-reinstall', '--no-deps', '--no-index', '--find-links', str(root / manifest['runtime_lock']['wheelhouse_target']), '-r', str(lock)], check=True, timeout=900)
     subprocess.run([python, '-m', 'pip', 'check'], check=True, timeout=120)
     inventory = subprocess.check_output([python, '-m', 'pip', 'list', '--format=json'], text=True, timeout=60)
     installed = package_inventory(inventory)
@@ -340,6 +355,10 @@ def setup(manifest_path, root):
     unexpected = set(installed) - set(pins) - {'pip', 'setuptools'}
     if unexpected:
         raise ValueError(f'Unexpected runtime packages: {sorted(unexpected)}')
+    # Install small random-I/O runtime files before the large sequential corpus
+    # writes can exhaust boot-disk I/O credits. Byte identities stay unchanged.
+    for index, item in deferred:
+        materialize(index, item)
     environment = {**os.environ, 'PYTHONPATH': str(source_dir), 'FLAXCHAT_RUN_ROOT': str(root),
                    'FLAXCHAT_RUN_MANIFEST_SHA256': digest(manifest_path), 'FLAXCHAT_RUNTIME_LOCK_SHA256': manifest['runtime_lock']['sha256']}
     # This executes only on the provisioned worker, never the local controller.

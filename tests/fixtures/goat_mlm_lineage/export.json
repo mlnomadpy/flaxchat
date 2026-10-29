@@ -1,0 +1,19 @@
+{
+  "format": "flaxchat-authenticated-mlm-export-v1",
+  "source_checkpoint_step": 379079,
+  "source_model_family": "modernbert",
+  "weight_storage": "fp32-masters",
+  "source_checkpoint_metadata_sha256": "98af89f076e0939ee5bfbb3465a2f6a085b1587b11f865d3d822a9937943b7b0",
+  "source_checkpoint_manifest_identity_sha256": "941efae8b2bd3b91e578d32f27c58ec7a11e8f6095f54a3c97a8ead56d2dbf4b",
+  "tokenizer_identity": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+  "artifacts_sha256": {
+    "model.safetensors": "b9ee8e39171a431c1944f9919931dec6a6b8857664f89aaa64679e7637577281",
+    "config.json": "95c765d0d289459dc8c294b6015467cf638ebac9ac316ce2300e0b2f32fda676",
+    "tokenizer.json": "197d4cc5406ee12cc50c8b5511f2393cc32d9db321545979ce041c1199178356",
+    "checkpoint-metadata.json": "0ec0c9f54a910f244e00c8691ecdba3ee7c58dded08659d9043682fa4fafe16f",
+    "checkpoint-manifest.json": "1cb6d6422669e89ad26fccbc96c3c9cbef6a4400cbc537e269786a045c8dfb23"
+  },
+  "tensors": 181,
+  "bytes": 1127355336,
+  "sha256": "b9ee8e39171a431c1944f9919931dec6a6b8857664f89aaa64679e7637577281"
+}

@@ -7,8 +7,67 @@ import shutil
 import tempfile
 
 import numpy as np
-from tokenizers import Tokenizer
+from tokenizers import Encoding, Tokenizer
 from flaxchat.encoder_data import file_hash
+
+
+def _document_batches(stream, *, dataset, revision, split, batch_size, batch_max_chars):
+    """Bound native tokenizer batches by document count and source characters."""
+    batch, characters, seen = [], 0, set()
+    for line in stream:
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        language = row.get("language_script")
+        if (
+            row.get("dataset") != dataset
+            or row.get("revision") != revision
+            or row.get("split") != split
+            or not isinstance(language, str)
+            or not language.strip()
+            or not isinstance(row.get("id"), str)
+            or not row["id"]
+            or not isinstance(row.get("text"), str)
+            or not row["text"].strip()
+        ):
+            raise ValueError("Invalid document identity, language, split or text")
+        if row["id"] in seen:
+            raise ValueError("Duplicate document ID")
+        seen.add(row["id"])
+        size = len(row["text"])
+        if batch and (len(batch) >= batch_size or characters + size > batch_max_chars):
+            yield batch
+            batch, characters = [], 0
+        batch.append(row)
+        characters += size
+    if batch:
+        yield batch
+
+
+def _document_windows(encoding, content_length):
+    """Yield flat windows without postprocessing the root's entire overflow tree.
+
+    Native truncate retains every following window inside the first Encoding.
+    post_process(root) copies/postprocesses that tree, although only root.ids are
+    consumed. Rebuild just the bounded first window through Encoding's pickle
+    state, preserving all token metadata, then release the original root.
+    Full-document encode still determines every token and BPE boundary.
+    """
+    encoding.truncate(content_length)
+    overflowing = encoding.overflowing
+    if not overflowing:
+        yield encoding
+        return
+    first = Encoding()
+    first.__setstate__(json.dumps(dict(
+        ids=encoding.ids, type_ids=encoding.type_ids, tokens=encoding.tokens,
+        words=encoding.word_ids, offsets=encoding.offsets,
+        special_tokens_mask=encoding.special_tokens_mask,
+        attention_mask=encoding.attention_mask, overflowing=[], sequence_ranges={},
+    )).encode())
+    del encoding
+    yield first
+    yield from overflowing
 
 
 def prepare(
@@ -23,6 +82,8 @@ def prepare(
     max_rows=1000000,
     pad_token_id=0,
     mask_token_id=4,
+    batch_size=64,
+    batch_max_chars=1048576,
 ):
     source, tokenizer_path, output = map(Path, (source, tokenizer_path, output))
     if (
@@ -33,6 +94,10 @@ def prepare(
         or sequence_length < 4
         or type(max_rows) is not int
         or max_rows < 1
+        or type(batch_size) is not int
+        or batch_size < 1
+        or type(batch_max_chars) is not int
+        or batch_max_chars < 1
     ):
         raise ValueError(
             "Require pinned corpus identity, split and positive dimensions"
@@ -48,6 +113,7 @@ def prepare(
         {pad_token_id, mask_token_id}
         | {t["id"] for t in raw.get("added_tokens", []) if t.get("special")}
     )
+    del raw  # Do not retain a second Python copy of the full tokenizer vocabulary.
     if (
         content_length <= 0
         or pad_token_id == mask_token_id
@@ -58,7 +124,6 @@ def prepare(
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".corpus-", dir=output.parent))
     counts = {}
-    seen = set()
     rows = nonpadding = documents = 0
     try:
         with (
@@ -66,67 +131,58 @@ def prepare(
             (staging / "tokens.raw").open("wb") as tokens,
             (staging / "documents.jsonl").open("w") as provenance,
         ):
-            for line in stream:
-                if not line.strip():
-                    continue
-                row = json.loads(line)
-                language = row.get("language_script")
-                if (
-                    row.get("dataset") != dataset
-                    or row.get("revision") != revision
-                    or row.get("split") != split
-                    or not isinstance(language, str)
-                    or not language.strip()
-                    or not isinstance(row.get("id"), str)
-                    or not row["id"]
-                    or not isinstance(row.get("text"), str)
-                    or not row["text"].strip()
-                ):
-                    raise ValueError(
-                        "Invalid document identity, language, split or text"
-                    )
-                if row["id"] in seen:
-                    raise ValueError("Duplicate document ID")
-                seen.add(row["id"])
-                encoding = tokenizer.encode(row["text"], add_special_tokens=False)
-                encoding.truncate(content_length)
-                start = rows
-                stats = counts.setdefault(
-                    language, dict(documents=0, rows=0, nonpadding_tokens=0)
+            for batch in _document_batches(
+                stream, dataset=dataset, revision=revision, split=split,
+                batch_size=batch_size, batch_max_chars=batch_max_chars,
+            ):
+                encodings = tokenizer.encode_batch(
+                    [row["text"] for row in batch], add_special_tokens=False
                 )
-                for window in [encoding, *encoding.overflowing]:
-                    processed = tokenizer.post_process(window)
-                    ids = processed.ids
-                    if not ids or all(t in special for t in ids):
-                        continue
-                    if len(ids) > sequence_length:
-                        raise ValueError(
-                            "Tokenizer postprocessor exceeded sequence length"
-                        )
-                    if rows == max_rows:
-                        raise ValueError(
-                            "Corpus exceeds max-rows; refusing silent truncation"
-                        )
-                    values = np.full(sequence_length, pad_token_id, np.int32)
-                    values[: len(ids)] = ids
-                    tokens.write(values.tobytes())
-                    valid = sum(t != pad_token_id for t in ids)
-                    rows += 1
-                    nonpadding += valid
-                    stats["rows"] += 1
-                    stats["nonpadding_tokens"] += valid
-                if rows == start:
-                    raise ValueError("Document contains no eligible content tokens")
-                stats["documents"] += 1
-                documents += 1
-                provenance.write(
-                    json.dumps(
-                        {k: v for k, v in row.items() if k != "text"}
-                        | dict(first_row=start, end_row=rows),
-                        ensure_ascii=False,
+                # Pop processed roots rather than retain their native overflow
+                # allocations until the entire batch has been written.
+                if len(encodings) != len(batch):
+                    raise ValueError("Tokenizer batch document count differs")
+                encodings.reverse()
+                for row in batch:
+                    windows = _document_windows(encodings.pop(), content_length)
+                    language = row["language_script"]
+                    start = rows
+                    stats = counts.setdefault(
+                        language, dict(documents=0, rows=0, nonpadding_tokens=0)
                     )
-                    + "\n"
-                )
+                    for window in windows:
+                        processed = tokenizer.post_process(window)
+                        ids = processed.ids
+                        if not ids or all(t in special for t in ids):
+                            continue
+                        if len(ids) > sequence_length:
+                            raise ValueError(
+                                "Tokenizer postprocessor exceeded sequence length"
+                            )
+                        if rows == max_rows:
+                            raise ValueError(
+                                "Corpus exceeds max-rows; refusing silent truncation"
+                            )
+                        values = np.full(sequence_length, pad_token_id, np.int32)
+                        values[: len(ids)] = ids
+                        tokens.write(values.tobytes())
+                        valid = sum(t != pad_token_id for t in ids)
+                        rows += 1
+                        nonpadding += valid
+                        stats["rows"] += 1
+                        stats["nonpadding_tokens"] += valid
+                    if rows == start:
+                        raise ValueError("Document contains no eligible content tokens")
+                    stats["documents"] += 1
+                    documents += 1
+                    provenance.write(
+                        json.dumps(
+                            {k: v for k, v in row.items() if k != "text"}
+                            | dict(first_row=start, end_row=rows),
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
         if not rows:
             raise ValueError("Empty corpus")
         if file_hash(source) != initial_source_hash:
@@ -182,6 +238,8 @@ def main():
         p.add_argument("--" + name, required=True)
     p.add_argument("--sequence-length", type=int, default=512)
     p.add_argument("--max-rows", type=int, default=1000000)
+    p.add_argument("--batch-size", type=int, default=64)
+    p.add_argument("--batch-max-chars", type=int, default=1048576)
     a = p.parse_args()
     print(
         json.dumps(
@@ -194,6 +252,8 @@ def main():
                 split=a.split,
                 sequence_length=a.sequence_length,
                 max_rows=a.max_rows,
+                batch_size=a.batch_size,
+                batch_max_chars=a.batch_max_chars,
             ),
             indent=2,
         )

@@ -1,6 +1,7 @@
 """Manager lifecycle regression; execute factory code without JAX/model imports."""
 import ast
 import os
+from typing import Any, cast
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -8,6 +9,34 @@ import pytest
 
 
 SOURCE = Path(__file__).parents[1] / 'flaxchat/checkpoint.py'
+
+
+@pytest.mark.parametrize('pin', ['different', 'actual'])
+def test_full_restore_admits_loaded_manifest_before_state_application(pin):
+    """Exercise the real loader control flow with JSON-only fake storage."""
+    class CompatibilityError(ValueError):
+        pass
+    validated = []
+    restored = {'model': {'sentinel': 'unchanged'}, 'metadata': {},
+                'manifest': {'format_version': 3}}
+    manager = SimpleNamespace(restore=lambda *a, **k: restored)
+    def constructor(*a, **k):
+        return None
+    loader = actual_function('load_checkpoint', {
+        'cast': cast, 'Any': Any, '_item_metadata': lambda *a: {},
+        '_restore_args_on_current_topology': lambda *a: None,
+        '_json_hash': lambda value: 'actual', 'CheckpointCompatibilityError': CompatibilityError,
+        '_validate_manifest': lambda *a: validated.append(True),
+        'ocp': SimpleNamespace(args=SimpleNamespace(PyTreeRestore=constructor,
+            JsonRestore=constructor, Composite=lambda **k: k))})
+    if pin == 'different':
+        with pytest.raises(CompatibilityError, match='manifest differs'):
+            loader(manager, step=9, expected_manifest_sha256=pin)
+        assert not validated
+    else:
+        assert loader(manager, step=9, expected_manifest_sha256=pin) == (restored['model'], {})
+        assert validated == [True]
+    assert restored['model'] == {'sentinel': 'unchanged'}
 
 
 def actual_function(name, environment):

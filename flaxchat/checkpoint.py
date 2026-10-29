@@ -262,6 +262,7 @@ def load_checkpoint(
     optimizer: None = None,
     *,
     load_training_state: Literal[False] = False,
+    expected_manifest_sha256: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]: ...
 
 
@@ -273,6 +274,7 @@ def load_checkpoint(
     optimizer: nnx.Optimizer | None = None,
     *,
     load_training_state: Literal[True],
+    expected_manifest_sha256: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any], dict[str, Any]]: ...
 
 
@@ -284,6 +286,7 @@ def load_checkpoint(
     *,
     optimizer: nnx.Optimizer,
     load_training_state: Literal[False] = False,
+    expected_manifest_sha256: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], None]: ...
 
 
@@ -295,6 +298,7 @@ def load_checkpoint(
     optimizer: nnx.Optimizer | None = None,
     *,
     load_training_state: bool = False,
+    expected_manifest_sha256: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]] | tuple[
     dict[str, Any], dict[str, Any] | None, dict[str, Any], dict[str, Any] | None
 ]: ...
@@ -307,6 +311,7 @@ def load_checkpoint(
     optimizer: nnx.Optimizer | None = None,
     *,
     load_training_state: bool = False,
+    expected_manifest_sha256: str | None = None,
 ):
     """Load and validate a checkpoint without mutating live objects.
 
@@ -352,6 +357,8 @@ def load_checkpoint(
         ) from exc
 
     restored = cast(dict[str, Any], restored)
+    if expected_manifest_sha256 is not None and _json_hash(restored["manifest"]) != expected_manifest_sha256:
+        raise CheckpointCompatibilityError("Restored checkpoint manifest differs from admitted parent pin")
     opt_state = restored["optimizer"] if optimizer is not None else None
     training_state = restored["training_state"] if load_training_state else None
     _validate_manifest(
@@ -510,7 +517,8 @@ def restore_model_from_checkpoint(
     )
     try:
         loaded: Any = load_checkpoint(
-            manager, step, model, optimizer, load_training_state=load_training_state
+            manager, step, model, optimizer, load_training_state=load_training_state,
+            expected_manifest_sha256=(expected_identity or {}).get("manifest_sha256")
         )
         if optimizer is None and not load_training_state:
             model_dict, metadata = cast(tuple[Any, dict], loaded)
@@ -520,6 +528,17 @@ def restore_model_from_checkpoint(
                 tuple[Any, Any, dict, Any], loaded
             )
 
+        # Recurrence changes computation without changing parameter shapes.
+        # Protect direct restores too, not only callers supplying an identity.
+        if hasattr(model, 'config') and hasattr(model.config, 'loop_core_layers'):
+            encoder = metadata.get('resolved_config', {}).get('encoder')
+            defaults = {'loop_core_start': 1, 'loop_core_layers': 0, 'loop_steps': 1}
+            if encoder is None and model.config.loop_core_layers:
+                raise CheckpointCompatibilityError('Looped checkpoint lacks encoder architecture identity')
+            if encoder is not None and any(encoder.get(name, default) != getattr(model.config, name)
+                                           for name, default in defaults.items()):
+                raise CheckpointCompatibilityError('Checkpoint loop architecture differs from model')
+
         if expected_identity is not None:
             actual = {
                 "resolved_config": metadata.get("resolved_config", metadata.get("model_config")),
@@ -527,6 +546,9 @@ def restore_model_from_checkpoint(
                 "data_manifest": metadata.get("data_manifest_identity", "unavailable"),
                 "source_revision": metadata.get("source_revision", "unavailable"),
                 "source_python_sha256": metadata.get("source_python_sha256", "unavailable"),
+                # load_checkpoint authenticated the actual loaded manifest before
+                # any model or optimizer mutation; do not re-read mutable storage.
+                "manifest_sha256": expected_identity.get("manifest_sha256"),
             }
             mismatches = {
                 key: (actual.get(key), value)

@@ -47,7 +47,7 @@ def read_json(path):
 
 
 def preflight(root, *, expected_step=14000, expected_metadata=DEFAULT_METADATA,
-              expected_manifest=DEFAULT_MANIFEST, expected_leaves=181):
+              expected_manifest=DEFAULT_MANIFEST, expected_leaves=181, expected_family="yat_embedding_finetune"):
     """Hash actual artifacts and admit declared identity without numerical imports."""
     root = Path(root)
     if (type(expected_step) is not int or expected_step < 1
@@ -64,12 +64,16 @@ def preflight(root, *, expected_step=14000, expected_metadata=DEFAULT_METADATA,
         if name.endswith('.json'):
             read_json(root / name)
     export = read_json(root / 'export.json')
-    validate_export(root, export)
+    if expected_family == "modernbert":
+        from flaxchat.mlm_parent_exposure import validate_mlm_only_parent
+        validate_mlm_only_parent(root, {name: before[name] for name in ("model.safetensors", "config.json", "tokenizer.json")})
+    else:
+        validate_export(root, export)
     manifest = read_json(root / 'checkpoint-manifest.json')
     config = read_json(root / 'config.json')
     from scripts.release_contract import encoder_export_manifest
     serving_manifest, exclusions = encoder_export_manifest(read_json(root / 'checkpoint-metadata.json'), manifest)
-    if (export['source_model_family'] != 'yat_embedding_finetune'
+    if (export['source_model_family'] != expected_family
             or export['source_checkpoint_step'] != expected_step
             or manifest['metadata_sha256'] != expected_metadata
             or canonical_hash(manifest) != expected_manifest
@@ -144,6 +148,7 @@ def main(argv=None):
     parser.add_argument('--expected-step', type=int, default=14000)
     parser.add_argument('--expected-metadata-sha256', default=DEFAULT_METADATA)
     parser.add_argument('--expected-manifest-sha256', default=DEFAULT_MANIFEST)
+    parser.add_argument('--expected-family', choices=('yat_embedding_finetune', 'modernbert'), default='yat_embedding_finetune')
     parser.add_argument('--expected-leaves', type=int, default=181)
     parser.add_argument('--preflight-only', action='store_true')
     args = parser.parse_args(argv)
@@ -159,7 +164,8 @@ def main(argv=None):
     try:
         receipt['admission'] = preflight(args.parent, expected_step=args.expected_step,
             expected_metadata=args.expected_metadata_sha256,
-            expected_manifest=args.expected_manifest_sha256, expected_leaves=args.expected_leaves)
+            expected_manifest=args.expected_manifest_sha256, expected_leaves=args.expected_leaves,
+            expected_family=args.expected_family)
         persist()
         if not args.preflight_only:
             run_physical(args.parent, receipt, persist)
